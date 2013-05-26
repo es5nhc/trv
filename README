@@ -1,0 +1,139 @@
+--------------------------------------------------
+
+  ===  ==  \  |
+   |  |__|  \ |    RADARIVAATUR
+   |  |\     \|
+
+--------------------------------------------------
+
+Versioon 0.1
+
+Tarmo Tanilsoo 2013
+
+-----
+** KASUTAMINE
+
+Käivitamine 
+
+Linuxi all selles samas kaustas
+
+./run
+
+Windowsi jt. all käivitada fail main.py kaustas src
+
+---
+Kasutusel on kolm režiimi:
+* Liikumine
+* Suurendamine
+* Informatsioon
+
+Liikumisrežiimis saab ainult kaarti hiirega ringi lohistada.
+
+Suurendamisrežiimis saab kaardile hiirega klikkides või lohistades sisse/välja suurendada.
+Vasaku hiireklahviga suurendatakse, parema hiireklikiga vähendatakse.
+Informatsioonirežiimis saab pildile klikkides infot konkreetse piksli kohta.
+
+Failimenüüst on võimalik parasjagu lahtiolevat pildivaadet eksportida PIL poolt
+toetavatesse vormingutesse.
+
+-----
+** NÕUDED
+
+* Python 2.x, eeldatavalt 2.7. Võimalik et võib töötada ka varasemate seeriatega aga YMMV.
+* Tkinteri jooksutamise võimalus
+* Python Imaging Library
+
+Soovitatavalt vähemalt 1 GB RAM'i.
+-----
+** TOETATUD FORMAADID
+
+* Nexrad Level III - produktid 94, 99, 157, 161, 162, 163, 165
+* Tekstipõhine formaat(vt. allpool)
+
+-----
+Tekstipõhine andmeformaat:
+
+Näidisfail on nähtav ja kasutatav /data/DBZ_TESTDATA. Eduka dekodeerimise korral peaks
+pildile väja joonistuma eestikeelne tervitus.
+
+Esialgu toetatud mitte-NEXRAD produktid: 
+* DBZ(peegelduvus)
+* V(radiaalkiirus)
+* KDP(spetsiaalne diferentsiaalne faas)
+* ZDR (diferentsiaalne peegelduvus), 
+* HCLASS(hüdrometeoori klassifikatsioon(IRIS))
+* RHOHV(korrelatsioonikoefitsent)
+
+Esimene rida on päisterida. Väärtused on eraldatud tühikutega. Näidisrida:
+
+TT DBZ 58.482 25.518 0.15 24072015 114500
+
+TT on tähistus, mis annab TRV'le märku, et tegu on tekstiformaadiga.
+
+Teine lõik, siin DBZ, on produkti tunnus. Võimalikud on ülalmainitud produktid 
+ning samuti analoogsed NEXRAD produktikoodid(94(DBZ), 99(V) jt.), kuid siis käsitatakse 
+neid NEXRADi andmetena.
+
+Kolmas ja neljas lõik on geograafilised koordinaadid. Põhi ja ida on positiivsed,
+lõuna ja lääs negatiivsed. Antud näites on antud Sürgavere koordinaadid.
+
+Viies lõik, siin 0.15 on andmete samm radarist eemale kilomeetrites. Ehk siin on
+andmed iga 150 meetri järel.
+
+!!! NB! DBZ, V, HCLASS, RHOHV, ZDR, KDP puhul arvestatakse kaugusi maapinnal, 
+NEXRADi produktide puhul piki radarikiirt.
+
+Kuues ja seitsmes lõik on UTC kuupäev ja kellaaeg vormingus DDMMYYYY HHMMSS. Siin
+24. juuli 2015 kell 11:45 UTC.
+
+Teine rida jääb tühjaks. Kolmandalt realt algavad andmed. Iga edasine infokild on
+reavahetustega eraldatud.
+
+ANDMEBLOKK:
+Eraldi skanneeringud eraldatakse märgisega ! Sellisel juhul järgneb kohe tähisele 
+ka kiire kõrgus skanneeringu alguses.
+Nt !?0.5 tähendab skanneeringu algust, antenni kaldenurk 0,5 kraadi.
+Küsimärk tähistab kaldenurga muutust. ?0.5 tähendab et uueks kaldenurgaks on 0,5 kraadi.
+Iga uue skanneeringu alguses on ka kaldenurga muutuse märge, kohe pärast hüüumärki samal
+real. Mõnikord võib ka kaldenurk muutuda skanneeringu ajal, siis saab seda märkida enne
+järgmist asimuudiväravat märkega a la ?0.15
+
+
+Järgmine kiht on asimuudivärav. Iga värava algust defineeritakse plussmärgiga, nt:
++345
+
+Siin asimuut 345 kraadi põhjast päripäeva arvestatuna. Andmepiksli laiuseks loetakse 
+parasjagu loetava värava ning järgmise värava alguse vaheline ala. 
+
+Asimuudimärkele järgnevad andmed, kus iga andmeväli on päistes mainitud sammuga. Andmeid 
+hakatakse lugema otse radari asukohast.
+
+Skanneeringu lõpetab tühi rida lõpus.
+
+Struktuur:
+Päiserida
+! Skanneering
+   ? Kõrgusemuutus
+      + Asimuut
+         Andmed
+
+------
+Viited:
+
+Kaardikontuurid - Natural Earth - http://www.naturalearthdata.com
+Pildiosas kasutatav font - DejaVu Sans Condensed - http://dejavu-fonts.org
+
+-------
+Märkused:
+
+* Esimesel käivitamisel võib kuluda kaartide .pyc'sse kompileerimise tõttu rohkem aega 
+ning mälu. Edasistel käivitamistel läheb juba ladusamalt.
+* Asi on veel üsnagi toores. Vaadete täpsuses võib olla puudusi(nende avastamisel palun 
+lahkesti teada anda).
+* For the now the software is only in Estonian. Multilingual support will be implemented 
+later.
+
+---------
+Kontakt:
+
+e-mail: tarmotanilsoo@gmail.com
