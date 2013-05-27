@@ -1,3 +1,4 @@
+#!/usr/bin/python2
 # -*- coding: utf-8 -*-
 # Tarmo Tanilsoo, 2013
 
@@ -432,10 +433,14 @@ def load():
     return 0
 def setcursor():
     global zoom
+    global info
     if zoom==1:
         w.config(cursor="crosshair")
     else:
-        w.config(cursor="fleur")
+        if not info:
+            w.config(cursor="fleur")
+        else:
+            w.config(cursor="")
     return 0
 def clearclicktext():
     global clickbox
@@ -462,6 +467,7 @@ def toinfo(event=None):
     global info
     zoom=0
     info=1
+    setcursor()
     return 0
 def resetzoom(event=None):
     global radials
