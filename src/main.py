@@ -284,7 +284,7 @@ def msgtostatus(msg):
     status.config(text=msg)
     return 0
 def about_program():
-    tkMessageBox.showinfo("TRV 2014.5", "TRV\n0.1\nTarmo Tanilsoo, 2013\ntarmotanilsoo@gmail.com")
+    tkMessageBox.showinfo("TRV 2014.5", "TRV\n2014.5\nTarmo Tanilsoo, 2013-2014\ntarmotanilsoo@gmail.com")
     return 0
 def keys_list():
     tkMessageBox.showinfo("Otseteed klaviatuuril","z - suurendamisrežiimi\np - ringiliikumisrežiimi\ni - infokogumiserežiimi\nr - algsuurendusse tagasi")
