@@ -1,3 +1,11 @@
+NB! See README on 2013. aastal välja antud algversiooni kohta. 2014. aasta versiooni README tuleb tulevikus.
+Seniks mõned märkmed:
+  Nüüd on vajalikud ka urllib2 ning json moodulid!
+  Nüüd saab TRV'dest luua pseudoRHI'sid ning laadida USA Nexrad Level 3 jooksvaid andmeid.
+  TRV tekstiformaat võib ruumi säästmiseks olla BZ2's kokkupakitud. 
+
+
+
 --------------------------------------------------
 
   ===  ==  \  |

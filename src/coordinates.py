@@ -17,17 +17,21 @@ def parsecoords(lat,lon):
     lo_s=int((((lon-lo_d)*60)-lo_m)*60)
     string="%d°%d'%d\" %s, %d°%d'%d\" %s" % (la_d, la_m, la_s, la, lo_d, lo_m, lo_s, lo)
     return string
-def beamheight(GR,alpha,product):
-    r=6371.0 #Maa raadius
-    a=d2r(alpha) #Antenni kaldenurk radiaanides
+def beamheight(GR,alpha):
+    r=6371.0 #Earth radius
+    a=d2r(alpha) #Antenna angle in radians
     R=GR/cos(a)
-    return R*sin(a)+(R**2)/(2*1.21*r) #WSR-88D height 
+    return R*sin(a)+(R**2)/(2*1.21*r) #WSR-88D height
+def beamangle(h,R):
+    r=6371.0 #Earth radius
+    return r2d(asin(h/R-R/(2*1.21*r)))
 def geocoords(azrange,rlat,rlon,zoomlevel):
     R=6371.0
-    az=azrange[0]
+    az=d2r(azrange[0]) #Azimuth in radians
     r=azrange[1]
-    lat=asin(sin(d2r(rlat))*cos(r/R)+cos(d2r(rlat))*sin(r/R)*cos(d2r(az)))
-    lon=rlon+r2d(atan2(sin(d2r(az))*sin(r/R)*cos(d2r(rlat)),cos(r/R)-sin(d2r(rlat))*sin(lat)))
+    rlat=d2r(rlat) #To radians
+    lat=asin(sin(rlat)*cos(r/R)+cos(rlat)*sin(r/R)*cos(az))
+    lon=rlon+r2d(atan2(sin(az)*sin(r/R)*cos(rlat),cos(r/R)-sin(rlat)*sin(lat)))
     return round(r2d(lat),5),round(lon,5)
 def az_range(x,y,zoomlevel):
     angle=180-r2d(atan2(x,y))
@@ -35,21 +39,23 @@ def az_range(x,y,zoomlevel):
     return angle, r
 def getcoords(angle,r,zoom=1,center=[1000,1000]):
     ''' Get coords '''
-    x=(sin(d2r(angle))*r)*zoom
-    y=(cos(d2r(angle-180))*r)*zoom
+    x=(sin(angle)*r)*zoom
+    y=-(cos(angle)*r)*zoom
     return (x+center[0],y+center[1])
 
 def geog2polar(plat,plong,rlat,rlong):
     '''Usage: geog2polar(place latitude, place longitude, radar latitude, radar longitude)'''
     #Distance
     R = 6371
-    dLat = d2r(float(plat)-float(rlat))
-    dLon = d2r(float(plong)-float(rlong))
-    a = sin(0.5*dLat)**2+cos(d2r(rlat))*cos(d2r(plat))*sin(0.5*dLon)**2
+    dLat = d2r(plat-rlat)
+    dLon = d2r(plong-rlong)
+    plat=d2r(plat) #To radians - radiaanidesse
+    rlat=d2r(rlat) #To radians - radiaanidesse
+    a = sin(0.5*dLat)**2+cos(rlat)*cos(plat)*sin(0.5*dLon)**2
     c = 2*atan2(sqrt(a),sqrt(1-a))
     d = R*c
     #Bearing
-    y = sin(dLon)*cos(d2r(plat))
-    x = cos(d2r(rlat))*sin(d2r(plat))-sin(d2r(rlat))*cos(d2r(plat))*cos(dLon)
-    suund = (r2d(atan2(y,x))+540) % 360
+    y = sin(dLon)*cos(plat)
+    x = cos(rlat)*sin(plat)-sin(rlat)*cos(plat)*cos(dLon)
+    suund = atan2(y,x)
     return d, suund
