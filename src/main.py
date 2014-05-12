@@ -1,6 +1,6 @@
 #!/usr/bin/python2
 # -*- coding: utf-8 -*-
-# Tarmo Tanilsoo, 2013-2014
+# Tarmo Tanilsoo, 2014
 from __future__ import division
 
 import bz2
@@ -69,7 +69,7 @@ class NEXRADChooser(Tkinter.Toplevel): #NEXRAD jaama valik
         global nexradchooseopen
         nexradchooseopen=0
         self.destroy()
-class URLAken(Tkinter.Toplevel): ##Dialog to open a file from the Internet
+class URLAken(Tkinter.Toplevel): ##Dialoog faili avamiseks internetist
     def __init__(self, parent, title = None):
         Tkinter.Toplevel.__init__(self,parent)
         self.title("Ava fail internetist")
@@ -78,7 +78,6 @@ class URLAken(Tkinter.Toplevel): ##Dialog to open a file from the Internet
         urltitle=Tkinter.Label(self,text="URL:",bg="#000044",fg="#ffff00")
         urltitle.grid(column=0,row=0)
         self.url=Tkinter.StringVar()
-        ##self.url.set("YOUR DEFAULT URL HERE")
         urlentry=Tkinter.Entry(self,textvariable=self.url,width=70,fg="#ffff00",bg="#000044",highlightbackground="#000044",selectbackground="#000099",selectforeground="#ffff00")
         urlentry.grid(column=1,row=0)
         downloadbutton=Tkinter.Button(self,text="Ava",command=self.laealla,bg="#000044",fg="#ffff00",activebackground="#000099", highlightbackground="#000044", activeforeground="#ffff00")
@@ -284,7 +283,7 @@ def msgtostatus(msg):
     status.config(text=msg)
     return 0
 def about_program():
-    tkMessageBox.showinfo("TRV 2014.5", "TRV\n2014.5\nTarmo Tanilsoo, 2013-2014\ntarmotanilsoo@gmail.com")
+    tkMessageBox.showinfo("TRV 2014.5", "TRV\n2014.5\nTarmo Tanilsoo, 2013\ntarmotanilsoo@gmail.com")
     return 0
 def keys_list():
     tkMessageBox.showinfo("Otseteed klaviatuuril","z - suurendamisrežiimi\np - ringiliikumisrežiimi\ni - infokogumiserežiimi\nr - algsuurendusse tagasi")
@@ -433,15 +432,18 @@ def showrendered(pilt):
     global rendered
     rendered=PhotoImage(image=pilt)
     w.itemconfig(radaripilt,image=rendered)
-def render_radials(radials,product=94):
+def render_radials():
     global rendered
     global rendered2
     global canvasctr
     global img_center
     global canvasbusy
+    global radials
+    global paised
     global canvasdimensions
     global joonis
     global render_center
+    product=paised[0]
     canvasbusy=True
     alguses=time.time()
     w.config(cursor="watch")
@@ -576,8 +578,6 @@ def load():
         stream=file_read(path)
         currentfilepath=path
         msgtostatus("Dekodeerin...")
-        if path[-4:]==".trv" and stream[0:2] == "BZ": #Kui on kokkupakitud TRV
-            stream=bz2.decompress(stream) #Paki enne lahti.
         if path[-3:]!= ".h5" and stream[0:2] != "TT":
             fmt=0
         if path[-4:]==".trv" or stream[0:2] == "TT":
@@ -597,8 +597,10 @@ def decodefile(stream,fmt=0): #Dekodeerib faili sisu
                             #2 - HDF5
     global paised
     global radials
+    global sweeps
     global rhishow
     global renderagain
+    global chosen_elevation
     global rhiaz
     if fmt == 0:
         paised=headers(stream)
@@ -609,26 +611,31 @@ def decodefile(stream,fmt=0): #Dekodeerib faili sisu
             msgtostatus("Viga: Tegemist ei ole õiges formaadis failiga")
         if paised[0] == 94 or paised[0] == 99: 
             radials=valarray(decompress(stream),paised[18],paised[19])
-            render_radials(radials,paised[0])
+            render_radials()
         elif paised[0] == 161 or paised[0] == 159 or paised[0] == 163:
             scale=paised[27]
             offset=paised[28]
             radials=valarray(decompress(stream),offset,scale,paised[0])
-            render_radials(radials,paised[0])
+            render_radials()
         if paised[0] == 165:
             minval=0
             increment=1
             radials=valarray(decompress(stream),minval,increment,paised[0])
-            render_radials(radials,paised[0])
+            render_radials()
     else:
         if stream[0:2] == "TT": #Kui oli minu kiirelt loodud formaat radarmeteoroloogia kodutöö jaoks
             paised=tt_headers(stream)
+            sweeps=tt_sweepslist(stream)
             radials=tt_array(stream)
+            tt_array(stream)
             draw_info(headersdecoded(paised))
+            elevation_choice['menu'].delete(0, 'end')
+            for i in range(len(sweeps)):
+                elevation_choice['menu'].add_command(label=str(sweeps[i])+u"°", command=lambda index=i: change_elevation(index))
+            chosen_elevation.set(sweeps[0])
             if not rhishow:
-                render_radials(radials,paised[0])
+                render_radials()
             else:
-                sweeps=tt_sweepslist(stream)
                 if len(sweeps) > 1:
                     getrhi(rhiaz)
                     mkrhi(rhiaz)
@@ -636,7 +643,20 @@ def decodefile(stream,fmt=0): #Dekodeerib faili sisu
                     renderagain=1
                 else:
                     topan()
-                    render_radials(radials,paised[0])
+                    render_radials()
+    return 0
+def change_elevation(index):
+    global radials
+    global canvasbusy
+    global sweeps
+    global currentfilepath
+    if not canvasbusy and currentfilepath[-4:]==".trv":
+        sisu=file_read(currentfilepath)
+        radials=tt_array(sisu,index)
+        paised[17]=sweeps[index]
+        chosen_elevation.set(paised[17])
+        draw_info(headersdecoded(paised))
+        render_radials()
     return 0
 def setcursor():
     global zoom
@@ -685,7 +705,7 @@ def topan(event=None):
         draw_info(headersdecoded(paised))
         if renderagain:
             renderagain=0
-            render_radials(radials,paised[0])
+            render_radials()
         w.itemconfig(radaripilt,image=rendered)
         rhishow=0
     return 0
@@ -719,7 +739,7 @@ def resetzoom(event=None):
         img_center=canvasctr
         zoomlevel=1
         if len(paised) != 0:
-            render_radials(radials,paised[0])
+            render_radials()
     return 0
 #joonistusala sündmused
 def mouseclick(event):
@@ -810,7 +830,7 @@ def onrelease(event):
                 render_center[1]=1000+newzoom*(pdy+render_center[1]-1000)
                 zoomlevel*=newzoom
                 w.itemconfig(zoomrect, state=Tkinter.HIDDEN)
-                if len(paised) != 0: render_radials(radials,paised[0])
+                if len(paised) != 0: render_radials()
             else: #If was zooming among the RHI
                 keskpunkt=rhix(clickcoords[0])
                 kauguskeskpunktist=abs(rhix(event.x)-keskpunkt)
@@ -844,7 +864,7 @@ def onrelease(event):
                         render_center[1]+=dy_2
                         #Kui hakkab renderdusalast välja minema
                         if img_center[0] > 1000 or img_center[0] < -600  or img_center[1] > 1000 or img_center[1] < -600:
-                            if len(paised) != 0: render_radials(radials,paised[0])
+                            if len(paised) != 0: render_radials()
             else: #Kui taheti infot
                 draw_infobox(event.x,event.y)
     return 0
@@ -924,6 +944,7 @@ def onmousemove(event):
 def file_read(path):
     andmefail=open(path,"rb")
     sisu=andmefail.read()
+    if path[-4:] == ".trv" and sisu[0:2] == "BZ": sisu=bz2.decompress(sisu) #If this is a compressed version of TRV format
     andmefail.close()
     return sisu
 #RHI spetsiiflised funktsioonid
@@ -935,7 +956,6 @@ def chooserhi(): #Vali RHI
     global sweeps
     if paised[0]=="DBZ" or paised[0]=="V" or paised[0]=="HCLASS" or paised[0]=="RHOHV" or paised[0]=="KDP" or paised[0]=="ZDR":
         sisu=file_read(currentfilepath)
-        if sisu[0:2]=="BZ": sisu=bz2.decompress(sisu)
         sweeps=tt_sweepslist(sisu)
         if len(sweeps) > 1:
             clearclicktext()
@@ -965,7 +985,6 @@ def getrhi(az):
     global canvasbusy
     rhidata=[]
     sisu=file_read(currentfilepath)
-    if sisu[0:2] == "BZ": sisu=bz2.decompress(sisu)
     canvasbusy=1
     for i in range(len(sweeps)):
         rhidata.append(tt_singlegate(sisu,az,i))
@@ -1100,6 +1119,7 @@ output.bind("h",chooserhi)
 kyljeraam=Tkinter.Frame(output)
 kyljeraam.grid(row=2,column=0,sticky="n")
 moderaam=Tkinter.Frame(kyljeraam)
+moderaam.config(bg="#000044")
 moderaam.grid(row=1,column=0)
 panimg=PhotoImage(file="../images/pan.png")
 zoomimg=PhotoImage(file="../images/zoom.png")
@@ -1117,6 +1137,14 @@ taskbarbtn4=Tkinter.Button(moderaam, bg="#000044",activebackground="#000099", hi
 taskbarbtn4.grid(row=0,column=3)
 taskbarbtn5=Tkinter.Button(moderaam, bg="#000044",activebackground="#000099", highlightbackground="#000044", image=rhiimg, command=chooserhi)
 taskbarbtn5.grid(row=0,column=4)
+chosen_elevation = Tkinter.StringVar(moderaam)
+elevation_choice=Tkinter.OptionMenu(moderaam, chosen_elevation,"-")
+elevation_choice.config(bg="#000044",fg="yellow",activebackground="#000099",activeforeground="yellow",highlightbackground="#000044")
+elevation_choice.grid(row=0,column=5)
+#chosen_product= Tkinter.StringVar(moderaam)
+#product_choice=Tkinter.OptionMenu(moderaam, chosen_product,"-")
+#product_choice.config(bg="#000044",fg="yellow",activebackground="#000099",activeforeground="yellow",highlightbackground="#000044")
+#product_choice.grid(row=0,column=6)
 status=Tkinter.Label(output, text="", justify=Tkinter.LEFT, anchor="w", fg="yellow", bg="#000044")
 status.grid(row=3,column=0,sticky="w")
 output.mainloop()
