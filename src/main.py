@@ -650,7 +650,7 @@ def change_elevation(index):
     global canvasbusy
     global sweeps
     global currentfilepath
-    if not canvasbusy and currentfilepath[-4:]==".trv":
+    if not canvasbusy:
         sisu=file_read(currentfilepath)
         radials=tt_array(sisu,index)
         paised[17]=sweeps[index]
