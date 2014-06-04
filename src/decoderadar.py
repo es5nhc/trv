@@ -100,7 +100,9 @@ def productname(jarjend):
               "VEL":"radiaalkiirus",
               "VRAD":"radiaalkiirus",
               "PHI":"diferentsiaalne faas",
-              "SW":"spektrilaius"
+              "PHIDP":"diferentsiaalne faas",
+              "SW":"spektrilaius",
+              "WRAD":"spektrilaius"
               }
     return products[jarjend[0]]
 def hdf5_headers(fail,product="DBZ",h=0.5):
@@ -165,7 +167,7 @@ def hdf5_valarray(fail,scan="scan1",rhiaz=None):
         rida[rida == nodata*gain]=-999
         rida[rida != -999]+=offset
         if rhiaz != None:
-            return rida
+            return map(tonone,rida.tolist())
         else:
             dataarray.append([angle,d_angle,map(tonone,rida.tolist()),0])
         angle+=d_angle

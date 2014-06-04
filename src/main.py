@@ -183,7 +183,7 @@ class URLAken(Tkinter.Toplevel): ##Dialog to open a web URL
         urltitle=Tkinter.Label(self,text="URL:",bg="#000044",fg="#ffff00")
         urltitle.grid(column=0,row=0)
         self.url=Tkinter.StringVar()
-        self.url.set("http://laguja.no-ip.org:9875/radar/sn.emhi")
+        self.url.set("") #Your custom frequently used URL here
         urlentry=Tkinter.Entry(self,textvariable=self.url,width=70,fg="#ffff00",bg="#000044",highlightbackground="#000044",selectbackground="#000099",selectforeground="#ffff00")
         urlentry.grid(column=1,row=0)
         downloadbutton=Tkinter.Button(self,text="Ava",command=self.laealla,bg="#000044",fg="#ffff00",activebackground="#000099", highlightbackground="#000044", activeforeground="#ffff00")
@@ -256,15 +256,15 @@ productsweeps=[] #Only the elevation levels for a particular product
 units={94:"dBZ", #Defining units for particular products
        99:"m/s",
        159:"dBZ",
-       161:None,
+       161:"",
        163:u"°/km",
-       165:None,
+       165:"",
        "DBZ":"dBZ",
        "REF":"dBZ",
        "ZDR":"dBZ",
-       "RHOHV": None,
-       "RHO": None,
-       "HCLASS":None,
+       "RHOHV": "",
+       "RHO": "",
+       "HCLASS": "",
        "KDP":u"°/km",
        "V":"m/s",
        "VEL":"m/s",
@@ -304,7 +304,7 @@ colortablenames={94:"dbz",
                  165: "hclass",
                  "HCLASS": "hclass",
                  "PHI": "phi",
-                 "PHIDP": "phidp",
+                 "PHIDP": "phi",
                  "WRAD": "sw",
                  "SW": "sw"} #Names for color tables according to product
 def configrmaxadd():
@@ -441,12 +441,7 @@ def getbin(azr):
             if vahe < radials[i][1] and vahe > 0:
                 azi=i
                 break
-        if paised[0] == 94:
-            kordaja=1
-        elif paised[0] == "ZDR" or paised[0] == "KDP" or paised[0] == "HCLASS" or paised[0] == "RHOHV" or paised[0] == "DBZ" or paised[0] == "V" or paised[0] == "VRAD":
-            kordaja=1/paised[25]
-        else:
-            kordaja=4
+        kordaja=1/paised[25]
         kaugus=azr[1] if not isinstance(paised[0],int) else azr[1]/cos(d2r(float(paised[17])))
         mindistance=radials[int(azi)][3]
         if kaugus >= mindistance:
@@ -657,7 +652,7 @@ def render_radials():
         drawlegend(94,-25,75)
     elif product == "SW" or product == "WRAD":
         drawlegend("SW",0,30)
-    elif product == "PHI":
+    elif product == "PHI" or product =="PHIDP":
         drawlegend("PHI",0,180)
     else:
         drawlegend(94,-25,75)
@@ -922,7 +917,7 @@ def change_product(newproduct,level2scan=0):
                 draw_info(headersdecoded(paised))
                 render_radials()
             except:
-                msgtotatus("Laadimisel juhtus viga") #Different kind of error because on Level 2, the product HAS to be there!(Product list is reloaded every elevation change)
+                msgtostatus("Laadimisel juhtus viga") #Different kind of error because on Level 2, the product HAS to be there!(Product list is reloaded every elevation change)
     return 0
 def setcursor():
     global zoom
@@ -1226,7 +1221,7 @@ def chooserhi(): #Choose RHI
     global radials
     global level2fail
     if radials!=[]:
-        if paised[0]=="DBZ" or paised[0]=="V" or paised[0]=="VRAD" or paised[0]=="HCLASS" or paised[0]=="RHOHV" or paised[0]=="KDP" or paised[0]=="ZDR" or level2fail:
+        if len(sweeps) > 1:
             if currentfilepath[-3:]==".h5":
                 sweeps=hdf5_sweepslist(currentfilepath)
             elif level2fail:
