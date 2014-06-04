@@ -183,7 +183,7 @@ class URLAken(Tkinter.Toplevel): ##Dialog to open a web URL
         urltitle=Tkinter.Label(self,text="URL:",bg="#000044",fg="#ffff00")
         urltitle.grid(column=0,row=0)
         self.url=Tkinter.StringVar()
-        self.url.set("") #Your custom frequently used URL here
+        self.url.set("") #Your favourite custom URL here.
         urlentry=Tkinter.Entry(self,textvariable=self.url,width=70,fg="#ffff00",bg="#000044",highlightbackground="#000044",selectbackground="#000099",selectforeground="#ffff00")
         urlentry.grid(column=1,row=0)
         downloadbutton=Tkinter.Button(self,text="Ava",command=self.laealla,bg="#000044",fg="#ffff00",activebackground="#000099", highlightbackground="#000044", activeforeground="#ffff00")
@@ -1422,8 +1422,8 @@ taskbarbtn4=Tkinter.Button(moderaam, bg="#000044",activebackground="#000099", hi
 taskbarbtn4.grid(row=0,column=3)
 taskbarbtn5=Tkinter.Button(moderaam, bg="#000044",activebackground="#000099", highlightbackground="#000044", image=rhiimg, command=chooserhi)
 taskbarbtn5.grid(row=0,column=4)
-taskbarbtn5=Tkinter.Button(moderaam, bg="#000044",activebackground="#000099", highlightbackground="#000044", image=reloadimg, command=reloadfile)
-taskbarbtn5.grid(row=0,column=5)
+taskbarbtn6=Tkinter.Button(moderaam, bg="#000044",activebackground="#000099", highlightbackground="#000044", image=reloadimg, command=reloadfile)
+taskbarbtn6.grid(row=0,column=5)
 chosen_elevation = Tkinter.StringVar(moderaam)
 elevation_choice=Tkinter.OptionMenu(moderaam, chosen_elevation,None)
 elevation_choice.config(bg="#000044",fg="yellow",activebackground="#000099",activeforeground="yellow",highlightbackground="#000044",state=Tkinter.DISABLED)
