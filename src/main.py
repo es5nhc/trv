@@ -118,8 +118,8 @@ class AddRMAXChooser(Tkinter.Toplevel):
         return 0
     def addrmax(self):
         global radials
-        az0=d2r(float(self.az0.get()))
-        az1=d2r(float(self.az1.get()))
+        az0=round(d2r(float(self.az0.get())),7)
+        az1=round(d2r(float(self.az1.get())),7)
         r0=float(self.r0.get())
         r1=float(self.r1.get())
         prf=float(self.prf.get())
@@ -129,15 +129,16 @@ class AddRMAXChooser(Tkinter.Toplevel):
         r1new=r1+rmax
         for i in xrange(len(radials)):
             r=radials[i]
+            curaz=round(r[0],7)
             slicestart=int(r0/paised[25])
             sliceend=int(r1/paised[25])
             rmaxbins=int(round(rmax/paised[25])) #Amount of bins that coorespond to Rmax
             paddingamt=int(round(r1new/paised[25]))-len(r[2])
             if az0 < az1:
-                if r[0] >= az0 and not r[0] >= az1:
+                if curaz >= az0 and curaz < az1:
                     self.processgate(i,paddingamt,rmaxbins,slicestart,sliceend)
             else:
-                if r[0] >= az0 or r[0] < az1:
+                if curaz >= az0 or curaz < az1:
                     self.processgate(i,paddingamt,rmaxbins,slicestart,sliceend)
         self.onclose()
         render_radials()
