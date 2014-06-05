@@ -107,6 +107,15 @@ class AddRMAXChooser(Tkinter.Toplevel):
         liidabutton.grid(column=1,row=5,sticky="w")
         #And now the main loop
         self.mainloop()
+    def processgate(self,i,paddingamt,rmaxbins,slicestart,sliceend):
+        global paised
+        global radials
+        for j in xrange(paddingamt):
+            radials[i][2].append(None)
+        for k in xrange(slicestart,sliceend,1):
+            radials[i][2][k+rmaxbins]=radials[i][2][k]
+            radials[i][2][k]=None
+        return 0
     def addrmax(self):
         global radials
         az0=d2r(float(self.az0.get()))
@@ -120,17 +129,16 @@ class AddRMAXChooser(Tkinter.Toplevel):
         r1new=r1+rmax
         for i in xrange(len(radials)):
             r=radials[i]
+            slicestart=int(r0/paised[25])
+            sliceend=int(r1/paised[25])
+            rmaxbins=int(round(rmax/paised[25])) #Amount of bins that coorespond to Rmax
+            paddingamt=int(round(r1new/paised[25]))-len(r[2])
             if az0 < az1:
-                if r[0] > az0 and not r[0] >= az1:
-                    slicestart=int(r0/paised[25])
-                    sliceend=int(r1/paised[25])
-                    rmaxbins=int(round(rmax/paised[25])) #Amount of bins that coorespond to Rmax
-                    paddingamt=int(round(r1new/paised[25]))-len(r[2])
-                    for j in xrange(paddingamt):
-                        radials[i][2].append(None)
-                    for k in xrange(slicestart,sliceend,1):
-                        radials[i][2][k+rmaxbins]=radials[i][2][k]
-                        radials[i][2][k]=None
+                if r[0] >= az0 and not r[0] >= az1:
+                    self.processgate(i,paddingamt,rmaxbins,slicestart,sliceend)
+            else:
+                if r[0] >= az0 or r[0] < az1:
+                    self.processgate(i,paddingamt,rmaxbins,slicestart,sliceend)
         self.onclose()
         render_radials()
     def onclose(self):
