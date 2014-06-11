@@ -7,23 +7,23 @@
 
 --------------------------------------------------
 
-Versioon 2014.6
+Versioon 2014.6.11
 
 Tarmo Tanilsoo, 2014
 
 -----
 ** KASUTAMINE
-
+:
 Käivitamine 
 
-Linuxi all selles samas kaustas
+Linuxi(ja teiste Bashi shelli kasutavate opsüsteemide all) all selles samas kaustas
 
 ./run
 
-Windowsi jt. all käivitada fail main.py kaustas src
+Windowsi all käivitada fail main.py kaustas src
 
 ---
-Kasutusel on kolm režiimi:
+Kasutusel on neli režiimi:
 * Liikumine
 * Suurendamine
 * Informatsioon
@@ -40,14 +40,15 @@ toetavatesse vormingutesse.
 
 Samuti on võimalik luua pseudoRHI'sid(ainult NEXRAD Level 2 ja HDF5) kasutaja soovitud asimuutidest.
 
-Vaata ka demovideot: http://youtu.be/XM6dCVbd0rk
+Vaata ka demovideot, kus näidatakse töö käiku: http://youtu.be/XM6dCVbd0rk
 
 -----
 ** NÕUDED
 
 * Python 2.x, eeldatavalt 2.7. Võimalik et võib töötada ka varasemate seeriatega aga YMMV.
 * Tkinteri jooksutamise võimalus
-* Python Imaging Library, võib olla ka selle Pillow fork(arendusmasinal jooksebki juba see, kuna see tuleb uuemate Ubuntu distributsioonidega kaasa).
+* Python Imaging Library, võib olla ka selle Pillow fork(arendusmasinal jooksebki juba see, kuna see 
+tuleb uuemate Ubuntu distributsioonidega kaasa).
 * H5Py
 
 Soovitatavalt vähemalt 1 GB RAM'i.
@@ -74,8 +75,8 @@ Märkused:
 ning mälu. Edasistel käivitamistel läheb juba ladusamalt.
 * Asi on paiguti veel üsnagi toores. Vaadete täpsuses võib olla puudusi(nende avastamisel palun 
 lahkesti teada anda).
-* For the now the software is only in Estonian. Multilingual support will be implemented 
-later.
+* Kuna kasutatakse ainult ühte protsessorilõime, näib näiteks Level 2 andmete, või 
+internetist faili laadimisel programm tarduvat. See peabki nii olema.
 
 ---------
 Kontakt:

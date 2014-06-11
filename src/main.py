@@ -37,6 +37,7 @@ from __future__ import division
 
 import bz2
 from decoderadar import *
+import translations
 from PIL.Image import open as laepilt
 from PIL.Image import new as uuspilt
 from PIL.ImageDraw import Draw
@@ -52,37 +53,42 @@ import tkFileDialog
 import tkMessageBox
 import urllib2
 import json
+import os
 from nexrad_level2 import NEXRADLevel2File
+configfile=open("config.json","r")
+conf=json.load(configfile)
+configfile.close()
+fraasid=translations.phrases[conf["lang"]]
 #Importing geodata
-print "Laen andmeid... Osariigid"
+print fraasid["loading_states"]
 import states
-print "Rannajooned"
+print fraasid["coastlines"]
 import coastlines
-print "Maismaapiirid"
+print fraasid["countries"]
 import countries
-print "Järved"
+print fraasid["lakes"]
 import lakes
-print "Jõed"
+print fraasid["rivers"]
 import rivers
-print "Põhja-Ameerika maanteed"
+print fraasid["NA_roads"]
 import major_NA_roads
 class AddRMAXChooser(Tkinter.Toplevel):
     def __init__(self, parent, title = None):
         global paised
         Tkinter.Toplevel.__init__(self,parent)
-        self.title("Liida Rmax")
+        self.title(fraasid["add_rmax"])
         self.protocol("WM_DELETE_WINDOW",self.onclose)
         self.config(background="#000044")
         #Labels
-        az0title=Tkinter.Label(self,text="Algasimuut(°):",bg="#000044",fg="#ffff00")
+        az0title=Tkinter.Label(self,text=fraasid["az0"],bg="#000044",fg="#ffff00")
         az0title.grid(column=0,row=0,sticky="e")
-        az1title=Tkinter.Label(self,text="Lõppasimuut(°):",bg="#000044",fg="#ffff00")
+        az1title=Tkinter.Label(self,text=fraasid["az1"],bg="#000044",fg="#ffff00")
         az1title.grid(column=0,row=1,sticky="e")
-        r0title=Tkinter.Label(self,text="Algkaugus(km):",bg="#000044",fg="#ffff00")
+        r0title=Tkinter.Label(self,text=fraasid["r0"],bg="#000044",fg="#ffff00")
         r0title.grid(column=0,row=2,sticky="e")
-        r1title=Tkinter.Label(self,text="Lõppkaugus(km):",bg="#000044",fg="#ffff00")
+        r1title=Tkinter.Label(self,text=fraasid["r1"],bg="#000044",fg="#ffff00")
         r1title.grid(column=0,row=3,sticky="e")
-        prftitle=Tkinter.Label(self,text="PRF(Hz):",bg="#000044",fg="#ffff00")
+        prftitle=Tkinter.Label(self,text=fraasid["prf"],bg="#000044",fg="#ffff00")
         prftitle.grid(column=0,row=4,sticky="e")
         #Text variables
         self.az0=Tkinter.StringVar()
@@ -103,7 +109,7 @@ class AddRMAXChooser(Tkinter.Toplevel):
         prffield=Tkinter.Entry(self,textvariable=self.prf,fg="#ffff00",bg="#000044",highlightbackground="#000044",selectbackground="#000099",selectforeground="#ffff00")
         prffield.grid(column=1,row=4,sticky="w")
         #Button
-        liidabutton=Tkinter.Button(self,command=self.addrmax,text="Liida",bg="#000044",fg="#ffff00",activebackground="#000099", highlightbackground="#000044", activeforeground="#ffff00")
+        liidabutton=Tkinter.Button(self,command=self.addrmax,text=fraasid["add"],bg="#000044",fg="#ffff00",activebackground="#000099", highlightbackground="#000044", activeforeground="#ffff00")
         liidabutton.grid(column=1,row=5,sticky="w")
         #And now the main loop
         self.mainloop()
@@ -148,12 +154,12 @@ class AddRMAXChooser(Tkinter.Toplevel):
         self.destroy()
 class NEXRADChooser(Tkinter.Toplevel): #Choice of NEXRAD station
     def __init__(self, parent, title = None):
-        global nexradstn
+        global conf
         Tkinter.Toplevel.__init__(self,parent)
-        self.title("NEXRAD jaama valik")
+        self.title(fraasid["nexrad_choice"])
         self.protocol("WM_DELETE_WINDOW",self.onclose)
         self.config(background="#000044")
-        jaamatiitel=Tkinter.Label(self,text="Vali jaam:",bg="#000044",fg="#ffff00")
+        jaamatiitel=Tkinter.Label(self,text=fraasid["choose_station"],bg="#000044",fg="#ffff00")
         jaamatiitel.pack()
         jaamavalik=Tkinter.Frame(self)
         kerimisriba=Tkinter.Scrollbar(jaamavalik,bg="#000099",highlightbackground="#000099",activebackground="#0000ff",troughcolor="#000044")
@@ -166,19 +172,22 @@ class NEXRADChooser(Tkinter.Toplevel): #Choice of NEXRAD station
         for i in jaamad:
             rida=i.split("|")
             self.jaamaentry.insert(Tkinter.END, rida[0]+" - "+rida[1]+", "+rida[2])
-        okbutton=Tkinter.Button(self,text="OK",command=self.newstn,bg="#000044",fg="#ffff00",activebackground="#000099", highlightbackground="#000044", activeforeground="#ffff00")
+        okbutton=Tkinter.Button(self,text=fraasid["okbutton"],command=self.newstn,bg="#000044",fg="#ffff00",activebackground="#000099", highlightbackground="#000044", activeforeground="#ffff00")
         okbutton.pack()
         self.mainloop()
     def newstn(self):
-        global nexradstn
+        global conf
         selection=self.jaamaentry.curselection()
         if selection != ():
             print selection
             jaam=self.jaamaentry.get(selection)[:4]
-            nexradstn=jaam.lower()
+            conf["nexradstn"]=jaam.lower()
+            configfile=open("config.json","w")
+            json.dump(conf,configfile) #Save the new selection to config file
+            configfile.close()
             self.onclose()
         else:
-            tkMessageBox.showerror("TRV 2014.6","Palun vali jaam!")
+            tkMessageBox.showerror(fraasid["name"],fraasid["choose_station_error"])
     def onclose(self):
         global nexradchooseopen
         nexradchooseopen=0
@@ -186,16 +195,16 @@ class NEXRADChooser(Tkinter.Toplevel): #Choice of NEXRAD station
 class URLAken(Tkinter.Toplevel): ##Dialog to open a web URL
     def __init__(self, parent, title = None):
         Tkinter.Toplevel.__init__(self,parent)
-        self.title("Ava fail internetist")
+        self.title(fraasid["name"])
         self.protocol("WM_DELETE_WINDOW",self.onclose)
         self.config(background="#000044")
         urltitle=Tkinter.Label(self,text="URL:",bg="#000044",fg="#ffff00")
         urltitle.grid(column=0,row=0)
         self.url=Tkinter.StringVar()
-        self.url.set("") #Your favourite custom URL here.
+        self.url.set("") #Default URL
         urlentry=Tkinter.Entry(self,textvariable=self.url,width=70,fg="#ffff00",bg="#000044",highlightbackground="#000044",selectbackground="#000099",selectforeground="#ffff00")
         urlentry.grid(column=1,row=0)
-        downloadbutton=Tkinter.Button(self,text="Ava",command=self.laealla,bg="#000044",fg="#ffff00",activebackground="#000099", highlightbackground="#000044", activeforeground="#ffff00")
+        downloadbutton=Tkinter.Button(self,text=fraasid["open"],command=self.laealla,bg="#000044",fg="#ffff00",activebackground="#000099", highlightbackground="#000044", activeforeground="#ffff00")
         downloadbutton.grid(column=0,row=1,sticky="w")
         self.mainloop()
     def laealla(self):
@@ -211,13 +220,14 @@ class URLAken(Tkinter.Toplevel): ##Dialog to open a web URL
             self.onclose()
             #Save received content into a file cache
             currentfilepath="../cache/urlcache"
+            #os.remove(currentfilepath) #Delete previous cache file
             cachefile=open(currentfilepath,"wb")
             cachefile.write(sisu)
             cachefile.close()
             load(currentfilepath)
         except:
             print sys.exc_info()
-            tkMessageBox.showerror("TRV 2014.6","Faili allalaadimisel juhtus viga!")
+            tkMessageBox.showerror(fraasid["name"],fraasid["download_failed"])
     def onclose(self):
         global urlwindowopen
         urlwindowopen=0
@@ -239,7 +249,7 @@ currentfilepath=None #Path to presently open file
 pildifont=ImageFont.truetype("../fonts/DejaVuSansCondensed.ttf",12)
 pildifont2=ImageFont.truetype("../fonts/DejaVuSansCondensed.ttf",13)
 canvasbusy=False
-nexradstn="kbmx" #Chosen NEXRAD station
+nexradstn=conf["nexradstn"] #Chosen NEXRAD station
 urlwindowopen=0 #1 if dialog to open an URL is open
 nexradchooseopen=0 #1 if dialog to choose a nexrad station is open
 rmaxaddopen=0 #1 if configuration window to add Rmax to chunk of data is open.
@@ -252,6 +262,7 @@ rhiend=250
 rhishow=0 ##Yes, if RHI is shown
 zoomlevel=1
 direction=1
+fmt=0 #Data format indicator
 renderagain=0 #Need to render again upon loading the PPI view.
 level2fail=False #Placeholder for pyart.io.nexrad_level2.NEXRADLevel2File object
 canvasdimensions=[600,400]
@@ -284,18 +295,7 @@ units={94:"dBZ", #Defining units for particular products
        "PHIDP": u"°"}
 img_center=[300,200]
 render_center=[1000,1000]
-hcanames=["Bioloogiline", #Hydrometeor classifications in WSR-88D
-          "Anomaalne levi/pinnamüra",
-          u"Jääkristallid",
-          "Kuiv lumi",
-          u"Märg lumi",
-          "Vihm",
-          "Tugev vihm",
-          "Suured piisad",
-          "Lumekruubid",
-          "Rahe",
-          "Tundmatu",
-          "RF"]
+hcanames=fraasid["hca_names"] #Hydrometeor classifications in WSR-88D
 colortablenames={94:"dbz",
                  "DBZ":"dbz",
                  "REF":"dbz",
@@ -316,6 +316,64 @@ colortablenames={94:"dbz",
                  "PHIDP": "phi",
                  "WRAD": "sw",
                  "SW": "sw"} #Names for color tables according to product
+def dualprfdealias():
+    #Crude attempt to dealias at least some velocities in dualPRF scans. Only HDF5, requires that wavelength, High PRF and Low PRF are given in HDF5 file attributes.
+    #Adjacent bins are averaged and the particular bin is compared against the average, then after initial processing
+    #compared against initial data to mitigate errors related to averaging.
+    
+    #Some basic knowledge and more ideas for the future -
+    #Holleman and Beekhuis, 2003, "Analysis and Correction of Dual PRF Velocity Data.", J. Atmos. Oceanic Technol.
+    global paised
+    global radials
+    global canvasbusy
+    global canvasdimensions
+    wavelength,prfhigh,prflow=paised[2:5]
+    vmaxhigh=wavelength*prfhigh/4
+    kiirtehulk=len(radials)
+    praegunevaartus=None
+    eelminevaartus=None
+    vana=radials
+    hetkeseisusamm=1.0/kiirtehulk
+    w.itemconfig(progress,state=Tkinter.NORMAL)
+    canvasbusy=True
+    w.config(cursor="watch")
+    for p in xrange(2): #4 passes        
+        hetkeseis=0
+        msgtostatus(fraasid["dualprf_passcount"].replace("/COUNT/",str(p+1)))
+        for i in xrange(kiirtehulk):
+            radialslen=len(radials[i][2])
+            limiit=radialslen-4
+            eelminevaartus=None
+            for j in xrange(limiit):
+                praegunevaartus=radials[i][2][j]
+                samplid=[]
+                if praegunevaartus != None and eelminevaartus != None:
+                    if j > 4:
+                        k0=j-5
+                    else:
+                        k0=0
+                    k1=k0+10
+                    for l in xrange(i-2,i+3):
+                        samplid+=filter(None,radials[l%kiirtehulk][2][k0:k1])
+                    samplitesumma=sum(samplid)
+                    samplitehulk=len(samplid)
+                    keskmine=samplitesumma/samplitehulk #Arithmetic average of all the adjacent bins.
+                    suhe=(praegunevaartus-keskmine)/vmaxhigh #Difference between current value and average value divided by vmaxhigh
+                    praegunevaartus-=vmaxhigh*round(suhe) #Round to the ratio to nearest integer and add/subtract vmaxhigh accordingly
+                    vanavaartus=vana[i][2][j] #Get an unmodified bin to determine if processing has harmed original data
+                    suhevanaga=round((praegunevaartus-vanavaartus)/vmaxhigh,1) #Similar ration
+                    if abs(suhevanaga) >=0.8 and abs(suhevanaga) <= 1.2: #If the new value differs from original one roughly by 1 vmaxhigh
+                        if suhevanaga < 0: #Make a correction
+                            praegunevaartus+=vmaxhigh
+                        else:
+                            praegunevaartus-=vmaxhigh
+                    radials[i][2][j]=praegunevaartus #Store the final array in the list
+                eelminevaartus=praegunevaartus #Set previous
+            if i%2 == 0: update_progress(hetkeseis*canvasdimensions[0])
+            hetkeseis+=hetkeseisusamm
+    w.itemconfig(progress,state=Tkinter.HIDDEN)
+    render_radials()
+    return 0
 def configrmaxadd():
     global rmaxaddopen
     if rmaxaddopen == 0:
@@ -328,15 +386,14 @@ def choosenexrad(): #NEXRAD jaama valiku akna avamine
         nexradchooseopen=1
         NEXRADChooser(output)
 def fetchnexrad(product): #Downloading a current NEXRAD Level 3 file from NOAA's FTP
-    global nexradstn
+    global conf
     global rhishow
     global currentfilepath
     if rhishow: topan()    
     product_choice.config(state=Tkinter.NORMAL)
     elevation_choice.config(state=Tkinter.NORMAL)
     populatenexradmenus(product)
-    print nexradstn,product
-    url="ftp://tgftp.nws.noaa.gov/SL.us008001/DF.of/DC.radar/DS."+product+"/SI."+nexradstn+"/sn.last"
+    url="ftp://tgftp.nws.noaa.gov/SL.us008001/DF.of/DC.radar/DS."+product+"/SI."+conf["nexradstn"]+"/sn.last"
     try:
         ftp=urllib2.urlopen(url,timeout=10)
         sisu=ftp.read()
@@ -349,14 +406,13 @@ def fetchnexrad(product): #Downloading a current NEXRAD Level 3 file from NOAA's
         load(currentfilepath,True)
     except:
         print sys.exc_info()
-        tkMessageBox.showerror("TRV 2014.6","Allalaadimine ebaõnnestus!")
+        tkMessageBox.showerror(fraasid["name"],fraasid["download_failed"])
 def activatecurrentnexrad():
     product_choice.config(state=Tkinter.NORMAL)
     elevation_choice.config(state=Tkinter.NORMAL)
     fetchnexrad("p94r0")
     return 0
 def populatenexradmenus(product="p94r0"):
-    level3elevs=["Lõik 1","Lõik 2","Lõik 3","Lõik 4"]
     ids={"p94":"DBZ",
          "p99":"VRAD",
          "159":"ZDR",
@@ -366,9 +422,9 @@ def populatenexradmenus(product="p94r0"):
     elevation_choice["menu"].delete(0, 'end')
     for i in xrange(4):
         productcode=product[:-1]+str(i)
-        elevation_choice["menu"].add_command(label=level3elevs[i],command=lambda x=productcode: fetchnexrad(x))
+        elevation_choice["menu"].add_command(label=fraasid["level3_slice"].replace("/NR/",str(i+1)),command=lambda x=productcode: fetchnexrad(x))
     index=product[-1]
-    chosen_elevation.set(str(level3elevs[int(product[-1])]))
+    chosen_elevation.set(fraasid["level3_slice"].replace("/NR/",product[-1]))
     chosen_product.set(ids[product[0:3]])
     product_choice["menu"].delete(0, 'end')
     product_choice["menu"].add_command(label="DBZ",command=lambda x=index: fetchnexrad("p94r"+index))
@@ -388,42 +444,46 @@ def exportimg():
     global img_center
     global render_center
     global rhishow
-    y=int(w.cget("height"))
-    if y % 2 != 0: y+=1
-    x=int(w.cget("width"))
-    if x % 2 != 0: x+=1
-    halfx=int(x/2.0)
-    halfy=int(y/2.0)
-    cy=int(1000-img_center[1]+halfy)
-    cx=int(1000-img_center[0]+halfx)
-    cbx=clickboxloc[0]
-    cby=clickboxloc[1]
-    cbh=84 if not rhishow else 45
-    filed=tkFileDialog.SaveAs(None,initialdir="../data")
-    path=filed.show()
-    if path != None:
-        try:
-            outimage=uuspilt("RGB",(x,y),"#000022")
-            joonis=Draw(outimage)
-            if not rhishow:
-                if rendered != None: outimage.paste(rendered2.crop((cx-halfx,cy-halfy,cx+halfx,cy+halfy)),((0,0,x,y))) #PPI
-            else:
-                outimage.paste(rhiout2,(0,0,x,y)) #PseudoRHI
-            if clickbox != None: outimage.paste(clickbox2,(cbx,cby+1,cbx+170,cby+cbh+1))
-            if rlegend != None: outimage.paste(rlegend2,(x-35,halfy-163,x,halfy+162))
-            if infotekst != None: outimage.paste(infotekst2,(halfx-250,y-30,halfx+250,y-10))
-            outimage.save(path)
-            tkMessageBox.showinfo("TRV 2014.6","Eksport edukas")
-        except:
-            tkMessageBox.showerror("Viga","Valitud vormingusse ei saa salvestada või puudub asukohas kirjutamisõigus.")
-    return 0
+    global radials
+    if len(radials) > 0:
+        y=int(w.cget("height"))
+        if y % 2 != 0: y+=1
+        x=int(w.cget("width"))
+        if x % 2 != 0: x+=1
+        halfx=int(x/2.0)
+        halfy=int(y/2.0)
+        cy=int(1000-img_center[1]+halfy)
+        cx=int(1000-img_center[0]+halfx)
+        cbx=clickboxloc[0]
+        cby=clickboxloc[1]
+        cbh=84 if not rhishow else 45
+        filed=tkFileDialog.SaveAs(None,initialdir="../data")
+        path=filed.show()
+        if path != "":
+            try:
+                outimage=uuspilt("RGB",(x,y),"#000022")
+                joonis=Draw(outimage)
+                if not rhishow:
+                    if rendered != None: outimage.paste(rendered2.crop((cx-halfx,cy-halfy,cx+halfx,cy+halfy)),((0,0,x,y))) #PPI
+                else:
+                    outimage.paste(rhiout2,(0,0,x,y)) #PseudoRHI
+                if clickbox != None: outimage.paste(clickbox2,(cbx,cby+1,cbx+170,cby+cbh+1))
+                if rlegend != None: outimage.paste(rlegend2,(x-35,halfy-163,x,halfy+162))
+                if infotekst != None: outimage.paste(infotekst2,(halfx-250,y-30,halfx+250,y-10))
+                outimage.save(path)
+                tkMessageBox.showinfo(fraasid["name"],fraasid["export_success"])
+            except:
+                tkMessageBox.showerror(fraasid["name"],fraasid["export_format_fail"])
+        return 0
+    else:
+        tkMessageBox.showerror(fraasid["name"],fraasid["no_data_loaded"])
 def getrhibin(h,gr,a):
     global productsweeps
     global rhidata
     global paised
     kordaja=1/paised[25]
-    if a < 0: return "Andmed puuduvad"
-    if a > productsweeps[-1]: return "Andmed puuduvad"
+    if a < 0: return fraasid["no_data"]
+    if a > productsweeps[-1]: return fraasid["no_data"]
     for i in xrange(len(productsweeps)):
         cond=0 if i == 0 else productsweeps[i-1]
         if a > cond and a <= productsweeps[i]:
@@ -432,10 +492,10 @@ def getrhibin(h,gr,a):
                 val=None
             else:
                 val=rhidata[i][indeks]
-            if float(val) != None and (paised[0] == 165 or paised[0] == "HCLASS"):
+            if val != None and (paised[0] == 165 or paised[0] == "HCLASS"):
                 val=hcanames[int(val)]
-            elif float(val) == None:
-                val="Andmed puuduvad"
+            elif val == None:
+                val=fraasid["no_data"]
             return val
 def getbin(azr):
     global hcanames
@@ -458,22 +518,22 @@ def getbin(azr):
         else:
             val=None
         delta=None
-        if float(val) != None and (paised[0] == 99 or paised[0] == "V" or paised[0] == "VRAD" or paised[0] == "VEL"):
+        if val != None and (paised[0] == 99 or paised[0] == "V" or paised[0] == "VRAD" or paised[0] == "VEL"):
             valprev=radials[int(azi)-1][2][int(azr[1]*kordaja)]
             delta=abs(float(val)-valprev) if valprev != None else None
-        elif float(val) != None and paised[0] == 165 or paised[0] == "HCLASS":
+        elif val != None and paised[0] == 165 or paised[0] == "HCLASS":
             val=hcanames[int(val)]
-        elif float(val) == None: val = "Andmed puuduvad"
-    except: val = "Andmed puuduvad"
+        elif val == None: val = fraasid["no_data"]
+    except: val = fraasid["no_data"]
     return val, delta, h
 def msgtostatus(msg):
     status.config(text=msg)
     return 0
 def about_program():
-    tkMessageBox.showinfo("TRV 2014.6", "TRV\n2014.6\nTarmo Tanilsoo, 2014\ntarmotanilsoo@gmail.com")
+    tkMessageBox.showinfo(fraasid["name"], fraasid["name"]+"\n"+fraasid["about_text"])
     return 0
 def keys_list():
-    tkMessageBox.showinfo("Otseteed klaviatuuril","z - suurendamisrežiimi\np - ringiliikumisrežiimi\ni - infokogumiserežiimi\nr - algsuurendusse tagasi")
+    tkMessageBox.showinfo(fraasid["name"], fraasid["key_shortcuts_dialog_text"])
     return 0
 def shouldirender(path):
     for i in path:
@@ -491,19 +551,19 @@ def draw_infobox(x,y):
     azrange=andmed[1]
     data=andmed[2]
     vaartus=data[0] if not rhishow else data
-    row0=u"%s %s" % (vaartus, units[paised[0]]) if vaartus != "Andmed puuduvad" else "Andmed puuduvad"
+    row0=u"%s %s" % (vaartus, units[paised[0]]) if vaartus != fraasid["no_data"] else fraasid["no_data"]
     if not rhishow:        
         coords=andmed[0]
         latletter="N" if coords[0] > 0 else "S"
         lonletter="E" if coords[1] > 0 else "W"
         row1=u"%.5f°%s %.5f°%s" % (abs(coords[0]),latletter,abs(coords[1]),lonletter)
-        row2=u"Asimuut: %.1f°" % (azrange[0])
-        row3=u"Kaugus: %.3f km" % (azrange[1])
-        row4=u"Kiire kõrgus: ~%.1f km" % (data[2])
-        row5=None if data[1] == None else "G2G nihe: %.1f m/s" % (data[1])
+        row2=u"%s: %.1f°" % (fraasid["azimuth"],azrange[0])
+        row3=u"%s: %.3f km" % (fraasid["range"],azrange[1])
+        row4=u"%s: ~%.1f km" % (fraasid["beam_height"],data[2])
+        row5=None if data[1] == None else fraasid["g2g_shear"]+": %.1f m/s" % (data[1])
     else:
-        row1=u"Kaugus: %.3f km" % andmed[0]
-        row2=u"Kõrgus: %.3f km" % andmed[1]
+        row1=u"%s: %.3f km" % (fraasid["range"],andmed[0])
+        row2=u"%s: %.3f km" % (fraasid["height"],andmed[1])
     kastikorgus=84 if not rhishow else 45
     kast=uuspilt("RGB",(170,kastikorgus),"#0000EE")
     kastdraw=Draw(kast)
@@ -622,6 +682,14 @@ def showrendered(pilt):
     global rendered
     rendered=PhotoImage(image=pilt)
     w.itemconfig(radaripilt,image=rendered)
+def checkdualprf():
+    global paised
+    global currentfilepath
+    global fmt
+    if fmt==1 and paised[0] == "VRAD" and paised[2]!= 0 and paised[3] != 0 and paised[4] != 0: #If viewing HDF5 VRAD product and necessary data is there
+        toolsmenyy.entryconfig(1,state=Tkinter.NORMAL) #Enable the menu entry for dealiasing
+    else:
+        toolsmenyy.entryconfig(1,state=Tkinter.DISABLED) #Disable the menu entry for dealiasing
 def render_radials():
     global rendered
     global rendered2
@@ -633,12 +701,13 @@ def render_radials():
     global canvasdimensions
     global joonis
     global render_center
+    global currentfilepath
     product=paised[0]
     canvasbusy=True
     alguses=time.time()
     w.config(cursor="watch")
     w.itemconfig(progress,state=Tkinter.NORMAL)
-    msgtostatus("Joonistan... radaripilt")
+    msgtostatus(fraasid["drawing"]+" "+fraasid["radar_image"])
     pilt=uuspilt("RGB",(2000,2000),"#000022")
     joonis=Draw(pilt)
     current=0.0
@@ -696,18 +765,18 @@ def render_radials():
     img_center=canvasctr
     showrendered(pilt)
     w.coords(radaripilt,tuple(img_center)) #Center image
-    msgtostatus("Joonistan... rannajooned")
+    msgtostatus(fraasid["drawing"]+" "+fraasid["coastlines"].lower())
     drawmap(coastlines.points,rlat,rlon,(17,255,17))
-    msgtostatus("Joonistan... järved")
+    msgtostatus(fraasid["drawing"]+" "+fraasid["lakes"].lower())
     drawmap(lakes.points,rlat,rlon,(0,255,255),1)
     if rlon < 0:
-        msgtostatus("Joonistan... Põhja-Ameerika tähtsamad maanteed")
+        msgtostatus(fraasid["drawing"]+" "+fraasid["NA_roads"])
         drawmap(major_NA_roads.points,rlat,rlon,(125,0,0),2)
-    msgtostatus("Joonistan... jõed")
+    msgtostatus(fraasid["drawing"]+" "+fraasid["rivers"].lower())
     drawmap(rivers.points,rlat,rlon,(0,255,255),1)
-    msgtostatus("Joonistan... osariigid/maakonnad")
+    msgtostatus(fraasid["drawing"]+" "+fraasid["states_counties"])
     drawmap(states.points,rlat,rlon,(255,255,255),1)
-    msgtostatus("Joonistan... riigipiirid")
+    msgtostatus(fraasid["drawing"]+" "+fraasid["country_boundaries"])
     drawmap(countries.points,rlat,rlon,(255,0,0),2)
     #Drawing radar icon into the center
     radaricon=laepilt("../images/radar.png")
@@ -715,7 +784,7 @@ def render_radials():
     radary=int(render_center[1])
     pilt.paste(radaricon,[radarx-8,radary-8,radarx+8,radary+8],radaricon)
     #Placenames
-    msgtostatus("Joonistan... kohanimed")
+    msgtostatus(fraasid["drawing"]+" "+fraasid["placenames"])
     kohanimed=open("places.json","r")
     punktid=json.load(kohanimed)
     kohanimed.close()
@@ -737,10 +806,11 @@ def render_radials():
     rendered2=pilt
     showrendered(pilt)
     w.itemconfig(progress,state=Tkinter.HIDDEN)
-    msgtostatus("Valmis")
+    msgtostatus(fraasid["ready"])
     canvasbusy=False
     lopus=time.time()
-    print "Aega kulus:", lopus-alguses,"sekundit"
+    print "Time elapsed:", lopus-alguses,"seconds"
+    checkdualprf()
     setcursor()
     return 0
 def loadurl():
@@ -759,6 +829,7 @@ def load(path=None,current=False):
     global radials
     global clickbox
     global currentfilepath
+    global fmt
     global level2fail #Linguistic note: "Fail" in the variable name does not
                       #imply failure - it is Estonian for "file."
     clickbox=None
@@ -766,12 +837,12 @@ def load(path=None,current=False):
     if path == None:
         filed=tkFileDialog.Open(None,initialdir="../data")
         path=filed.show()
-    if path != '': #If a file was given
+    if path != "": #If a file was given
         stream=file_read(path)
         currentfilepath=path
-        msgtostatus("Dekodeerin...")
+        msgtostatus(fraasid["decoding"])
         if not current: #If not loading current NEXRAD data
-            if path[-3:]== ".h5":
+            if path[-3:]== ".h5" or stream[1:4]=="HDF":
                 product_choice.config(state=Tkinter.NORMAL)
                 elevation_choice.config(state=Tkinter.NORMAL)
                 fmt=1
@@ -806,32 +877,30 @@ def decodefile(stream,fmt=0): #Decodes file content
     global currentfilepath
     global rhiaz
     global level2fail
+    toolsmenyy.entryconfig(1,state=Tkinter.DISABLED) #By default this menu entry is disabled. 
     if fmt == 0:
         paised=headers(stream)
-        print headersdecoded(paised)
-        draw_info(headersdecoded(paised))
+        draw_info(headersdecoded(paised,fraasid))
         if paised[0] > 255:
             #As far as Level 3 goes, the product code cannot exceed 255 (11111111).
-            msgtostatus("Viga: Tegemist ei ole õiges formaadis failiga")
+            msgtostatus(fraasid["incorrect_format"])
+            return None
         if paised[0] == 94 or paised[0] == 99: 
             radials=valarray(decompress(stream),paised[18],paised[19])
-            render_radials()
         elif paised[0] == 161 or paised[0] == 159 or paised[0] == 163:
             scale=paised[27]
             offset=paised[28]
             radials=valarray(decompress(stream),offset,scale,paised[0])
-            render_radials()
         if paised[0] == 165:
             minval=0
             increment=1
             radials=valarray(decompress(stream),minval,increment,paised[0])
-            render_radials()
     elif fmt == 1:
         produktid=hdf5_productlist(currentfilepath)
         sweeps=hdf5_sweepslist(currentfilepath)
         paised=hdf5_headers(currentfilepath,produktid[0],sweeps[0])
         print paised
-        draw_info(headersdecoded(paised))
+        draw_info(headersdecoded(paised,fraasid))
         radials=hdf5_valarray(currentfilepath)
         product_choice['menu'].delete(0, 'end')
         elevation_choice['menu'].delete(0, 'end')
@@ -841,17 +910,6 @@ def decodefile(stream,fmt=0): #Decodes file content
         for j in xrange(len(sweeps)):
             elevation_choice['menu'].add_command(label=str(float(sweeps[j])), command=lambda index=j: change_elevation(index))
         chosen_elevation.set(str(float(sweeps[0])))
-        if not rhishow:
-            render_radials()
-        else:
-            if len(sweeps) > 1:
-                getrhi(rhiaz)
-                mkrhi(rhiaz)
-                tozoom()
-                renderagain=1
-            else:
-                topan()
-                render_radials()
     elif fmt == 2:
         product_choice['menu'].delete(0, 'end')
         elevation_choice['menu'].delete(0, 'end')
@@ -864,9 +922,19 @@ def decodefile(stream,fmt=0): #Decodes file content
         chosen_elevation.set(str(sweeps[0]))
         chosen_product.set("REF")
         paised=level2_headers(level2fail)
-        draw_info(headersdecoded(paised))
+        draw_info(headersdecoded(paised,fraasid))
         radials=level2_valarray(level2fail)
+    if not rhishow:
         render_radials()
+    else:
+        if len(sweeps) > 1:
+            getrhi(rhiaz)
+            mkrhi(rhiaz)
+            tozoom()
+            renderagain=1
+        else:
+            topan()
+            render_radials()
     return 0
 def change_elevation(index):
     global radials
@@ -874,16 +942,19 @@ def change_elevation(index):
     global sweeps
     global currentfilepath
     global level2fail
+    global fmt
     if not canvasbusy:
-        if currentfilepath[-3:]== ".h5":
+        if fmt == 1:
             paised[17]=sweeps[index]
+            paised[0]=chosen_product.get()
             chosen_elevation.set(str(float(paised[17])))
-            try:
-                radials=hdf5_valarray(currentfilepath,hdf5_leiaskann(currentfilepath,paised[0],index))
-                draw_info(headersdecoded(paised))
+            skanniarv=hdf5_leiaskann(currentfilepath,paised[0],index)
+            if skanniarv != None:
+                radials=hdf5_valarray(currentfilepath,skanniarv)
+                draw_info(headersdecoded(paised,fraasid))
                 render_radials()
-            except:
-                msgtostatus("Sellel kõrgustasemel seda produkti ei leitud.")
+            else:
+                msgtostatus(fraasid["not_found_at_this_level"])
         elif level2fail:
             paised[17]=sweeps[index]
             chosen_elevation.set(str(float(paised[17])))
@@ -898,7 +969,7 @@ def change_elevation(index):
             except: #Most likely not found, defaulting back to reflectivity product, which should be present at all scans.
                 radials=level2_valarray(level2fail, "REF", index)
                 chosen_product.set("REF")
-            draw_info(headersdecoded(paised))
+            draw_info(headersdecoded(paised,fraasid))
             if radials != None: render_radials() #If the data is in fact there..
     return 0
 def change_product(newproduct,level2scan=0):
@@ -908,25 +979,27 @@ def change_product(newproduct,level2scan=0):
     global canvasbusy
     global currentfilepath
     global level2fail
+    global fmt
     if not canvasbusy:
-        if currentfilepath[-3:] == ".h5":
+        if fmt == 1:
             chosen_product.set(newproduct)
-            paised[0]=newproduct
-            try:
-                radials=hdf5_valarray(currentfilepath,hdf5_leiaskann(currentfilepath,newproduct,sweeps.index(float(chosen_elevation.get()))))
-                draw_info(headersdecoded(paised))
+            skanniarv=hdf5_leiaskann(currentfilepath,newproduct,sweeps.index(float(chosen_elevation.get())))
+            if skanniarv != None:
+                radials=hdf5_valarray(currentfilepath,skanniarv)
+                paised[0]=newproduct
+                draw_info(headersdecoded(paised,fraasid))
                 render_radials()
-            except:
-                msgtostatus("Sellel kõrgustasemel seda produkti ei leitud.")
+            else:
+                msgtostatus(fraasid["not_found_at_this_level"])
         elif level2fail:
             chosen_product.set(newproduct)
             paised[0]=newproduct
             try:
                 radials=level2_valarray(level2fail,newproduct,level2scan)
-                draw_info(headersdecoded(paised))
+                draw_info(headersdecoded(paised,fraasid))
                 render_radials()
             except:
-                msgtostatus("Laadimisel juhtus viga") #Different kind of error because on Level 2, the product HAS to be there!(Product list is reloaded every elevation change)
+                msgtostatus(fraasid["error_during_loading"]) #Different kind of error because on Level 2, the product HAS to be there!(Product list is reloaded every elevation change)
     return 0
 def setcursor():
     global zoom
@@ -975,7 +1048,7 @@ def topan(event=None):
         taskbarbtn5.config(state=Tkinter.NORMAL)
         product_choice.config(state=Tkinter.NORMAL)
         elevation_choice.config(state=Tkinter.NORMAL)
-        draw_info(headersdecoded(paised))
+        draw_info(headersdecoded(paised,fraasid))
         if renderagain:
             renderagain=0
             render_radials()
@@ -1197,24 +1270,21 @@ def getinfo(x,y):
 def onmousemove(event):
     global canvasbusy
     global rhishow
-    try:
-        if not canvasbusy:
-            x=event.x
-            y=event.y
-            info=getinfo(x,y)
-            if not rhishow:
-                lat=info[0][0]
-                latl="N" if lat >= 0 else "S"
-                lon=info[0][1]
-                lonl="E" if lon >= 0 else "W"
-                val=info[2][0]
-                infostring=u"%.3f°%s %.3f°%s; Asimuut: %.1f°; Kaugus: %.3f km; Väärtus: %s" % (abs(lat),latl,abs(lon),lonl,floor(info[1][0]*10)/10.0,floor(info[1][1]*1000)/1000.0,val)
-                msgtostatus(infostring)
-            else:
-                gr,h,val=info
-                msgtostatus(u"x: %.3f km; y: %.3f km; Väärtus: %s" % (gr, h, val))
-    except:
-        pass
+    if not canvasbusy and len(paised) > 0:
+        x=event.x
+        y=event.y
+        info=getinfo(x,y)
+        if not rhishow:
+            lat=info[0][0]
+            latl="N" if lat >= 0 else "S"
+            lon=info[0][1]
+            lonl="E" if lon >= 0 else "W"
+            val=info[2][0]
+            infostring=u"%.3f°%s %.3f°%s; %s: %.1f°; %s: %.3f km; %s: %s" % (abs(lat),latl,abs(lon),lonl,fraasid["azimuth"],floor(info[1][0]*10)/10.0,fraasid["range"],floor(info[1][1]*1000)/1000.0,fraasid["value"],val)
+            msgtostatus(infostring)
+        else:
+            gr,h,val=info
+            msgtostatus(u"x: %.3f km; y: %.3f km; %s: %s" % (gr, h, fraasid["value"], val))
 def file_read(path):
     andmefail=open(path,"rb")
     sisu=andmefail.read()
@@ -1241,9 +1311,9 @@ def chooserhi(): #Choose RHI
                 info=0
                 rhi=1
                 setcursor()
-                msgtostatus("Kliki asimuudil, millest soovid PseudoRHI'd teha")
+                msgtostatus(fraasid["choose_pseudorhi_status"])
         else:
-            tkMessageBox.showerror("Vale formaat","PseudoRHI'd ei ole nende andmetega võimalik teha")
+            tkMessageBox.showerror(fraasid["name"],fraasid["cant_make_pseudorhi"])
 def rhiypix(h,bottom):
     samm=(bottom-120)/17.0
     return bottom-80-h*samm
@@ -1269,9 +1339,10 @@ def getrhi(az):
     canvasbusy=1
     productsweeps=[]
     for i in xrange(len(sweeps)):
-        if currentfilepath[-3:]==".h5":
+        if currentfilepath[-3:]==".h5" or sisu[1:4]=="HDF":
             try:
-                rhidata.append(hdf5_valarray(currentfilepath,hdf5_leiaskann(currentfilepath,paised[0],i),az))
+                skanniarv=hdf5_leiaskann(currentfilepath,paised[0],i)
+                rhidata.append(hdf5_valarray(currentfilepath,skanniarv,az))
                 productsweeps.append(sweeps[i])
             except:
                 pass
@@ -1281,7 +1352,7 @@ def getrhi(az):
                 if sweeps[i] > sweeps[i-1] or sweeps[i]-sweeps[i-1] < 0.2:
                     rhidata.append(level2_valarray(level2fail,paised[0],i,az))
                     productsweeps.append(sweeps[i])
-        msgtostatus("Loen elevatsiooni: "+str(sweeps[i])+u"°")
+        msgtostatus(fraasid["reading_elevation"]+str(sweeps[i])+u"°")
         w.update()
     canvasbusy=0
     return 0
@@ -1300,8 +1371,8 @@ def mkrhi(az):
     global rhiend
     global colortablenames
     if not canvasbusy:
-        draw_info(rhiheadersdecoded(paised,az))
-        msgtostatus("Joonistan pseudoRHI'd")
+        draw_info(rhiheadersdecoded(paised,az,fraasid))
+        msgtostatus(fraasid["drawing_pseudorhi"])
         pikkus=int(w.cget("height"))
         laius=int(w.cget("width"))
         pilt=uuspilt("RGB", (laius,pikkus), "#000022") 
@@ -1353,12 +1424,12 @@ def mkrhi(az):
         elevation_choice.config(state=Tkinter.DISABLED)
         w.coords(radaripilt,tuple(canvasctr))
         w.itemconfig(radaripilt, image=rhiout)
-        msgtostatus("Valmis")
+        msgtostatus(fraasid["ready"])
         rhishow=1
     return 0
 clickcoords=[]
 output=Tkinter.Tk()
-output.title("TRV 2014.6")
+output.title(fraasid["name"])
 output.bind("<Configure>",on_window_reconf)
 output.config(background="#000044")
 ##Drawing the menu
@@ -1368,23 +1439,24 @@ failimenyy = Tkinter.Menu(menyy,tearoff=0,bg="#000044",fg="yellow",activebackgro
 radarmenyy = Tkinter.Menu(menyy,tearoff=0,bg="#000044",fg="yellow",activebackground="#000099",activeforeground="yellow")
 toolsmenyy = Tkinter.Menu(menyy,tearoff=0,bg="#000044",fg="yellow",activebackground="#000099",activeforeground="yellow")
 abimenyy = Tkinter.Menu(menyy,tearoff=0,bg="#000044",fg="yellow",activebackground="#000099",activeforeground="yellow")
-menyy.add_cascade(label="Fail", menu=failimenyy)
-menyy.add_cascade(label="NEXRAD", menu=radarmenyy)
-menyy.add_cascade(label="Tööriistad", menu=toolsmenyy)
-menyy.add_cascade(label="Abi", menu=abimenyy)
-failimenyy.add_command(label="Ava andmefail", command=load)
-failimenyy.add_command(label="Ava URL", command=loadurl)
+menyy.add_cascade(label=fraasid["file"], menu=failimenyy)
+menyy.add_cascade(label=fraasid["nexrad"], menu=radarmenyy)
+menyy.add_cascade(label=fraasid["tools"], menu=toolsmenyy)
+menyy.add_cascade(label=fraasid["help"], menu=abimenyy)
+failimenyy.add_command(label=fraasid["open_datafile"], command=load)
+failimenyy.add_command(label=fraasid["open_url"], command=loadurl)
 failimenyy.add_separator()
-failimenyy.add_command(label="Ekspordi pilt", command=exportimg)
+failimenyy.add_command(label=fraasid["export_img"], command=exportimg)
 failimenyy.add_separator()
-failimenyy.add_command(label="Lõpeta", command=output.destroy)
-radarmenyy.add_command(label="Jooksvad andmed", command=activatecurrentnexrad)
+failimenyy.add_command(label=fraasid["quit"], command=output.destroy)
+radarmenyy.add_command(label=fraasid["current_data"], command=activatecurrentnexrad)
 radarmenyy.add_separator()
-radarmenyy.add_command(label="Jaama valik",command=choosenexrad)
-toolsmenyy.add_command(label="Liida Rmax",command=configrmaxadd)
-abimenyy.add_command(label="Otseteed klaviatuuril", command=keys_list)
+radarmenyy.add_command(label=fraasid["level3_station_selection"],command=choosenexrad)
+toolsmenyy.add_command(label=fraasid["add_rmax"],command=configrmaxadd)
+toolsmenyy.add_command(label=fraasid["dualprf_dealiasing"],command=dualprfdealias,state=Tkinter.DISABLED)
+abimenyy.add_command(label=fraasid["key_shortcuts_menuentry"], command=keys_list)
 abimenyy.add_separator()
-abimenyy.add_command(label="Info programmi kohta", command=about_program)
+abimenyy.add_command(label=fraasid["about_program"], command=about_program)
 ##Drawing area
 w = Tkinter.Canvas(output,width=600,height=400,highlightthickness=0)
 w.bind("<Button-1>",leftclick)

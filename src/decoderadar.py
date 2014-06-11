@@ -29,6 +29,7 @@
 ##POSSIBILITY OF SUCH DAMAGE.
 
 import bz2
+import translations
 from bitprocessing import halfw
 from bitprocessing import word
 from bitprocessing import floating
@@ -82,41 +83,50 @@ def headers(data):
 
     print headerinfo
     return headerinfo
-def productname(jarjend):
-    products={94:"peegelduvus",## if jarjend[6] != "58.482" else "pCAPPI",
-              99:"radiaalkiirus",
-              159:"diferentsiaalne peegelduvus",
-              161:"korrelatsioonikoefitsent",
-              163:"spetsiifiline diferentsiaalne faas",
-              165:u"hüdrometeoori klassifikatsioon",
-              "DBZ":"peegelduvus",
-              "REF":"peegelduvus",
-              "ZDR":"diferentsiaalne peegelduvus",
-              "RHOHV":"korrelatsioonikoefitsent",
-              "RHO":"korrelatsioonikoefitsent",
-              "KDP":"spetsiifiline diferentsiaalne faas",
-              "HCLASS":u"hüdrometeoori klassifikatsioon",
-              "V":"radiaalkiirus",
-              "VEL":"radiaalkiirus",
-              "VRAD":"radiaalkiirus",
-              "PHI":"diferentsiaalne faas",
-              "PHIDP":"diferentsiaalne faas",
-              "SW":"spektrilaius",
-              "WRAD":"spektrilaius"
+def productname(jarjend,fraasid):
+    products={94:fraasid["product_reflectivity"],
+              99:fraasid["product_radialvelocity"],
+              159:fraasid["product_zdr"],
+              161:fraasid["product_rhohv"],
+              163:fraasid["product_kdp"],
+              165:fraasid["product_hclass"],
+              "DBZ":fraasid["product_reflectivity"],
+              "REF":fraasid["product_reflectivity"],
+              "ZDR":fraasid["product_zdr"],
+              "RHOHV":fraasid["product_rhohv"],
+              "RHO":fraasid["product_rhohv"],
+              "KDP":fraasid["product_kdp"],
+              "HCLASS":fraasid["product_hclass"],
+              "V":fraasid["product_radialvelocity"],
+              "VEL":fraasid["product_radialvelocity"],
+              "VRAD":fraasid["product_radialvelocity"],
+              "PHI":fraasid["product_phi"],
+              "PHIDP":fraasid["product_phi"],
+              "SW":fraasid["product_sw"],
+              "WRAD":fraasid["product_sw"]
               }
     return products[jarjend[0]]
 def hdf5_headers(fail,product="DBZ",h=0.5):
-    andmed=HDF5Fail(fail)
-    aeg=andmed["/how"].attrs.get(u"startepochs")
+    andmed=HDF5Fail(fail,"r")
+    howattrs=andmed["/how"].attrs
+    aeg=howattrs.get(u"startepochs")
+    try: ## Reusing otherwise unused header fields for HDF5. 
+        wavelength=float(howattrs.get("wavelength"))/100
+        highprf=float(howattrs.get("highprf"))
+        lowprf=float(howattrs.get("lowprf"))
+    except:
+        wavelength=0
+        highprf=0
+        lowprf=0
     whereattrs=andmed["/where"].attrs
     lat=float(whereattrs.get(u"lat"))
     lon=float(whereattrs.get(u"lon"))
     step=float(whereattrs.get(u"xscale"))/1000
-    headers=[product,aeg,0,0,0,0,lat,lon,0,0,0,0,0,0,0,0,0,h,0,0,0,0,0,0,0,step]
+    headers=[product,aeg,wavelength,highprf,lowprf,0,lat,lon,0,0,0,0,0,0,0,0,0,h,0,0,0,0,0,0,0,step]
     andmed.close()
     return headers
 def hdf5_sweepslist(fail):
-    andmefail=HDF5Fail(fail)
+    andmefail=HDF5Fail(fail,"r")
     nimekiri=list(andmefail["/how"].attrs.get(u"angles"))
     andmefail.close()
     out=[]
@@ -124,7 +134,7 @@ def hdf5_sweepslist(fail):
         out.append(float(i))
     return out
 def hdf5_productlist(fail):
-    andmefail=HDF5Fail(fail)
+    andmefail=HDF5Fail(fail,"r")
     produktid=[]
     for i in andmefail.keys():
         if i[0:4] == "scan":
@@ -136,19 +146,21 @@ def hdf5_productlist(fail):
     andmefail.close()
     return produktid
 def hdf5_leiaskann(fail,produkt="DBZ",angleindex=0):
-    andmefail=HDF5Fail(fail)
+    andmefail=HDF5Fail(fail,"r")
+    indeks=None
     for i in andmefail.keys():
         if i[0:4] == "scan" or i[0:7]== "dataset":
             if andmefail[i+"/what"].attrs.get("quantity") == produkt and andmefail[i+"/how"].attrs.get("angleindex") == int(angleindex)+1:
-                andmefail.close()
-                return i
+                indeks=i
+    andmefail.close()
+    return indeks
 def tonone(x): #Convert fill values used in hdf5_vallarray to Python None.
     if x == -999:
         return None
     else:
         return x
 def hdf5_valarray(fail,scan="scan1",rhiaz=None):
-    andmefail=HDF5Fail(fail)
+    andmefail=HDF5Fail(fail,"r")
     dataraw=andmefail["/"+scan+"/data"]
     angle=0
     d_angle=d2r(360.0/len(dataraw))
@@ -173,13 +185,13 @@ def hdf5_valarray(fail,scan="scan1",rhiaz=None):
         angle+=d_angle
     andmefail.close()
     return dataarray        
-def rhiheadersdecoded(jarjend, az):
+def rhiheadersdecoded(jarjend, az,fraasid):
     aeg=datetime.datetime.utcfromtimestamp(jarjend[1])
-    msg=productname(jarjend).capitalize()+" | Asimuut: "+str(az)+u"° | "+str(aeg)+" UTC"
+    msg=productname(jarjend,fraasid).capitalize()+" | Asimuut: "+str(az)+u"° | "+str(aeg)+" UTC"
     return msg
-def headersdecoded(jarjend):
+def headersdecoded(jarjend,fraasid):
     aeg=datetime.datetime.utcfromtimestamp(jarjend[1])
-    msg=str(float(jarjend[17]))+u"° "+productname(jarjend)+" | "+str(aeg)+" UTC"
+    msg=str(float(jarjend[17]))+u"° "+productname(jarjend,fraasid)+" | "+str(aeg)+" UTC"
     return msg
 def decompress(data):
     location=data.find("BZ") #Leia BZipi päise algus
