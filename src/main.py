@@ -328,7 +328,8 @@ def dualprfdealias():
     global canvasbusy
     global canvasdimensions
     wavelength,prfhigh,prflow=paised[2:5]
-    vmaxhigh=wavelength*prfhigh/4
+    nyquistintervalhigh=wavelength*prfhigh/2.0 #Nyquist interval length is twice the  Vmax, hence only division by two.
+    print nyquistintervalhigh
     kiirtehulk=len(radials)
     praegunevaartus=None
     eelminevaartus=None
@@ -337,7 +338,7 @@ def dualprfdealias():
     w.itemconfig(progress,state=Tkinter.NORMAL)
     canvasbusy=True
     w.config(cursor="watch")
-    for p in xrange(2): #4 passes        
+    for p in xrange(2): #2 passes        
         hetkeseis=0
         msgtostatus(fraasid["dualprf_passcount"].replace("/COUNT/",str(p+1)))
         for i in xrange(kiirtehulk):
@@ -358,15 +359,8 @@ def dualprfdealias():
                     samplitesumma=sum(samplid)
                     samplitehulk=len(samplid)
                     keskmine=samplitesumma/samplitehulk #Arithmetic average of all the adjacent bins.
-                    suhe=(praegunevaartus-keskmine)/vmaxhigh #Difference between current value and average value divided by vmaxhigh
-                    praegunevaartus-=vmaxhigh*round(suhe) #Round to the ratio to nearest integer and add/subtract vmaxhigh accordingly
-                    vanavaartus=vana[i][2][j] #Get an unmodified bin to determine if processing has harmed original data
-                    suhevanaga=round((praegunevaartus-vanavaartus)/vmaxhigh,1) #Similar ration
-                    if abs(suhevanaga) >=0.8 and abs(suhevanaga) <= 1.2: #If the new value differs from original one roughly by 1 vmaxhigh
-                        if suhevanaga < 0: #Make a correction
-                            praegunevaartus+=vmaxhigh
-                        else:
-                            praegunevaartus-=vmaxhigh
+                    suhe=(praegunevaartus-keskmine)/nyquistintervalhigh #Difference between current value and average value divided by nyquistintervalhigh
+                    praegunevaartus-=nyquistintervalhigh*round(suhe) #Round to the ratio to nearest integer and add/subtract nyquistintervalhigh accordingly
                     radials[i][2][j]=praegunevaartus #Store the final array in the list
                 eelminevaartus=praegunevaartus #Set previous
             if i%2 == 0: update_progress(hetkeseis*canvasdimensions[0])
