@@ -37,7 +37,7 @@
 #Estonian
 phrases={"estonian":
          {
-             "name":"TRV 2014.6.11",
+             "name":"TRV 2014.6.12",
              "loading_states":"Laen andmeid... Osariigid",
              "coastlines":"Rannajooned",
              "countries":"Maismaapiirid",
@@ -114,14 +114,14 @@ phrases={"estonian":
              "product_zdr":"diferentsiaalne peegelduvus",
              "product_rhohv":"korrelatsioonikoefitsent",
              "product_kdp":"spetsiifiline diferentsiaalne faas",
-             "product_hclass":"hüdrometeoori klassifikatsioon",
+             "product_hclass":u"hüdrometeoori klassifikatsioon",
              "product_sw":"spektrilaius",
              "product_phi":"diferentsiaalne faas",
              "no_data_loaded":"Andmeid pole laetud!"
              },
          "english":
          {
-             "name":"TRV 2014.6.11",
+             "name":"TRV 2014.6.10",
              "loading_states":"Loading data... States",
              "coastlines":"Coastlines",
              "countries":"Countries",
