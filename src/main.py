@@ -1350,8 +1350,13 @@ def getrhi(az):
             rida=level2_valarray(level2fail,paised[0],i,az)
             if rida != None:
                 if sweeps[i] > sweeps[i-1] or sweeps[i]-sweeps[i-1] < 0.2:
-                    rhidata.append(level2_valarray(level2fail,paised[0],i,az))
                     productsweeps.append(sweeps[i])
+                    #Additional check for SAILS scans.
+                    if productsweeps.count(sweeps[i]) > 1: #If there is already that elevation
+                        productsweeps.pop(-1) #Don't add it to the list
+                        rhidata[productsweeps.index(sweeps[i])]=level2_valarray(level2fail,paised[0],i,az) #Just replace the already existing elevation with more current data.
+                    else:
+                        rhidata.append(level2_valarray(level2fail,paised[0],i,az))
         msgtostatus(fraasid["reading_elevation"]+str(sweeps[i])+u"°")
         w.update()
     canvasbusy=0
