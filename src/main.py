@@ -201,7 +201,7 @@ class URLAken(Tkinter.Toplevel): ##Dialog to open a web URL
         urltitle=Tkinter.Label(self,text="URL:",bg="#000044",fg="#ffff00")
         urltitle.grid(column=0,row=0)
         self.url=Tkinter.StringVar()
-        self.url.set("") #Default URL
+        self.url.set("") #Custom URL
         urlentry=Tkinter.Entry(self,textvariable=self.url,width=70,fg="#ffff00",bg="#000044",highlightbackground="#000044",selectbackground="#000099",selectforeground="#ffff00")
         urlentry.grid(column=1,row=0)
         downloadbutton=Tkinter.Button(self,text=fraasid["open"],command=self.laealla,bg="#000044",fg="#ffff00",activebackground="#000099", highlightbackground="#000044", activeforeground="#ffff00")
@@ -220,6 +220,7 @@ class URLAken(Tkinter.Toplevel): ##Dialog to open a web URL
             self.onclose()
             #Save received content into a file cache
             currentfilepath="../cache/urlcache"
+            #Remove previous cache files
             #os.remove(currentfilepath) #Delete previous cache file
             cachefile=open(currentfilepath,"wb")
             cachefile.write(sisu)
@@ -508,7 +509,7 @@ def getbin(azr):
         kaugus=azr[1] if not isinstance(paised[0],int) else azr[1]/cos(d2r(float(paised[17])))
         mindistance=radials[int(azi)][3]
         if kaugus >= mindistance:
-            val=str(radials[int(azi)][2][int((kaugus-mindistance)*kordaja)])
+            val=radials[int(azi)][2][int((kaugus-mindistance)*kordaja)]
         else:
             val=None
         delta=None
@@ -517,7 +518,8 @@ def getbin(azr):
             delta=abs(float(val)-valprev) if valprev != None else None
         elif val != None and paised[0] == 165 or paised[0] == "HCLASS":
             val=hcanames[int(val)]
-        elif val == None: val = fraasid["no_data"]
+        elif val == None:
+            val=fraasid["no_data"]
     except: val = fraasid["no_data"]
     return val, delta, h
 def msgtostatus(msg):
@@ -833,17 +835,21 @@ def load(path=None,current=False):
         path=filed.show()
     if path != "": #If a file was given
         stream=file_read(path)
-        currentfilepath=path
         msgtostatus(fraasid["decoding"])
         if not current: #If not loading current NEXRAD data
             if path[-3:]== ".h5" or stream[1:4]=="HDF":
                 product_choice.config(state=Tkinter.NORMAL)
                 elevation_choice.config(state=Tkinter.NORMAL)
+                compatible=hdf5_checkcompat(path)
+                print compatible
+                if not compatible:
+                    msgtostatus(fraasid["hdf5_not_supported"])
+                    return -1
                 fmt=1
             elif stream[0:4] == "AR2V":
                 product_choice.config(state=Tkinter.NORMAL)
                 elevation_choice.config(state=Tkinter.NORMAL)
-                level2fail=NEXRADLevel2File(currentfilepath) #Load a Level 2 file
+                level2fail=NEXRADLevel2File(path) #Load a Level 2 file
                 fmt=2
             else:
                 product_choice.config(state=Tkinter.DISABLED)
@@ -855,6 +861,7 @@ def load(path=None,current=False):
                 fmt=0
         else:
             fmt=0
+        currentfilepath=path
         decodefile(stream,fmt)
     return 0
 def decodefile(stream,fmt=0): #Decodes file content

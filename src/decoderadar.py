@@ -125,6 +125,14 @@ def hdf5_headers(fail,product="DBZ",h=0.5):
     headers=[product,aeg,wavelength,highprf,lowprf,0,lat,lon,0,0,0,0,0,0,0,0,0,h,0,0,0,0,0,0,0,step]
     andmed.close()
     return headers
+def hdf5_checkcompat(fail): #
+    andmefail=HDF5Fail(fail,"r")
+    obj=andmefail["what"].attrs.get("object")
+    version=andmefail["what"].attrs.get("version")
+    if version == "H5rad 1.2" and obj == "PVOL":
+        return True
+    else:
+        return False
 def hdf5_sweepslist(fail):
     andmefail=HDF5Fail(fail,"r")
     nimekiri=list(andmefail["/how"].attrs.get(u"angles"))
