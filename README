@@ -7,7 +7,7 @@
 
 --------------------------------------------------
 
-Versioon 2014.6.13
+Versioon 2014.6.16
 
 Tarmo Tanilsoo, 2014
 
@@ -58,7 +58,7 @@ Soovitatavalt vähemalt 1 GB RAM'i.
 * Nexrad Level III - produktid 94, 99, 157, 161, 162, 163, 165
 * Nexrad Level II - kõik produktid
     NB! NCDC'st saadavad failid on algselt GZipis kokku pakitud, need tuleb enne programmis vaatamist lahti pakkida!
-* HDF5(Ainult H5rad 1.2, PVOL objekt) (DBZ, VRAD, KDP, PHIDP, RHOHV, WRAD, ZDR) 
+* HDF5 - Ainult H5rad 1.2, PVOL objekt. Produktid DBZ, VRAD, KDP, PHIDP, RHOHV, WRAD, ZDR.
 * Varem kasutatud improviseeritud tekstiformaadist on nüüdseks loobutud. 
 
 Kasutatud allikad:

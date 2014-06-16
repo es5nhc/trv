@@ -37,7 +37,7 @@
 #Estonian
 phrases={"estonian":
          {
-             "name":"TRV 2014.6.12",
+             "name":"TRV 2014.6.16",
              "loading_states":"Laen andmeid... Osariigid",
              "coastlines":"Rannajooned",
              "countries":"Maismaapiirid",
@@ -117,11 +117,16 @@ phrases={"estonian":
              "product_hclass":u"hüdrometeoori klassifikatsioon",
              "product_sw":"spektrilaius",
              "product_phi":"diferentsiaalne faas",
-             "no_data_loaded":"Andmeid pole laetud!"
+             "no_data_loaded":"Andmeid pole laetud!",
+             "hdf5_not_supported":"Seda HDF5 faili ei toetata. Toetatud on ainult PVOL, H5rad 1.2!",
+             "current_language":"Keel",
+             "language_estonian":"Eesti keel",
+             "language_english":"English",
+             "conf_restart_required":"Muutus aktiveerub programmi taaskäivitamisel."
              },
          "english":
          {
-             "name":"TRV 2014.6.10",
+             "name":"TRV 2014.6.16",
              "loading_states":"Loading data... States",
              "coastlines":"Coastlines",
              "countries":"Countries",
@@ -201,6 +206,11 @@ phrases={"estonian":
              "product_hclass":"hydrometeor classification",
              "product_sw":"spectrum width",
              "product_phi":"differential phase",
-             "no_data_loaded":"No data loaded!"
+             "no_data_loaded":"No data loaded!",
+             "hdf5_not_supported":"This HDF5 file is not supported. H5rad 1.2 PVOL only!",
+             "current_language":"Language",
+             "language_estonian":"Eesti keel",
+             "language_english":"English",
+             "conf_restart_required":"Change will take effect upon next startup."
              }
     }

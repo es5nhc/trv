@@ -201,7 +201,7 @@ class URLAken(Tkinter.Toplevel): ##Dialog to open a web URL
         urltitle=Tkinter.Label(self,text="URL:",bg="#000044",fg="#ffff00")
         urltitle.grid(column=0,row=0)
         self.url=Tkinter.StringVar()
-        self.url.set("") #Custom URL
+        self.url.set("") #Your custom URL here
         urlentry=Tkinter.Entry(self,textvariable=self.url,width=70,fg="#ffff00",bg="#000044",highlightbackground="#000044",selectbackground="#000099",selectforeground="#ffff00")
         urlentry.grid(column=1,row=0)
         downloadbutton=Tkinter.Button(self,text=fraasid["open"],command=self.laealla,bg="#000044",fg="#ffff00",activebackground="#000099", highlightbackground="#000044", activeforeground="#ffff00")
@@ -221,7 +221,7 @@ class URLAken(Tkinter.Toplevel): ##Dialog to open a web URL
             #Save received content into a file cache
             currentfilepath="../cache/urlcache"
             #Remove previous cache files
-            #os.remove(currentfilepath) #Delete previous cache file
+            if os.path.isfile(currentfilepath): os.remove(currentfilepath) #Delete previous cache file if one exists
             cachefile=open(currentfilepath,"wb")
             cachefile.write(sisu)
             cachefile.close()
@@ -250,6 +250,7 @@ currentfilepath=None #Path to presently open file
 pildifont=ImageFont.truetype("../fonts/DejaVuSansCondensed.ttf",12)
 pildifont2=ImageFont.truetype("../fonts/DejaVuSansCondensed.ttf",13)
 canvasbusy=False
+viewingcurrent=False
 nexradstn=conf["nexradstn"] #Chosen NEXRAD station
 urlwindowopen=0 #1 if dialog to open an URL is open
 nexradchooseopen=0 #1 if dialog to choose a nexrad station is open
@@ -817,17 +818,20 @@ def loadurl():
     return 0
 def reloadfile():
     global currentfilepath
+    global viewingcurrent
     if currentfilepath != "":
-        load(currentfilepath)
+        load(currentfilepath,viewingcurrent)
     return 0
 def load(path=None,current=False):
     global paised
     global radials
     global clickbox
+    global viewingcurrent
     global currentfilepath
     global fmt
     global level2fail #Linguistic note: "Fail" in the variable name does not
                       #imply failure - it is Estonian for "file."
+    viewingcurrent=current
     clickbox=None
     level2fail=None #Clear the old level 2 file in case one was opened
     if path == None:
@@ -1433,6 +1437,13 @@ def mkrhi(az):
         msgtostatus(fraasid["ready"])
         rhishow=1
     return 0
+def change_language(lang):
+    global conf
+    conf["lang"]=lang
+    configfile=open("config.json","w")
+    json.dump(conf,configfile) #Save the new selection to config file
+    configfile.close()
+    tkMessageBox.showinfo(fraasid["name"],translations.phrases[lang]["conf_restart_required"])
 clickcoords=[]
 output=Tkinter.Tk()
 output.title(fraasid["name"])
@@ -1445,9 +1456,11 @@ failimenyy = Tkinter.Menu(menyy,tearoff=0,bg="#000044",fg="yellow",activebackgro
 radarmenyy = Tkinter.Menu(menyy,tearoff=0,bg="#000044",fg="yellow",activebackground="#000099",activeforeground="yellow")
 toolsmenyy = Tkinter.Menu(menyy,tearoff=0,bg="#000044",fg="yellow",activebackground="#000099",activeforeground="yellow")
 abimenyy = Tkinter.Menu(menyy,tearoff=0,bg="#000044",fg="yellow",activebackground="#000099",activeforeground="yellow")
+languagemenyy=Tkinter.Menu(menyy,tearoff=0,bg="#000044",fg="yellow",activebackground="#000099",activeforeground="yellow")
 menyy.add_cascade(label=fraasid["file"], menu=failimenyy)
 menyy.add_cascade(label=fraasid["nexrad"], menu=radarmenyy)
 menyy.add_cascade(label=fraasid["tools"], menu=toolsmenyy)
+menyy.add_cascade(label=fraasid["current_language"], menu=languagemenyy)
 menyy.add_cascade(label=fraasid["help"], menu=abimenyy)
 failimenyy.add_command(label=fraasid["open_datafile"], command=load)
 failimenyy.add_command(label=fraasid["open_url"], command=loadurl)
@@ -1463,6 +1476,8 @@ toolsmenyy.add_command(label=fraasid["dualprf_dealiasing"],command=dualprfdealia
 abimenyy.add_command(label=fraasid["key_shortcuts_menuentry"], command=keys_list)
 abimenyy.add_separator()
 abimenyy.add_command(label=fraasid["about_program"], command=about_program)
+languagemenyy.add_command(label=fraasid["language_estonian"], command=lambda: change_language("estonian"))
+languagemenyy.add_command(label=fraasid["language_english"], command=lambda: change_language("english"))
 ##Drawing area
 w = Tkinter.Canvas(output,width=600,height=400,highlightthickness=0)
 w.bind("<Button-1>",leftclick)
