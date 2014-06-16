@@ -420,7 +420,7 @@ def populatenexradmenus(product="p94r0"):
         productcode=product[:-1]+str(i)
         elevation_choice["menu"].add_command(label=fraasid["level3_slice"].replace("/NR/",str(i+1)),command=lambda x=productcode: fetchnexrad(x))
     index=product[-1]
-    chosen_elevation.set(fraasid["level3_slice"].replace("/NR/",product[-1]))
+    chosen_elevation.set(fraasid["level3_slice"].replace("/NR/",str(int(product[-1])+1)))
     chosen_product.set(ids[product[0:3]])
     product_choice["menu"].delete(0, 'end')
     product_choice["menu"].add_command(label="DBZ",command=lambda x=index: fetchnexrad("p94r"+index))
