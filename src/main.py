@@ -201,7 +201,7 @@ class URLAken(Tkinter.Toplevel): ##Dialog to open a web URL
         urltitle=Tkinter.Label(self,text="URL:",bg="#000044",fg="#ffff00")
         urltitle.grid(column=0,row=0)
         self.url=Tkinter.StringVar()
-        self.url.set("") #Your custom URL here
+        self.url.set("") ## Default URL
         urlentry=Tkinter.Entry(self,textvariable=self.url,width=70,fg="#ffff00",bg="#000044",highlightbackground="#000044",selectbackground="#000099",selectforeground="#ffff00")
         urlentry.grid(column=1,row=0)
         downloadbutton=Tkinter.Button(self,text=fraasid["open"],command=self.laealla,bg="#000044",fg="#ffff00",activebackground="#000099", highlightbackground="#000044", activeforeground="#ffff00")
@@ -1357,9 +1357,9 @@ def getrhi(az):
                 if sweeps[i] > sweeps[i-1] or sweeps[i]-sweeps[i-1] < 0.2:
                     productsweeps.append(sweeps[i])
                     #Additional check for SAILS scans.
-                    if productsweeps.count(sweeps[i]) > 1: #If there is already that elevation
+                    if productsweeps.count(sweeps[i]) > 1 and sweeps[i+1] != sweeps[i]: #If there is already that elevation
                         productsweeps.pop(-1) #Don't add it to the list
-                        rhidata[productsweeps.index(sweeps[i])]=level2_valarray(level2fail,paised[0],i,az) #Just replace the already existing elevation with more current data.
+                        if sweeps[i-1] != sweeps[i]: rhidata[productsweeps.index(sweeps[i])]=level2_valarray(level2fail,paised[0],i,az) #Just replace the already existing elevation with more current data provided we are not just seeing the scan which contains velocity data
                     else:
                         rhidata.append(level2_valarray(level2fail,paised[0],i,az))
         msgtostatus(fraasid["reading_elevation"]+str(sweeps[i])+u"°")
