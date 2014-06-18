@@ -48,7 +48,8 @@ Vaata ka demovideot, kus näidatakse töö käiku: http://youtu.be/XM6dCVbd0rk
 * Python 2.x, eeldatavalt 2.7. Võimalik et võib töötada ka varasemate seeriatega aga YMMV.
 * Tkinteri jooksutamise võimalus
 * Python Imaging Library, võib olla ka selle Pillow fork(arendusmasinal jooksebki juba see, kuna see 
-tuleb uuemate Ubuntu distributsioonidega kaasa).
+tuleb uuemate Ubuntu distributsioonidega kaasa). Muuhulgas peab olema ka ImageTk moodul, vähemalt Ubuntulistel
+on see eraldi pakis.
 * H5Py
 
 Soovitatavalt vähemalt 1 GB RAM'i.
