@@ -37,7 +37,7 @@
 #Estonian
 phrases={"estonian":
          {
-             "name":"TRV 2014.6.18",
+             "name":"TRV 2014.6.24",
              "loading_states":"Laen andmeid... Osariigid",
              "coastlines":"Rannajooned",
              "countries":"Maismaapiirid",
@@ -126,7 +126,7 @@ phrases={"estonian":
              },
          "english":
          {
-             "name":"TRV 2014.6.18",
+             "name":"TRV 2014.6.24",
              "loading_states":"Loading data... States",
              "coastlines":"Coastlines",
              "countries":"Countries",
@@ -192,7 +192,7 @@ phrases={"estonian":
              "help":"Help",
              "open_datafile":"Open data file",
              "export_img":"Export image",
-             "quit":u"Quit",
+             "quit":"Quit",
              "current_data":"Current data",
              "level3_station_selection":"Station selection",
              "dualprf_dealiasing":"DualPRF dealiasing",

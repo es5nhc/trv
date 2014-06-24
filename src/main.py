@@ -515,7 +515,7 @@ def getbin(azr):
             val=None
         delta=None
         if val != None and (paised[0] == 99 or paised[0] == "V" or paised[0] == "VRAD" or paised[0] == "VEL"):
-            valprev=radials[int(azi)-1][2][int(azr[1]*kordaja)]
+            valprev=radials[int(azi)-1][2][int((kaugus-mindistance)*kordaja)]
             delta=abs(float(val)-valprev) if valprev != None else None
         elif val != None and paised[0] == 165 or paised[0] == "HCLASS":
             val=hcanames[int(val)]
