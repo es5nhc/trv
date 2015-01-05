@@ -43,7 +43,7 @@ from PIL.Image import new as uuspilt
 from PIL.ImageDraw import Draw
 from PIL.ImageTk import PhotoImage, BitmapImage
 from PIL import ImageFont
-from math import floor, sqrt, radians as d2r, degrees as r2d, cos
+from math import floor, sqrt, radians as d2r, degrees as r2d, cos, copysign
 from colorconversion import *
 from coordinates import *
 import sys
@@ -201,7 +201,7 @@ class URLAken(Tkinter.Toplevel): ##Dialog to open a web URL
         urltitle=Tkinter.Label(self,text="URL:",bg="#000044",fg="#ffff00")
         urltitle.grid(column=0,row=0)
         self.url=Tkinter.StringVar()
-        self.url.set("") ## Default URL
+        self.url.set("")
         urlentry=Tkinter.Entry(self,textvariable=self.url,width=70,fg="#ffff00",bg="#000044",highlightbackground="#000044",selectbackground="#000099",selectforeground="#ffff00")
         urlentry.grid(column=1,row=0)
         downloadbutton=Tkinter.Button(self,text=fraasid["open"],command=self.laealla,bg="#000044",fg="#ffff00",activebackground="#000099", highlightbackground="#000044", activeforeground="#ffff00")
@@ -210,25 +210,25 @@ class URLAken(Tkinter.Toplevel): ##Dialog to open a web URL
     def laealla(self):
         global currentfilepath
         aadress=self.url.get()
-        try:
-            url=urllib2.urlopen(aadress,timeout=10)
-            sisu=url.read()
-            if aadress[-3:]==".h5":
-                fmt=1
-            else:
-                fmt=0
-            self.onclose()
-            #Save received content into a file cache
-            currentfilepath="../cache/urlcache"
-            #Remove previous cache files
-            if os.path.isfile(currentfilepath): os.remove(currentfilepath) #Delete previous cache file if one exists
-            cachefile=open(currentfilepath,"wb")
-            cachefile.write(sisu)
-            cachefile.close()
-            load(currentfilepath)
-        except:
-            print sys.exc_info()
-            tkMessageBox.showerror(fraasid["name"],fraasid["download_failed"])
+       # try:
+        url=urllib2.urlopen(aadress,timeout=10)
+        sisu=url.read()
+        if aadress[-3:]==".h5" or aadress[-4:]==".hdf":
+            fmt=1
+        else:
+            fmt=0
+        self.onclose()
+        #Save received content into a file cache
+        currentfilepath="../cache/urlcache"
+        #Remove previous cache files
+        if os.path.isfile(currentfilepath): os.remove(currentfilepath) #Delete previous cache file if one exists
+        cachefile=open(currentfilepath,"wb")
+        cachefile.write(sisu)
+        cachefile.close()
+        load(currentfilepath)
+      #  except:
+      #      print sys.exc_info()
+      #      tkMessageBox.showerror(fraasid["name"],fraasid["download_failed"])
     def onclose(self):
         global urlwindowopen
         urlwindowopen=0
@@ -282,10 +282,15 @@ units={94:"dBZ", #Defining units for particular products
        163:u"°/km",
        165:"",
        "DBZ":"dBZ",
+       "DBZH":"dBZ",
+       "DBZV":"dBZ",
+       "TH":"dBZ",
+       "TV":"dBZ",
        "REF":"dBZ",
        "ZDR":"dBZ",
        "RHOHV": "",
        "RHO": "",
+       "SQI": "",
        "HCLASS": "",
        "KDP":u"°/km",
        "V":"m/s",
@@ -297,10 +302,16 @@ units={94:"dBZ", #Defining units for particular products
        "PHIDP": u"°"}
 img_center=[300,200]
 render_center=[1000,1000]
-hcanames=fraasid["hca_names"] #Hydrometeor classifications in WSR-88D
+hcanames=fraasid["hca_names"] #Hydrometeor classifications
 colortablenames={94:"dbz",
                  "DBZ":"dbz",
+                 "TH":"dbz",
+                 "TV":"dbz",
+                 "DBZH":"dbz",
+                 "DBZHC":"dbzh",
+                 "DBZV":"dbz",
                  "REF":"dbz",
+                 "SQI":"sqi",
                  "VRAD":"v",
                  "V":"v",
                  "VEL":"v",
@@ -312,64 +323,12 @@ colortablenames={94:"dbz",
                  "RHO":"rhohv",
                  163:"kdp",
                  "KDP":"kdp",
-                 165: "hclass",
+                 165: "hca",
                  "HCLASS": "hclass",
                  "PHI": "phi",
                  "PHIDP": "phi",
                  "WRAD": "sw",
                  "SW": "sw"} #Names for color tables according to product
-def dualprfdealias():
-    #Crude attempt to dealias at least some velocities in dualPRF scans. Only HDF5, requires that wavelength, High PRF and Low PRF are given in HDF5 file attributes.
-    #Adjacent bins are averaged and the particular bin is compared against the average, then after initial processing
-    #compared against initial data to mitigate errors related to averaging.
-    
-    #Some basic knowledge and more ideas for the future -
-    #Holleman and Beekhuis, 2003, "Analysis and Correction of Dual PRF Velocity Data.", J. Atmos. Oceanic Technol.
-    global paised
-    global radials
-    global canvasbusy
-    global canvasdimensions
-    wavelength,prfhigh,prflow=paised[2:5]
-    nyquistintervalhigh=wavelength*prfhigh/2.0 #Nyquist interval length is twice the  Vmax, hence only division by two.
-    print nyquistintervalhigh
-    kiirtehulk=len(radials)
-    praegunevaartus=None
-    eelminevaartus=None
-    vana=radials
-    hetkeseisusamm=1.0/kiirtehulk
-    w.itemconfig(progress,state=Tkinter.NORMAL)
-    canvasbusy=True
-    w.config(cursor="watch")
-    for p in xrange(2): #2 passes        
-        hetkeseis=0
-        msgtostatus(fraasid["dualprf_passcount"].replace("/COUNT/",str(p+1)))
-        for i in xrange(kiirtehulk):
-            radialslen=len(radials[i][2])
-            limiit=radialslen-4
-            eelminevaartus=None
-            for j in xrange(limiit):
-                praegunevaartus=radials[i][2][j]
-                samplid=[]
-                if praegunevaartus != None and eelminevaartus != None:
-                    if j > 4:
-                        k0=j-5
-                    else:
-                        k0=0
-                    k1=k0+10
-                    for l in xrange(i-2,i+3):
-                        samplid+=filter(None,radials[l%kiirtehulk][2][k0:k1])
-                    samplitesumma=sum(samplid)
-                    samplitehulk=len(samplid)
-                    keskmine=samplitesumma/samplitehulk #Arithmetic average of all the adjacent bins.
-                    suhe=(praegunevaartus-keskmine)/nyquistintervalhigh #Difference between current value and average value divided by nyquistintervalhigh
-                    praegunevaartus-=nyquistintervalhigh*round(suhe) #Round to the ratio to nearest integer and add/subtract nyquistintervalhigh accordingly
-                    radials[i][2][j]=praegunevaartus #Store the final array in the list
-                eelminevaartus=praegunevaartus #Set previous
-            if i%2 == 0: update_progress(hetkeseis*canvasdimensions[0])
-            hetkeseis+=hetkeseisusamm
-    w.itemconfig(progress,state=Tkinter.HIDDEN)
-    render_radials()
-    return 0
 def configrmaxadd():
     global rmaxaddopen
     if rmaxaddopen == 0:
@@ -443,9 +402,9 @@ def exportimg():
     global radials
     if len(radials) > 0:
         y=int(w.cget("height"))
-        if y % 2 != 0: y+=1
+        if y % 2 != 0 and not rhishow: y+=1
         x=int(w.cget("width"))
-        if x % 2 != 0: x+=1
+        if x % 2 != 0 and not rhishow: x+=1
         halfx=int(x/2.0)
         halfy=int(y/2.0)
         cy=int(1000-img_center[1]+halfy)
@@ -597,7 +556,7 @@ def drawlegend(product,minimum,maximum):
     tabel=loadcolortable("../colortables/"+colortablenames[product]+".txt")
     unit=units[product]
     tosmooth=1
-    if product == 165:
+    if product == 165 or product == "HCLASS":
         tosmooth=0
     increment=(maximum-minimum)/300.0
     legendimg=uuspilt("RGB",(35,325),"#000044")
@@ -609,29 +568,37 @@ def drawlegend(product,minimum,maximum):
     majorstep=10
     if product == "PHI":
         majorstep=45
-    if product == 159 or product == 163 or product == 165:
+    if product == 159 or product == 163 or product == 165 or product == "HCLASS":
         majorstep=1
     if product == 161: #RHOHV aka CC
         majorstep=0.1
-    firstten=int(majorstep+minimum-minimum%majorstep)
+    if product == "SQI":
+        majorstep=0.1
+    firstten=majorstep+minimum-minimum%majorstep
     if firstten == majorstep+minimum: firstten = minimum
     ystart=324-(firstten-minimum)*step
-    lastten=int(maximum-maximum%majorstep)
+    lastten=maximum-maximum%majorstep
     hulk=int((lastten-firstten)/majorstep)
+    print firstten, lastten, hulk, maximum, minimum
     yend=ystart-majorstep*step*hulk #If the next full step is too close to the edge.
     if yend < 30: hulk-=1 #Let's not list this last point on legend
     legenddraw.text((5,0),text=unit, font=pildifont)
     for j in xrange(hulk+1):
         y=ystart-majorstep*step*j
-        if product != 165: #Other products have a numeric value
-            legendtext=str(firstten+j*majorstep)
-        else:
+        if product == 165: #Other products have a numeric value
             legendlist=["BI","AP","IC","DS","WS","RA","+RA","BDR","GR","HA","UNK","RF"]; #List of classifications
             legendtext=legendlist[int(firstten+j*majorstep)]
+        elif product == "HCLASS":
+            legendlist=["NM","RA","WS","SN","GR","HA"]
+            legendtext=legendlist[int(firstten+j*majorstep)-1]
+        else:
+            legendval=firstten+j*majorstep
+            if legendval % 1 == 0: #If a full integer, strip decimals.
+                legendtext=str(int(legendval))
+            else:
+                legendtext=str(legendval)
         legenddraw.line((0,y,35,y),fill="white")
         legenddraw.text((0,y-15),text=legendtext,font=pildifont)
-    
-    #legendimg.save("legend.png")
     rlegend2=legendimg
     rlegend=PhotoImage(image=legendimg)
     w.itemconfig(legend,image=rlegend)
@@ -641,8 +608,8 @@ def drawmap(data,rlat,rlon,drawcolor,linewidth=1):
     coordsenne=None
     pikkus=len(data)
     kordaja=1
-    if zoomlevel < 1:
-        kordaja=int(1/zoomlevel)
+    #if zoomlevel < 1:
+    #    kordaja=int(1/zoomlevel)
     f=0
     hetkeseisusamm=1/pikkus
     hetkeseis=0
@@ -679,14 +646,6 @@ def showrendered(pilt):
     global rendered
     rendered=PhotoImage(image=pilt)
     w.itemconfig(radaripilt,image=rendered)
-def checkdualprf():
-    global paised
-    global currentfilepath
-    global fmt
-    if fmt==1 and paised[0] == "VRAD" and paised[2]!= 0 and paised[3] != 0 and paised[4] != 0: #If viewing HDF5 VRAD product and necessary data is there
-        toolsmenyy.entryconfig(1,state=Tkinter.NORMAL) #Enable the menu entry for dealiasing
-    else:
-        toolsmenyy.entryconfig(1,state=Tkinter.DISABLED) #Disable the menu entry for dealiasing
 def render_radials():
     global rendered
     global rendered2
@@ -720,15 +679,20 @@ def render_radials():
         drawlegend(161,0.2,1.05)
     elif product == 163 or product == "KDP":
         drawlegend(163,-2,7)
-    elif product == 165 or product == "HCLASS":
+    elif product == 165:
         tosmooth=False
         drawlegend(165,0,12)
-    elif product == "DBZ" or product == "REF":
+    elif product == "HCLASS":
+        tosmooth=False
+        drawlegend("HCLASS",1,7)
+    elif product == "DBZ" or product == "REF" or product == "TH" or product == "TV" or product == "DBZH" or product == "DBZV":
         drawlegend(94,-25,75)
     elif product == "SW" or product == "WRAD":
         drawlegend("SW",0,30)
     elif product == "PHI" or product =="PHIDP":
         drawlegend("PHI",0,180)
+    elif product == "SQI":
+        drawlegend("SQI",0,1)
     else:
         drawlegend(94,-25,75)
     radialslen=len(radials)
@@ -807,7 +771,6 @@ def render_radials():
     canvasbusy=False
     lopus=time.time()
     print "Time elapsed:", lopus-alguses,"seconds"
-    checkdualprf()
     setcursor()
     return 0
 def loadurl():
@@ -828,6 +791,7 @@ def load(path=None,current=False):
     global clickbox
     global viewingcurrent
     global currentfilepath
+    global hcanames
     global fmt
     global level2fail #Linguistic note: "Fail" in the variable name does not
                       #imply failure - it is Estonian for "file."
@@ -844,11 +808,7 @@ def load(path=None,current=False):
             if path[-3:]== ".h5" or stream[1:4]=="HDF":
                 product_choice.config(state=Tkinter.NORMAL)
                 elevation_choice.config(state=Tkinter.NORMAL)
-                compatible=hdf5_checkcompat(path)
-                print compatible
-                if not compatible:
-                    msgtostatus(fraasid["hdf5_not_supported"])
-                    return -1
+                hcanames=fraasid["iris_hca"]
                 fmt=1
             elif stream[0:4] == "AR2V":
                 product_choice.config(state=Tkinter.NORMAL)
@@ -856,6 +816,7 @@ def load(path=None,current=False):
                 level2fail=NEXRADLevel2File(path) #Load a Level 2 file
                 fmt=2
             else:
+                hcanames=fraasid["hca_names"]
                 product_choice.config(state=Tkinter.DISABLED)
                 elevation_choice.config(state=Tkinter.DISABLED)
                 product_choice['menu'].delete(0, 'end')
@@ -882,7 +843,6 @@ def decodefile(stream,fmt=0): #Decodes file content
     global currentfilepath
     global rhiaz
     global level2fail
-    toolsmenyy.entryconfig(1,state=Tkinter.DISABLED) #By default this menu entry is disabled. 
     if fmt == 0:
         paised=headers(stream)
         draw_info(headersdecoded(paised,fraasid))
@@ -923,12 +883,13 @@ def decodefile(stream,fmt=0): #Decodes file content
             elevation_choice['menu'].add_command(label=str(round(float(sweeps[i]),2)), command=lambda index=i: change_elevation(index))
         firstmoments=level2fail.scan_info()[0]["moments"] #First moments of the first scan, as that is going to be loaded by default.
         for j in firstmoments:
-            product_choice["menu"].add_command(label=j, command=lambda moment=j: change_product(moment,0))
+            product_choice["menu"].add_command(label=j, command=lambda moment=j: change_product(moment,1))
         chosen_elevation.set(str(sweeps[0]))
         chosen_product.set("REF")
-        paised=level2_headers(level2fail)
+        paised=level2_headers(level2fail,"REF",0)
+        print paised
         draw_info(headersdecoded(paised,fraasid))
-        radials=level2_valarray(level2fail)
+        radials=level2_valarray(level2fail,"REF",0)
     if not rhishow:
         render_radials()
     else:
@@ -948,28 +909,30 @@ def change_elevation(index):
     global currentfilepath
     global level2fail
     global fmt
+    global paised
     if not canvasbusy:
         if fmt == 1:
             paised[17]=sweeps[index]
             paised[0]=chosen_product.get()
             chosen_elevation.set(str(float(paised[17])))
-            skanniarv=hdf5_leiaskann(currentfilepath,paised[0],index)
+            skanniarv=hdf5_leiaskann(currentfilepath,paised[0],sweeps[index])
             if skanniarv != None:
                 radials=hdf5_valarray(currentfilepath,skanniarv)
                 draw_info(headersdecoded(paised,fraasid))
                 render_radials()
             else:
                 msgtostatus(fraasid["not_found_at_this_level"])
-        elif level2fail:
-            paised[17]=sweeps[index]
-            chosen_elevation.set(str(float(paised[17])))
-            product_choice['menu'].delete(0, 'end') #Clean up products menu for below.
-            #Moments available for a particular scan
-            moments=level2fail.scan_info()[index]["moments"] #First moments of the first scan, as that is going to be loaded by default.
-            for j in moments:
-                product_choice["menu"].add_command(label=j, command=lambda scan=index, moment=j: change_product(moment,index))
+        elif level2fail:            
             #Load data.
             try:
+                chosen_elevation.set(str(float(sweeps[index])))
+                product_choice['menu'].delete(0, 'end') #Clean up products menu for below.
+                #Moments available for a particular scan
+                moments=level2fail.scan_info()[index]["moments"] #First moments of the first scan, as that is going to be loaded by default.
+                for j in moments:
+                    product_choice["menu"].add_command(label=j, command=lambda scan=index, moment=j: change_product(moment,index))
+                paised=level2_headers(level2fail, paised[0], index)
+                print paised
                 radials=level2_valarray(level2fail, paised[0], index)
             except: #Most likely not found, defaulting back to reflectivity product, which should be present at all scans.
                 radials=level2_valarray(level2fail, "REF", index)
@@ -988,7 +951,7 @@ def change_product(newproduct,level2scan=0):
     if not canvasbusy:
         if fmt == 1:
             chosen_product.set(newproduct)
-            skanniarv=hdf5_leiaskann(currentfilepath,newproduct,sweeps.index(float(chosen_elevation.get())))
+            skanniarv=hdf5_leiaskann(currentfilepath,newproduct,float(chosen_elevation.get()))
             if skanniarv != None:
                 radials=hdf5_valarray(currentfilepath,skanniarv)
                 paised[0]=newproduct
@@ -998,7 +961,8 @@ def change_product(newproduct,level2scan=0):
                 msgtostatus(fraasid["not_found_at_this_level"])
         elif level2fail:
             chosen_product.set(newproduct)
-            paised[0]=newproduct
+            paised=level2_headers(level2fail,newproduct,level2scan)
+            print paised
             try:
                 radials=level2_valarray(level2fail,newproduct,level2scan)
                 draw_info(headersdecoded(paised,fraasid))
@@ -1346,7 +1310,7 @@ def getrhi(az):
     for i in xrange(len(sweeps)):
         if currentfilepath[-3:]==".h5" or sisu[1:4]=="HDF":
             try:
-                skanniarv=hdf5_leiaskann(currentfilepath,paised[0],i)
+                skanniarv=hdf5_leiaskann(currentfilepath,paised[0],sweeps[i])
                 rhidata.append(hdf5_valarray(currentfilepath,skanniarv,az))
                 productsweeps.append(sweeps[i])
             except:
@@ -1357,9 +1321,8 @@ def getrhi(az):
                 if sweeps[i] > sweeps[i-1] or sweeps[i]-sweeps[i-1] < 0.2:
                     productsweeps.append(sweeps[i])
                     #Additional check for SAILS scans.
-                    if productsweeps.count(sweeps[i]) > 1 and sweeps[i+1] != sweeps[i]: #If there is already that elevation
+                    if len(productsweeps) > 1 and productsweeps[-2]-productsweeps[-1] > 1: #If reduction of elevation over a degree, normally would indicate SAILS scan
                         productsweeps.pop(-1) #Don't add it to the list
-                        if sweeps[i-1] != sweeps[i]: rhidata[productsweeps.index(sweeps[i])]=level2_valarray(level2fail,paised[0],i,az) #Just replace the already existing elevation with more current data provided we are not just seeing the scan which contains velocity data
                     else:
                         rhidata.append(level2_valarray(level2fail,paised[0],i,az))
         msgtostatus(fraasid["reading_elevation"]+str(sweeps[i])+u"°")
@@ -1472,7 +1435,6 @@ radarmenyy.add_command(label=fraasid["current_data"], command=activatecurrentnex
 radarmenyy.add_separator()
 radarmenyy.add_command(label=fraasid["level3_station_selection"],command=choosenexrad)
 toolsmenyy.add_command(label=fraasid["add_rmax"],command=configrmaxadd)
-toolsmenyy.add_command(label=fraasid["dualprf_dealiasing"],command=dualprfdealias,state=Tkinter.DISABLED)
 abimenyy.add_command(label=fraasid["key_shortcuts_menuentry"], command=keys_list)
 abimenyy.add_separator()
 abimenyy.add_command(label=fraasid["about_program"], command=about_program)

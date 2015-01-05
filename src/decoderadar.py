@@ -44,7 +44,7 @@ from calendar import timegm
 import string
 
 
-def headers(data):
+def headers(data): #LEVEL 3 Headers
     headerinfo=[]
     call=-1
     if data.find('SDUS') <> -1: #Kui failis sisalduvad WMO päised (SDUS*4 TUNNUS(nt. KBMX) DDHHMM(UTC))
@@ -90,7 +90,11 @@ def productname(jarjend,fraasid):
               161:fraasid["product_rhohv"],
               163:fraasid["product_kdp"],
               165:fraasid["product_hclass"],
+              "TH":fraasid["th"],
+              "TV":fraasid["tv"],
               "DBZ":fraasid["product_reflectivity"],
+              "DBZH":fraasid["dbzh"],
+              "DBZV":fraasid["dbzv"],
               "REF":fraasid["product_reflectivity"],
               "ZDR":fraasid["product_zdr"],
               "RHOHV":fraasid["product_rhohv"],
@@ -101,6 +105,7 @@ def productname(jarjend,fraasid):
               "VEL":fraasid["product_radialvelocity"],
               "VRAD":fraasid["product_radialvelocity"],
               "PHI":fraasid["product_phi"],
+              "SQI":fraasid["sqi"],
               "PHIDP":fraasid["product_phi"],
               "SW":fraasid["product_sw"],
               "WRAD":fraasid["product_sw"]
@@ -108,58 +113,111 @@ def productname(jarjend,fraasid):
     return products[jarjend[0]]
 def hdf5_headers(fail,product="DBZ",h=0.5):
     andmed=HDF5Fail(fail,"r")
-    howattrs=andmed["/how"].attrs
-    aeg=howattrs.get(u"startepochs")
-    try: ## Reusing otherwise unused header fields for HDF5. 
+    ajastring=andmed["/what"].attrs.get("date")+andmed["/what"].attrs.get("time")
+    aeg=timegm(datetime.datetime.timetuple(datetime.datetime.strptime(ajastring,"%Y%m%d%H%M%S")))
+    versioon=andmed["/what"].attrs.get("version")
+    if versioon=="H5rad 1.2": #Determining which fields to use depending on ODIM version
+        whereattrs=andmed["/where"].attrs
+        step=float(whereattrs.get(u"xscale"))/1000
+        rstart=0
+    else:
+        whereattrs=andmed["dataset1/where"].attrs
+        step=float(whereattrs.get(u"rscale"))/1000
+        rstart=float(whereattrs.get(u"rstart"))
+    try: 
+        howattrs=andmed["/how"].attrs
         wavelength=float(howattrs.get("wavelength"))/100
-        highprf=float(howattrs.get("highprf"))
-        lowprf=float(howattrs.get("lowprf"))
+        if versioon=="H5rad 1.2":
+            highprf=float(howattrs.get("highprf"))
+            lowprf=float(howattrs.get("lowprf"))
+        else:
+            highprf=andmed["dataset1/how"].get("highprf")
+            lowprf=andmed["dataset1/how"].get("highprf")
     except:
-        wavelength=0
         highprf=0
         lowprf=0
-    whereattrs=andmed["/where"].attrs
-    lat=float(whereattrs.get(u"lat"))
-    lon=float(whereattrs.get(u"lon"))
-    step=float(whereattrs.get(u"xscale"))/1000
-    headers=[product,aeg,wavelength,highprf,lowprf,0,lat,lon,0,0,0,0,0,0,0,0,0,h,0,0,0,0,0,0,0,step]
+        wavelength=0
+    mainwhereattrs=andmed["/where"].attrs
+    lat=float(mainwhereattrs.get(u"lat"))
+    lon=float(mainwhereattrs.get(u"lon"))
+    headers=[product,aeg,wavelength,highprf,lowprf,rstart,lat,lon,0,0,0,0,0,0,0,0,0,h,0,0,0,0,0,0,0,step] ## Reusing otherwise unused header fields for HDF5.
     andmed.close()
     return headers
-def hdf5_checkcompat(fail): #
-    andmefail=HDF5Fail(fail,"r")
-    obj=andmefail["what"].attrs.get("object")
-    version=andmefail["what"].attrs.get("version")
-    if version == "H5rad 1.2" and obj == "PVOL":
-        return True
-    else:
-        return False
+##def hdf5_checkcompat(fail): #
+##    andmefail=HDF5Fail(fail,"r")
+##    obj=andmefail["what"].attrs.get("object")
+##    version=andmefail["what"].attrs.get("version")
+##    andmefail.close()
+##    if version == "H5rad 1.2" and obj == "PVOL":
+##        return True
+##    else:
+##        return False
 def hdf5_sweepslist(fail):
     andmefail=HDF5Fail(fail,"r")
-    nimekiri=list(andmefail["/how"].attrs.get(u"angles"))
-    andmefail.close()
     out=[]
-    for i in nimekiri:
-        out.append(float(i))
+    itemscount=0
+    #List all sweeps
+    if andmefail["what"].attrs.get("version") == "H5rad 1.2":
+        name="scan"
+        anglename="angle"
+    else:
+        name="dataset"
+        anglename="elangle"
+    for i in andmefail.keys():
+        if i.find(name) != -1:
+            itemscount+=1
+    for j in range(1,itemscount+1):
+        angle=round(float(andmefail[name+str(j)+"/where"].attrs.get(anglename)),2)
+        if j > 1:
+            if angle != out[-1]:
+                out.append(angle)
+        else:
+            out.append(angle)
+    andmefail.close()
     return out
 def hdf5_productlist(fail):
     andmefail=HDF5Fail(fail,"r")
     produktid=[]
-    for i in andmefail.keys():
-        if i[0:4] == "scan":
-            produkt=andmefail[i+"/what"].attrs.get("quantity")
+    version=andmefail["what"].attrs.get("version")
+    if version == "H5rad 1.2":
+        for i in andmefail.keys():
+            if i[0:4] == "scan":
+                produkt=andmefail[i+"/what"].attrs.get("quantity")
+                try:
+                    produktid.index(produkt)
+                except:
+                    produktid.append(produkt)
+    else:
+        count=0
+        for i in andmefail["dataset1/"].keys():
+            if i[0:4] == "data": count+=1
+        for j in range(1,count+1):
+            product=andmefail["dataset1/data"+str(j)+"/what"].attrs.get("quantity")
             try:
-                produktid.index(produkt)
+                produktid.index(product)
             except:
-                produktid.append(produkt)
+                produktid.append(product)
     andmefail.close()
     return produktid
-def hdf5_leiaskann(fail,produkt="DBZ",angleindex=0):
+def hdf5_leiaskann(fail,produkt="DBZ",angle=0):
+    angle=str(angle) #Convert to float in case it isn't already so
     andmefail=HDF5Fail(fail,"r")
+    ver=andmefail["what"].attrs.get("version")
     indeks=None
-    for i in andmefail.keys():
-        if i[0:4] == "scan" or i[0:7]== "dataset":
-            if andmefail[i+"/what"].attrs.get("quantity") == produkt and andmefail[i+"/how"].attrs.get("angleindex") == int(angleindex)+1:
-                indeks=i
+    if ver == "H5rad 1.2":
+        for i in andmefail.keys():
+            if i[0:4] == "scan":
+                if andmefail[i+"/what"].attrs.get("quantity") == produkt and str(andmefail[i+"/where"].attrs.get("angle")) == angle:
+                    indeks=i
+    else:
+        for i in andmefail.keys():
+            if i[0:7] == "dataset":
+                nurk=str(round(andmefail[i+"/where"].attrs.get("elangle"),2))
+                for j in andmefail[i].keys():
+                    if j[0:4] == "data":
+                        quantity=andmefail[i+"/"+j+"/what"].attrs.get("quantity")
+                        if quantity==produkt and nurk==angle:
+                            indeks=i+"/"+j
     andmefail.close()
     return indeks
 def tonone(x): #Convert fill values used in hdf5_vallarray to Python None.
@@ -167,10 +225,16 @@ def tonone(x): #Convert fill values used in hdf5_vallarray to Python None.
         return None
     else:
         return x
-def hdf5_valarray(fail,scan="scan1",rhiaz=None):
+def hdf5_valarray(fail,scan=None,rhiaz=None):
     andmefail=HDF5Fail(fail,"r")
-    dataraw=andmefail["/"+scan+"/data"]
+    version=andmefail["what"].attrs.get("version")
+    if  scan==None:
+        if version == "H5rad 1.2":
+            scan="scan1"
+        else:
+            scan="dataset1/data1"
     angle=0
+    dataraw=andmefail["/"+scan+"/data"]
     d_angle=d2r(360.0/len(dataraw))
     if rhiaz != None: #If was collecting single gates for a whole RHI
         dataraw=[dataraw[int(rhiaz*len(dataraw)/360.0)]]
@@ -179,12 +243,17 @@ def hdf5_valarray(fail,scan="scan1",rhiaz=None):
     offset=whatattrs.get(u"offset")
     nodata=whatattrs.get(u"nodata")
     undetect=whatattrs.get(u"undetect")
+    print "------------"
+    print "Gain:",gain
+    print "Offset:",offset
+    print "Nodata:",nodata
+    print "Undetect",undetect
     dataarray=[]
     for i in dataraw:
         rida=i*1.0
-        rida*=gain
-        rida[rida == undetect*gain]=-999
-        rida[rida == nodata*gain]=-999
+        rida[rida == undetect]=-999
+        rida[rida == nodata]=-999
+        rida[rida != -999]*=gain
         rida[rida != -999]+=offset
         if rhiaz != None:
             return map(tonone,rida.tolist())
@@ -198,6 +267,7 @@ def rhiheadersdecoded(jarjend, az,fraasid):
     msg=productname(jarjend,fraasid).capitalize()+" | Asimuut: "+str(az)+u"° | "+str(aeg)+" UTC"
     return msg
 def headersdecoded(jarjend,fraasid):
+    print jarjend[1], type(jarjend[1])
     aeg=datetime.datetime.utcfromtimestamp(jarjend[1])
     msg=str(float(jarjend[17]))+u"° "+productname(jarjend,fraasid)+" | "+str(aeg)+" UTC"
     return msg
@@ -219,7 +289,8 @@ def level2_headers(fileobject,moment="REF",scan=0):
     volume_header=fileobject.volume_header
     aeg=(volume_header["date"]-1)*86400+volume_header["time"]/1000
     h=level2_sweepslist(fileobject)[scan]
-    return [moment,aeg,0,0,0,0,fileobject.location()[0],fileobject.location()[1],0,0,0,0,0,0,0,0,0,h,0,0,0,0,0,0,0,samm]
+    dopprfno=fileobject.vcp["cut_parameters"][scan]["dop_prf_num_1"] #doppler prf number
+    return [moment,aeg,dopprfno,scan,0,0,fileobject.location()[0],fileobject.location()[1],0,0,0,0,0,0,0,0,0,h,0,0,0,0,0,0,0,samm]
 def level2_valarray(fileobject,moment="REF",scan=0,rhiaz=False):
     omadused=fileobject.scan_info()[scan]
     try:
@@ -262,15 +333,15 @@ def level2_valarray(fileobject,moment="REF",scan=0,rhiaz=False):
 ##        try: sweeps.append(float(i.splitlines()[0]))
 ##        except: pass
 ##    return sweeps
-##def convhca(val): #Convert IRIS HCA to NEXRAD Level 3 HCA
-##    val=int(val)
-##    if val == 1: return 1
-##    elif val == 2: return 5
-##    elif val == 3: return 4
-##    elif val == 4: return 3
-##    elif val == 5: return 8
-##    elif val == 6: return 9
-##    else: return -999
+def convhca(val): #Convert IRIS HCA to NEXRAD Level 3 HCA
+    val=int(val)
+    if val == 1: return 1
+    elif val == 2: return 5
+    elif val == 3: return 4
+    elif val == 4: return 3
+    elif val == 5: return 8
+    elif val == 6: return 9
+    else: return -999
 ##def tt_singlegate(filecontent,az,sweepnr):
 ##    additional=0
 ##    product=filecontent.splitlines()[0].split()[1]
