@@ -210,25 +210,25 @@ class URLAken(Tkinter.Toplevel): ##Dialog to open a web URL
     def laealla(self):
         global currentfilepath
         aadress=self.url.get()
-       # try:
-        url=urllib2.urlopen(aadress,timeout=10)
-        sisu=url.read()
-        if aadress[-3:]==".h5" or aadress[-4:]==".hdf":
-            fmt=1
-        else:
-            fmt=0
-        self.onclose()
-        #Save received content into a file cache
-        currentfilepath="../cache/urlcache"
-        #Remove previous cache files
-        if os.path.isfile(currentfilepath): os.remove(currentfilepath) #Delete previous cache file if one exists
-        cachefile=open(currentfilepath,"wb")
-        cachefile.write(sisu)
-        cachefile.close()
-        load(currentfilepath)
-      #  except:
-      #      print sys.exc_info()
-      #      tkMessageBox.showerror(fraasid["name"],fraasid["download_failed"])
+        try:
+            url=urllib2.urlopen(aadress,timeout=10)
+            sisu=url.read()
+            if aadress[-3:]==".h5" or aadress[-4:]==".hdf":
+                fmt=1
+            else:
+                fmt=0
+            self.onclose()
+            #Save received content into a file cache
+            currentfilepath="../cache/urlcache"
+            #Remove previous cache files
+            if os.path.isfile(currentfilepath): os.remove(currentfilepath) #Delete previous cache file if one exists
+            cachefile=open(currentfilepath,"wb")
+            cachefile.write(sisu)
+            cachefile.close()
+            load(currentfilepath)
+        except:
+            print sys.exc_info()
+            tkMessageBox.showerror(fraasid["name"],fraasid["download_failed"])
     def onclose(self):
         global urlwindowopen
         urlwindowopen=0
@@ -349,6 +349,7 @@ def fetchnexrad(product): #Downloading a current NEXRAD Level 3 file from NOAA's
     elevation_choice.config(state=Tkinter.NORMAL)
     populatenexradmenus(product)
     url="ftp://tgftp.nws.noaa.gov/SL.us008001/DF.of/DC.radar/DS."+product+"/SI."+conf["nexradstn"]+"/sn.last"
+    print url
     try:
         ftp=urllib2.urlopen(url,timeout=10)
         sisu=ftp.read()
