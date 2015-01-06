@@ -89,12 +89,6 @@
   "lon": 27.0194444444, 
   "icon": null
  }, 
- "Hummuli": {
-  "lat": 57.906, 
-  "min_zoom": 2, 
-  "lon": 26.053, 
-  "icon": "tornado"
- }, 
  "Kuusiku": {
   "lat": 58.9730555556, 
   "min_zoom": 1.5, 
