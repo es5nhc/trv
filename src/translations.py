@@ -3,7 +3,7 @@
 #
 
 
-##Copyright (c) 2014, Tarmo Tanilsoo
+##Copyright (c) 2015, Tarmo Tanilsoo
 ##All rights reserved.
 ##
 ##Redistribution and use in source and binary forms, with or without
@@ -85,7 +85,7 @@ phrases={"estonian":
              "export_success":"Eksport edukas",
              "export_format_fail":u"Valitud vormingusse ei saa salvestada või puudub asukohas kirjutamisõigus.",
              "no_data":"Andmed puuduvad",
-             "about_text":"Tarmo Tanilsoo, 2014\ntarmotanilsoo@gmail.com",
+             "about_text":"Tarmo Tanilsoo, 2015\ntarmotanilsoo@gmail.com",
              "key_shortcuts_dialog_text":u"Otseteed klaviatuuril:\n\nz - suurendamisrežiimi\np - ringiliikumisrežiimi\ni - infokogumiserežiimi\nr - algsuurendusse tagasi",
              "azimuth":"Asimuut",
              "range":"Kaugus",
@@ -185,7 +185,7 @@ phrases={"estonian":
              "export_success":"Export successful",
              "export_format_fail":"Either unable to save into this format or lacking writing permissions at the destination.",
              "no_data":"No data",
-             "about_text":"Tarmo Tanilsoo, 2014\ntarmotanilsoo@gmail.com",
+             "about_text":"Tarmo Tanilsoo, 2015\ntarmotanilsoo@gmail.com",
              "key_shortcuts_dialog_text":u"Shortcuts on keyboard:\n\nz - zoom mode\np - panning mode\ni - data gathering mode\nr - reset zoom",
              "azimuth":"Azimuth",
              "range":"Range",
