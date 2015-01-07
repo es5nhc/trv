@@ -37,9 +37,12 @@ Informatsioonirežiimis saab pildile klikkides infot konkreetse piksli kohta.
 Failimenüüst on võimalik parasjagu lahtiolevat pildivaadet eksportida PIL poolt
 toetavatesse vormingutesse.
 
-Samuti on võimalik luua pseudoRHI'sid(ainult NEXRAD Level 2 ja HDF5) kasutaja soovitud asimuutidest.
+Samuti on võimalik luua pseudoRHI'sid(ainult NEXRAD Level 2 ja HDF5) kasutaja 
+soovitud asimuutidest.
 
-Vaata ka demovideot, kus näidatakse töö käiku: http://youtu.be/XM6dCVbd0rk
+Vaata ka demovideot, kus näidatakse töö käiku: http://youtu.be/RZOYDvJv434 
+(videos on liides inglise keeles, kuid olemas on ka eestikeelne 
+kasutajaliides)
 
 -----
 ** NÕUDED

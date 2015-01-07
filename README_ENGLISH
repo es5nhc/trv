@@ -40,7 +40,7 @@ You can export the current image display into formats supported by PIL.
 Also, you can create pseudoRHI's from desired azimuths (Only Nexrad Level II and HDF5).
 
 See also a demonstration video to get an idea of the user interface and how to use it:
-http://youtu.be/XM6dCVbd0rk
+http://youtu.be/RZOYDvJv434
 
 -----
 ** REQUIREMENTS
