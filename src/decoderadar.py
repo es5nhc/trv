@@ -264,7 +264,7 @@ def hdf5_valarray(fail,scan=None,rhiaz=None):
     return dataarray        
 def rhiheadersdecoded(jarjend, az,fraasid):
     aeg=datetime.datetime.utcfromtimestamp(jarjend[1])
-    msg=productname(jarjend,fraasid).capitalize()+" | Asimuut: "+str(az)+u"° | "+str(aeg)+" UTC"
+    msg=productname(jarjend,fraasid).capitalize()+" | "+fraasid["azimuth"]+": "+str(az)+u"° | "+str(aeg)+" UTC"
     return msg
 def headersdecoded(jarjend,fraasid):
     print jarjend[1], type(jarjend[1])
