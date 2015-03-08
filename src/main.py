@@ -1391,7 +1391,7 @@ def mkrhi(az):
         joonis.text((10,5),text="h (km)", fill="white", font=pildifont)
         rhiout2=pilt
         rhiout=PhotoImage(image=rhiout2)
-        pilt.save("../../rhitest.png")
+        ##pilt.save("../../rhitest.png")
         taskbarbtn1.config(image=ppiimg)
         taskbarbtn5.config(state=Tkinter.DISABLED)
         product_choice.config(state=Tkinter.DISABLED)
