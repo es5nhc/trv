@@ -1196,6 +1196,7 @@ def on_window_reconf(event):
     global rhiagain
     global rhiaz
     dim=[output.winfo_width(),output.winfo_height()]
+    if sizeb4 == []: sizeb4=dim #If sizeb4 is empty, assume previous size was current one.
     if dim != sizeb4: #If there has been change in size...
         canvasdimensions=[dim[0],dim[1]-56]
         cenne=[w.winfo_width(),w.winfo_height()]

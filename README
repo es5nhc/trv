@@ -53,6 +53,7 @@ kasutajaliides)
 tuleb uuemate Ubuntu distributsioonidega kaasa). Muuhulgas peab olema ka ImageTk moodul, vähemalt Ubuntulistel
 on see eraldi pakis.
 * H5Py
+* numpy
 
 Soovitatavalt vähemalt 1 GB RAM'i.
 -----
