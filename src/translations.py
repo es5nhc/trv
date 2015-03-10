@@ -37,7 +37,7 @@
 #Estonian
 phrases={"estonian":
          {
-             "name":"TRV 2015.1.11",
+             "name":"TRV 2015.3.10",
              "loading_states":"Laen andmeid... Osariigid",
              "coastlines":"Rannajooned",
              "countries":"Maismaapiirid",
@@ -137,7 +137,7 @@ phrases={"estonian":
              },
          "english":
          {
-             "name":"TRV 2015.1.6",
+             "name":"TRV 2015.3.10",
              "loading_states":"Loading data... States",
              "coastlines":"Coastlines",
              "countries":"Countries",
