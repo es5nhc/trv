@@ -3,7 +3,7 @@
 #
 
 
-##Copyright (c) 2015, Tarmo Tanilsoo
+##Copyright (c) 2016, Tarmo Tanilsoo
 ##All rights reserved.
 ##
 ##Redistribution and use in source and binary forms, with or without
@@ -78,17 +78,16 @@ class AddRMAXChooser(Tkinter.Toplevel):
         Tkinter.Toplevel.__init__(self,parent)
         self.title(fraasid["add_rmax"])
         self.protocol("WM_DELETE_WINDOW",self.onclose)
-        self.config(background="#000044")
         #Labels
-        az0title=Tkinter.Label(self,text=fraasid["az0"],bg="#000044",fg="#ffff00")
+        az0title=Tkinter.Label(self,text=fraasid["az0"])
         az0title.grid(column=0,row=0,sticky="e")
-        az1title=Tkinter.Label(self,text=fraasid["az1"],bg="#000044",fg="#ffff00")
+        az1title=Tkinter.Label(self,text=fraasid["az1"])
         az1title.grid(column=0,row=1,sticky="e")
-        r0title=Tkinter.Label(self,text=fraasid["r0"],bg="#000044",fg="#ffff00")
+        r0title=Tkinter.Label(self,text=fraasid["r0"])
         r0title.grid(column=0,row=2,sticky="e")
-        r1title=Tkinter.Label(self,text=fraasid["r1"],bg="#000044",fg="#ffff00")
+        r1title=Tkinter.Label(self,text=fraasid["r1"])
         r1title.grid(column=0,row=3,sticky="e")
-        prftitle=Tkinter.Label(self,text=fraasid["prf"],bg="#000044",fg="#ffff00")
+        prftitle=Tkinter.Label(self,text=fraasid["prf"])
         prftitle.grid(column=0,row=4,sticky="e")
         #Text variables
         self.az0=Tkinter.StringVar()
@@ -98,18 +97,18 @@ class AddRMAXChooser(Tkinter.Toplevel):
         self.prf=Tkinter.StringVar()
         self.prf.set("570")
         #Text fields
-        az0field=Tkinter.Entry(self,textvariable=self.az0,fg="#ffff00",bg="#000044",highlightbackground="#000044",selectbackground="#000099",selectforeground="#ffff00")
+        az0field=Tkinter.Entry(self,textvariable=self.az0)
         az0field.grid(column=1,row=0,sticky="w")
-        az1field=Tkinter.Entry(self,textvariable=self.az1,fg="#ffff00",bg="#000044",highlightbackground="#000044",selectbackground="#000099",selectforeground="#ffff00")
+        az1field=Tkinter.Entry(self,textvariable=self.az1)
         az1field.grid(column=1,row=1,sticky="w")
-        r0field=Tkinter.Entry(self,textvariable=self.r0,fg="#ffff00",bg="#000044",highlightbackground="#000044",selectbackground="#000099",selectforeground="#ffff00")
+        r0field=Tkinter.Entry(self,textvariable=self.r0)
         r0field.grid(column=1,row=2,sticky="w")
-        r1field=Tkinter.Entry(self,textvariable=self.r1,fg="#ffff00",bg="#000044",highlightbackground="#000044",selectbackground="#000099",selectforeground="#ffff00")
+        r1field=Tkinter.Entry(self,textvariable=self.r1)
         r1field.grid(column=1,row=3,sticky="w")
-        prffield=Tkinter.Entry(self,textvariable=self.prf,fg="#ffff00",bg="#000044",highlightbackground="#000044",selectbackground="#000099",selectforeground="#ffff00")
+        prffield=Tkinter.Entry(self,textvariable=self.prf)
         prffield.grid(column=1,row=4,sticky="w")
         #Button
-        liidabutton=Tkinter.Button(self,command=self.addrmax,text=fraasid["add"],bg="#000044",fg="#ffff00",activebackground="#000099", highlightbackground="#000044", activeforeground="#ffff00")
+        liidabutton=Tkinter.Button(self,command=self.addrmax,text=fraasid["add"])
         liidabutton.grid(column=1,row=5,sticky="w")
         #And now the main loop
         self.mainloop()
@@ -158,13 +157,12 @@ class NEXRADChooser(Tkinter.Toplevel): #Choice of NEXRAD station
         Tkinter.Toplevel.__init__(self,parent)
         self.title(fraasid["nexrad_choice"])
         self.protocol("WM_DELETE_WINDOW",self.onclose)
-        self.config(background="#000044")
-        jaamatiitel=Tkinter.Label(self,text=fraasid["choose_station"],bg="#000044",fg="#ffff00")
+        jaamatiitel=Tkinter.Label(self,text=fraasid["choose_station"])
         jaamatiitel.pack()
         jaamavalik=Tkinter.Frame(self)
-        kerimisriba=Tkinter.Scrollbar(jaamavalik,bg="#000099",highlightbackground="#000099",activebackground="#0000ff",troughcolor="#000044")
+        kerimisriba=Tkinter.Scrollbar(jaamavalik)
         kerimisriba.pack(side=Tkinter.RIGHT, fill=Tkinter.Y)
-        self.jaamaentry=Tkinter.Listbox(jaamavalik,width=30,yscrollcommand=kerimisriba.set,fg="#ffff00",bg="#000044",highlightbackground="#000044",selectbackground="#000099",selectforeground="#ffff00")
+        self.jaamaentry=Tkinter.Listbox(jaamavalik,width=30,yscrollcommand=kerimisriba.set)
         self.jaamaentry.pack(side=Tkinter.LEFT, fill=Tkinter.BOTH)
         kerimisriba.config(command=self.jaamaentry.yview)
         jaamavalik.pack()
@@ -172,7 +170,7 @@ class NEXRADChooser(Tkinter.Toplevel): #Choice of NEXRAD station
         for i in jaamad:
             rida=i.split("|")
             self.jaamaentry.insert(Tkinter.END, rida[0]+" - "+rida[1]+", "+rida[2])
-        okbutton=Tkinter.Button(self,text=fraasid["okbutton"],command=self.newstn,bg="#000044",fg="#ffff00",activebackground="#000099", highlightbackground="#000044", activeforeground="#ffff00")
+        okbutton=Tkinter.Button(self,text=fraasid["okbutton"],command=self.newstn)
         okbutton.pack()
         self.mainloop()
     def newstn(self):
@@ -182,9 +180,7 @@ class NEXRADChooser(Tkinter.Toplevel): #Choice of NEXRAD station
             print selection
             jaam=self.jaamaentry.get(selection)[:4]
             conf["nexradstn"]=jaam.lower()
-            configfile=open("config.json","w")
-            json.dump(conf,configfile) #Save the new selection to config file
-            configfile.close()
+            save_config_file()
             self.onclose()
         else:
             tkMessageBox.showerror(fraasid["name"],fraasid["choose_station_error"])
@@ -192,43 +188,139 @@ class NEXRADChooser(Tkinter.Toplevel): #Choice of NEXRAD station
         global nexradchooseopen
         nexradchooseopen=0
         self.destroy()
+class DynamicLabelEditor(Tkinter.Toplevel):
+    def __init__(self, parent, title = None):
+        global conf
+        Tkinter.Toplevel.__init__(self,parent)
+        self.title(fraasid["dyn_labels"])
+        self.protocol("WM_DELETE_WINDOW",self.onclose)
+        self.dataPath=Tkinter.StringVar()
+        self.updateInterval=Tkinter.StringVar()
+        self.sourceType=Tkinter.IntVar()
+        self.enabled=Tkinter.IntVar()
+        if parent.allikaIndeks == -1:
+            self.dataPath.set("")
+            self.updateInterval.set("")
+            self.sourceType.set(0)
+            self.enabled.set(1)
+        else:
+            values=conf["placesources"][parent.allikaIndeks]
+            self.sourceType.set(values[0])
+            self.dataPath.set(values[1])
+            self.updateInterval.set(values[2])
+            self.enabled.set(values[4])
+            print self.enabled.get()
+        label1=Tkinter.Label(self,text="Type")
+        label1.grid(column=0,row=0,sticky=Tkinter.E)
+        type1=Tkinter.Radiobutton(self,text=fraasid["dyn_online"],variable=self.sourceType,value=0,command=self.goonline)
+        type1.grid(column=1,row=0)
+        type2=Tkinter.Radiobutton(self,text=fraasid["dyn_local"],variable=self.sourceType,value=1,command=self.pickfile)
+        type2.grid(column=2,row=0)
+        label2=Tkinter.Label(self,text=fraasid["dyn_path"])
+        label2.grid(column=0,row=1,sticky=Tkinter.E)
+        self.pathentry=Tkinter.Entry(self,width=40,textvariable=self.dataPath)
+        self.pathentry.grid(column=1,row=1,columnspan=2)
+        label3=Tkinter.Label(self,text=fraasid["dyn_interval"])
+        label3.grid(column=0,row=2,sticky=Tkinter.E)
+        self.intervalentry=Tkinter.Entry(self,textvariable=self.updateInterval)
+        self.intervalentry.grid(column=1,row=2,columnspan=2,sticky=Tkinter.W)
+        self.enabledcheck=Tkinter.Checkbutton(self, variable=self.enabled, text="Enabled")
+        self.enabledcheck.grid(column=2,row=2)
+        okbutton=Tkinter.Button(self,text="OK",command=lambda: self.submit_source(parent))
+        okbutton.grid(column=2,row=3)
+        self.mainloop()
+    def pickfile(self): #Pick a source file
+        self.intervalentry.config(state=Tkinter.DISABLED)
+        pathd=tkFileDialog.Open(None,initialdir="../places")
+        path=pathd.show()
+        self.dataPath.set(path)
+    def goonline(self): #Ensure the update interval selection is active
+        self.dataPath.set("")
+        self.intervalentry.config(state=Tkinter.NORMAL)
+    def submit_source(self,parent):
+        global conf
+        if parent.allikaIndeks == -1:
+            conf["placesources"].append([self.sourceType.get(),self.dataPath.get(),self.updateInterval.get(),-1,self.enabled.get()]) #New
+        else:
+            conf["placesources"][parent.allikaIndeks]=[self.sourceType.get(),self.dataPath.get(),self.updateInterval.get(),-1,self.enabled.get()] #Edit
+        ##Format of dynamic information setting [Online/Local, path, update interval if relevant, last download timestamp if online content]
+        save_config_file()
+        parent.listsources() #Update sources listing
+        self.onclose()
+    def onclose(self):
+        self.destroy()
+class DynamicLabelWindow(Tkinter.Toplevel):
+    def __init__(self, parent, title = None):
+        Tkinter.Toplevel.__init__(self,parent)
+        self.title(fraasid["dyn_labels"])
+        self.protocol("WM_DELETE_WINDOW",self.onclose)
+        nimekiri=Tkinter.Frame(self)
+        #List of files
+        kerimisriba=Tkinter.Scrollbar(nimekiri)
+        kerimisriba.pack(side=Tkinter.RIGHT, fill=Tkinter.Y)
+        self.customfileslist=Tkinter.Listbox(nimekiri,width=60,yscrollcommand=kerimisriba.set)
+        self.customfileslist.pack(side=Tkinter.LEFT, fill=Tkinter.BOTH)
+        kerimisriba.config(command=self.customfileslist.yview)
+        nimekiri.pack()
+        self.listsources() #List all sources
+        #Command buttons
+        nupud=Tkinter.Frame(self)
+        nupp1=Tkinter.Button(nupud, text=fraasid["dyn_new"],command=self.add)
+        nupp1.pack(side=Tkinter.LEFT)
+        nupp2=Tkinter.Button(nupud, text=fraasid["dyn_edit"],command=self.edit)
+        nupp2.pack(side=Tkinter.LEFT)
+        nupp3=Tkinter.Button(nupud, text=fraasid["dyn_rm"],command=self.delete)
+        nupp3.pack(side=Tkinter.LEFT)
+        nupud.pack()
+        self.mainloop()
+    def listsources(self):
+        global conf
+        types=[fraasid["dyn_online"],fraasid["dyn_local"]]
+        self.customfileslist.delete(0,Tkinter.END)
+        for i in conf["placesources"]:
+            self.customfileslist.insert(Tkinter.END,types[i[0]]+" - "+i[1])
+    def add(self):
+        self.allikaIndeks=-1 #index of selected item. -1 means the option is to be created.
+        DynamicLabelEditor(self)
+    def edit(self):
+        self.allikaIndeks=self.customfileslist.curselection()[0]
+        DynamicLabelEditor(self)
+    def delete(self):
+        global conf
+        self.allikaIndeks=self.customfileslist.curselection()[0]
+        if tkMessageBox.askyesno(fraasid["name"],fraasid["dyn_rm_sure"]):
+            conf["placesources"].pop(self.allikaIndeks)
+            save_config_file()
+            self.customfileslist.delete(self.allikaIndeks)
+    def onclose(self):
+        global dynlabelsopen
+        dynlabelsopen=0
+        self.destroy()
 class URLAken(Tkinter.Toplevel): ##Dialog to open a web URL
     def __init__(self, parent, title = None):
         Tkinter.Toplevel.__init__(self,parent)
         self.title(fraasid["name"])
         self.protocol("WM_DELETE_WINDOW",self.onclose)
-        self.config(background="#000044")
-        urltitle=Tkinter.Label(self,text="URL:",bg="#000044",fg="#ffff00")
+        urltitle=Tkinter.Label(self,text="URL:")
         urltitle.grid(column=0,row=0)
         self.url=Tkinter.StringVar()
         self.url.set("")
-        urlentry=Tkinter.Entry(self,textvariable=self.url,width=70,fg="#ffff00",bg="#000044",highlightbackground="#000044",selectbackground="#000099",selectforeground="#ffff00")
+        urlentry=Tkinter.Entry(self,textvariable=self.url,width=70)
         urlentry.grid(column=1,row=0)
-        downloadbutton=Tkinter.Button(self,text=fraasid["open"],command=self.laealla,bg="#000044",fg="#ffff00",activebackground="#000099", highlightbackground="#000044", activeforeground="#ffff00")
+        downloadbutton=Tkinter.Button(self,text=fraasid["open"],command=self.laealla)
         downloadbutton.grid(column=0,row=1,sticky="w")
         self.mainloop()
     def laealla(self):
         global currentfilepath
-        aadress=self.url.get()
-        try:
-            url=urllib2.urlopen(aadress,timeout=10)
-            sisu=url.read()
-            if aadress[-3:]==".h5" or aadress[-4:]==".hdf":
-                fmt=1
-            else:
-                fmt=0
-            self.onclose()
-            #Save received content into a file cache
-            currentfilepath="../cache/urlcache"
-            #Remove previous cache files
-            if os.path.isfile(currentfilepath): os.remove(currentfilepath) #Delete previous cache file if one exists
-            cachefile=open(currentfilepath,"wb")
-            cachefile.write(sisu)
-            cachefile.close()
-            load(currentfilepath)
-        except:
-            print sys.exc_info()
-            tkMessageBox.showerror(fraasid["name"],fraasid["download_failed"])
+        global currenturl
+        currenturl=self.url.get()
+        download_file(currenturl)
+        currentfilepath="../cache/urlcache"
+        load(currentfilepath)
+       # try:
+      #  except:
+      #      print sys.exc_info()
+      #      tkMessageBox.showerror(fraasid["name"],fraasid["download_failed"])
     def onclose(self):
         global urlwindowopen
         urlwindowopen=0
@@ -250,11 +342,12 @@ currentfilepath=None #Path to presently open file
 pildifont=ImageFont.truetype("../fonts/DejaVuSansCondensed.ttf",12)
 pildifont2=ImageFont.truetype("../fonts/DejaVuSansCondensed.ttf",13)
 canvasbusy=False
-viewingcurrent=False
+currenturl=None
 nexradstn=conf["nexradstn"] #Chosen NEXRAD station
 urlwindowopen=0 #1 if dialog to open an URL is open
 nexradchooseopen=0 #1 if dialog to choose a nexrad station is open
 rmaxaddopen=0 #1 if configuration window to add Rmax to chunk of data is open.
+dynlabelsopen=0 #same rule as above for selection of dynamic labels
 zoom=1
 info=0
 rhi=0
@@ -277,7 +370,7 @@ sweeps=[] #All elevation levels
 productsweeps=[] #Only the elevation levels for a particular product
 units={94:"dBZ", #Defining units for particular products
        99:"m/s",
-       159:"dBZ",
+       159:"dB",
        161:"",
        163:u"°/km",
        165:"",
@@ -287,10 +380,14 @@ units={94:"dBZ", #Defining units for particular products
        "TH":"dBZ",
        "TV":"dBZ",
        "REF":"dBZ",
-       "ZDR":"dBZ",
+       "ZDR":"dB",
+       "LZDR":"dB",
        "RHOHV": "",
        "RHO": "",
        "SQI": "",
+       "SQIH": "",
+       "SQIV": "",
+       "QIDX": "",
        "HCLASS": "",
        "KDP":u"°/km",
        "V":"m/s",
@@ -312,12 +409,18 @@ colortablenames={94:"dbz",
                  "DBZV":"dbz",
                  "REF":"dbz",
                  "SQI":"sqi",
+                 "SQIH":"sqi",
+                 "SQIV":"sqi",
+                 "QIDX":"sqi",
                  "VRAD":"v",
+                 "VRADH":"v",
+                 "VRADV":"v",
                  "V":"v",
                  "VEL":"v",
                  99:"v",
                  159:"zdr",
                  "ZDR":"zdr",
+                 "LZDR":"zdr",
                  161:"rhohv",
                  "RHOHV":"rhohv",
                  "RHO":"rhohv",
@@ -329,13 +432,32 @@ colortablenames={94:"dbz",
                  "PHIDP": "phi",
                  "WRAD": "sw",
                  "SW": "sw"} #Names for color tables according to product
+customcolortable=None
+def download_file(url,dst="../cache/urlcache"):
+    req=urllib2.urlopen(url,timeout=10)
+    sisu=req.read()
+    req.close()
+    cache=open(dst,"wb")
+    cache.write(sisu)
+    cache.close()
+    return 0
+def save_config_file(): #Saves config.json according to current config
+    global conf
+    configfile=open("config.json","w")
+    json.dump(conf,configfile)
+    configfile.close()
 def configrmaxadd():
     global rmaxaddopen
     if rmaxaddopen == 0:
         rmaxaddopen=1
         AddRMAXChooser(output)
     return 0
-def choosenexrad(): #NEXRAD jaama valiku akna avamine
+def dynlabels_settings():#Configuration for dynamic labels
+    global dynlabelsopen
+    if dynlabelsopen == 0:
+        dynlabelsopen == 1
+        DynamicLabelWindow(output)
+def choosenexrad(): #Opening NEXRAD station selection window
     global nexradchooseopen
     if nexradchooseopen == 0:
         nexradchooseopen=1
@@ -344,22 +466,16 @@ def fetchnexrad(product): #Downloading a current NEXRAD Level 3 file from NOAA's
     global conf
     global rhishow
     global currentfilepath
+    global currenturl
     if rhishow: topan()    
     product_choice.config(state=Tkinter.NORMAL)
     elevation_choice.config(state=Tkinter.NORMAL)
     populatenexradmenus(product)
-    url="ftp://tgftp.nws.noaa.gov/SL.us008001/DF.of/DC.radar/DS."+product+"/SI."+conf["nexradstn"]+"/sn.last"
-    print url
+    currenturl="ftp://tgftp.nws.noaa.gov/SL.us008001/DF.of/DC.radar/DS."+product+"/SI."+conf["nexradstn"]+"/sn.last"
     try:
-        ftp=urllib2.urlopen(url,timeout=10)
-        sisu=ftp.read()
-        ftp.close()
-        #Caching
+        download_file(currenturl,"../cache/nexradcache/"+product)
         currentfilepath="../cache/nexradcache/"+product
-        cachefile=open(currentfilepath,"wb")
-        cachefile.write(sisu)
-        cachefile.close()
-        load(currentfilepath,True)
+        load(currentfilepath)
     except:
         print sys.exc_info()
         tkMessageBox.showerror(fraasid["name"],fraasid["download_failed"])
@@ -413,11 +529,11 @@ def exportimg():
         cbx=clickboxloc[0]
         cby=clickboxloc[1]
         cbh=84 if not rhishow else 45
-        filed=tkFileDialog.SaveAs(None,initialdir="../data")
+        filed=tkFileDialog.SaveAs(None,initialdir="../radar_images")
         path=filed.show()
         if path != "":
             try:
-                outimage=uuspilt("RGB",(x,y),"#000022")
+                outimage=uuspilt("RGB",(x,y),"#000025")
                 joonis=Draw(outimage)
                 if not rhishow:
                     if rendered != None: outimage.paste(rendered2.crop((cx-halfx,cy-halfy,cx+halfx,cy+halfy)),((0,0,x,y))) #PPI
@@ -437,7 +553,7 @@ def getrhibin(h,gr,a):
     global productsweeps
     global rhidata
     global paised
-    kordaja=1/paised[25]
+    kordaja=paised[25]**-1
     if a < 0: return fraasid["no_data"]
     if a > productsweeps[-1]: return fraasid["no_data"]
     for i in xrange(len(productsweeps)):
@@ -466,7 +582,7 @@ def getbin(azr):
             if vahe < radials[i][1] and vahe > 0:
                 azi=i
                 break
-        kordaja=1/paised[25]
+        kordaja=paised[25]**-1
         kaugus=azr[1] if not isinstance(paised[0],int) else azr[1]/cos(d2r(float(paised[17])))
         mindistance=radials[int(azi)][3]
         if kaugus >= mindistance:
@@ -522,17 +638,17 @@ def draw_infobox(x,y):
         row1=u"%s: %.3f km" % (fraasid["range"],andmed[0])
         row2=u"%s: %.3f km" % (fraasid["height"],andmed[1])
     kastikorgus=84 if not rhishow else 45
-    kast=uuspilt("RGB",(170,kastikorgus),"#0000EE")
+    kast=uuspilt("RGB",(170,kastikorgus),"#44ccff")
     kastdraw=Draw(kast)
-    kastdraw.rectangle((0,0,170,16),fill="#000099")
+    kastdraw.rectangle((0,0,170,16),fill="#0033ee")
     kastdraw.polygon((0,0,10,0,0,10,0,0),fill="#FFFFFF")
     kastdraw.text((9,1),text=row0, font=pildifont2)
-    kastdraw.text((5,17),text=row1, font=pildifont)
-    kastdraw.text((5,30),text=row2, font=pildifont)
+    kastdraw.text((5,17),text=row1, fill="#000000", font=pildifont)
+    kastdraw.text((5,30),text=row2, fill="#000000", font=pildifont)
     if not rhishow:
-        kastdraw.text((5,43),text=row3, font=pildifont)
-        kastdraw.text((5,56),text=row4, font=pildifont)
-        if row5 != None: kastdraw.text((5,69),text=row5, font=pildifont)
+        kastdraw.text((5,43),text=row3, fill="#000000", font=pildifont)
+        kastdraw.text((5,56),text=row4, fill="#000000", font=pildifont)
+        if row5 != None: kastdraw.text((5,69),text=row5, fill="#000000", font=pildifont)
     clickbox2=kast
     clickbox=PhotoImage(image=kast)
     clickboxloc=[x,y]
@@ -542,25 +658,31 @@ def draw_infobox(x,y):
 def draw_info(tekst):
     global infotekst
     global infotekst2
-    textimg=uuspilt("RGB",(500,20), "#000044")
+    textimg=uuspilt("RGB",(500,20), "#0033ee")
     textdraw=Draw(textimg)
     textdraw.text((5,3),text=tekst, font=pildifont)
     infotekst2=textimg
     infotekst=PhotoImage(image=textimg)
     w.itemconfig(radardetails,image=infotekst)
     return 0
-def drawlegend(product,minimum,maximum):
+def listcolortables():
+    global colortablemenu
+    failid=os.listdir("../colortables")
+    for i in failid:
+        colortablemenu.add_command(label=i, command=lambda x=i:change_colortable(x))
+    return 0
+def drawlegend(product,minimum,maximum,colortable):
     global rlegend
     global rlegend2
     global colortablenames
     global units
-    tabel=loadcolortable("../colortables/"+colortablenames[product]+".txt")
+    tabel=colortable
     unit=units[product]
     tosmooth=1
     if product == 165 or product == "HCLASS":
         tosmooth=0
     increment=(maximum-minimum)/300.0
-    legendimg=uuspilt("RGB",(35,325),"#000044")
+    legendimg=uuspilt("RGB",(35,325),"#0033ee")
     legenddraw=Draw(legendimg)
     for i in xrange(300):
         val=minimum+increment*i
@@ -573,14 +695,13 @@ def drawlegend(product,minimum,maximum):
         majorstep=1
     if product == 161: #RHOHV aka CC
         majorstep=0.1
-    if product == "SQI":
+    if product == "SQI" or product == "QIDX" or product == "SQIH" or product == "SQIV":
         majorstep=0.1
     firstten=majorstep+minimum-minimum%majorstep
     if firstten == majorstep+minimum: firstten = minimum
     ystart=324-(firstten-minimum)*step
     lastten=maximum-maximum%majorstep
     hulk=int((lastten-firstten)/majorstep)
-    print firstten, lastten, hulk, maximum, minimum
     yend=ystart-majorstep*step*hulk #If the next full step is too close to the edge.
     if yend < 30: hulk-=1 #Let's not list this last point on legend
     legenddraw.text((5,0),text=unit, font=pildifont)
@@ -603,38 +724,24 @@ def drawlegend(product,minimum,maximum):
     rlegend2=legendimg
     rlegend=PhotoImage(image=legendimg)
     w.itemconfig(legend,image=rlegend)
-    return 0     
-def drawmap(data,rlat,rlon,drawcolor,linewidth=1):
+    return 0
+def drawmap(data,radarcoords,drawcolor,linewidth=1):
     global canvasdimensions
+    paths=map(lambda x,y=radarcoords:coordsFilter(x,y),data) #Pass geo data through filter so we don't need to render the whole world!
     coordsenne=None
     pikkus=len(data)
     kordaja=1
-    #if zoomlevel < 1:
-    #    kordaja=int(1/zoomlevel)
     f=0
-    hetkeseisusamm=1/pikkus
+    hetkeseisusamm=pikkus**-1
     hetkeseis=0
-    for joon in data:
-        e=0
-        for path in joon:
-            path0,path1=path
-            if abs(path1-rlat) < 10 and abs(path0-rlon) < 10:
-                if e % kordaja == 0:
-                    posy,posx=geog2polar(path1,path0,rlat,rlon)
-                    coords=getcoords(posx,posy,zoomlevel,render_center)
-                    x,y=coords
-                    if coordsenne==None: coordsenne=coords
-                    if x < 3000 and x > -1000 and y < 3000 and y > -1000:
-                        joonis.line((coordsenne,coords),fill=drawcolor,width=linewidth)
-                        coordsenne=coords
-                    else:
-                        coordsenne=None
-            else:
-                coordsenne=None
-            e+=1
+    teejoon=joonis.line
+    for joon in paths:
         f+=1
-        coordsenne=None
-        if f % 200 == 0: update_progress(hetkeseis*canvasdimensions[0])
+        for rada in joon:
+            coords=mapcoordsFilter(map(lambda x,y=zoomlevel,z=render_center,a=radarcoords:getmapcoords(x,y,z,a),rada)) #To polar coords
+            for i in coords:
+                teejoon(i,fill=drawcolor,width=linewidth)
+        if f % 800 == 0: update_progress(hetkeseis*canvasdimensions[0])
         hetkeseis+=hetkeseisusamm
     return 0
 
@@ -647,10 +754,34 @@ def showrendered(pilt):
     global rendered
     rendered=PhotoImage(image=pilt)
     w.itemconfig(radaripilt,image=rendered)
+def init_drawlegend(product,tabel):
+    if product == 99 or product == "V" or product == "VRAD" or product == "VEL":
+        drawlegend(99,-63.5,63.5,tabel)
+    elif product == 159 or product == "ZDR" or product == "LZDR":
+        drawlegend(159,-6,6,tabel)
+    elif product == 161 or product == "RHOHV" or product == "RHO":
+        drawlegend(161,0.2,1.05,tabel)
+    elif product == 163 or product == "KDP":
+        drawlegend(163,-2,7,tabel)
+    elif product == 165:
+        drawlegend(165,0,12,tabel)
+    elif product == "HCLASS":
+        drawlegend("HCLASS",1,7,tabel)
+    elif product == "DBZ" or product == "REF" or product == "TH" or product == "TV" or product == "DBZH" or product == "DBZV":
+        drawlegend(94,-25,75,tabel)
+    elif product == "SW" or product == "WRAD":
+        drawlegend("SW",0,30,tabel)
+    elif product == "PHI" or product =="PHIDP":
+        drawlegend("PHI",0,180,tabel)
+    elif product == "SQI" or product == "QIDX":
+        drawlegend("SQI",0,1,tabel)
+    else:
+        drawlegend(94,-25,75,tabel)
 def render_radials():
     global rendered
     global rendered2
     global canvasctr
+    global conf
     global img_center
     global canvasbusy
     global radials
@@ -659,52 +790,50 @@ def render_radials():
     global joonis
     global render_center
     global currentfilepath
+    global customcolortable
     product=paised[0]
     canvasbusy=True
     alguses=time.time()
     w.config(cursor="watch")
     w.itemconfig(progress,state=Tkinter.NORMAL)
     msgtostatus(fraasid["drawing"]+" "+fraasid["radar_image"])
-    pilt=uuspilt("RGB",(2000,2000),"#000022")
+    pilt=uuspilt("RGB",(2000,2000),"#000025")
     joonis=Draw(pilt)
+    hulknurk=joonis.polygon
     current=0.0
     updateiter=0
     samm=paised[25]
-    tabel=loadcolortable("../colortables/"+colortablenames[product]+".txt")
-    tosmooth=True
-    if product == 99 or product == "V" or product == "VRAD" or product == "VEL":
-        drawlegend(99,-63.5,63.5)
-    elif product == 159 or product == "ZDR":
-        drawlegend(159,-6,6)
-    elif product == 161 or product == "RHOHV" or product == "RHO":
-        drawlegend(161,0.2,1.05)
-    elif product == 163 or product == "KDP":
-        drawlegend(163,-2,7)
-    elif product == 165:
-        tosmooth=False
-        drawlegend(165,0,12)
-    elif product == "HCLASS":
-        tosmooth=False
-        drawlegend("HCLASS",1,7)
-    elif product == "DBZ" or product == "REF" or product == "TH" or product == "TV" or product == "DBZH" or product == "DBZV":
-        drawlegend(94,-25,75)
-    elif product == "SW" or product == "WRAD":
-        drawlegend("SW",0,30)
-    elif product == "PHI" or product =="PHIDP":
-        drawlegend("PHI",0,180)
-    elif product == "SQI":
-        drawlegend("SQI",0,1)
+    if customcolortable:
+        tabel=loadcolortable("../colortables/"+customcolortable)
     else:
-        drawlegend(94,-25,75)
-    radialslen=len(radials)
-    hetkeseisusamm=1/radialslen
+        tabel=loadcolortable("../colortables/"+colortablenames[product]+".txt")
+    tosmooth=True #True if transitions in color table are to be smooth.
+    if product == 165 or product == "HCLASS":
+        tosmooth=False
+    init_drawlegend(product,tabel) #Start drawing the color legend
+    radialslen=len(radials) #Length of radials
+    #Some variables for feedback on drawing progress
+    hetkeseisusamm=radialslen**-1 
     hetkeseis=0
+    #Setting Drawing resolution
+    res=zoomlevel*samm
+    aste=int((res)**-1)
     for i in radials:
         az,d_az,gate,mindistance=i
         kiiresuund=leiasuund(az,d_az,mindistance,paised,zoomlevel,render_center,samm)
         x1,x2,y1,y2,dx1,dx2,dy1,dy2=kiiresuund
+        if aste > 1:
+            gate=gate[::aste]
+            dx1*=aste
+            dx2*=aste
+            dy1*=aste
+            dy2*=aste
+        tegelikkevaartusi=len([x for x in gate if x is not None]) #Count of actual values
+        loetudtegelikke=0 #Count of actual values pressed
         varvid=map(lambda y,x=tabel,z=tosmooth: getcolor(x,y,z),gate)
+        jubarenderdanud=False
         for val in varvid:
+            if loetudtegelikke==tegelikkevaartusi: break #Mosey along, nothing to render at this azimuth anymore.
             x1new=x1+dx1
             x2new=x2+dx2
             y1new=y1+dy1
@@ -712,7 +841,11 @@ def render_radials():
             if val!= None:
                 path=(x1,y1,x2,y2,x2new,y2new,x1new,y1new)
                 if shouldirender(path):
-                    joonis.polygon(path, fill=val)
+                    hulknurk(path, fill=val)
+                    loetudtegelikke+=1
+                    jubarenderdanud=True
+                elif jubarenderdanud:
+                    break
             x1=x1new
             x2=x2new
             y1=y1new
@@ -722,49 +855,78 @@ def render_radials():
         hetkeseis+=hetkeseisusamm
         current+=1
     #Drawing geodata
-    rlat=float(paised[6])
-    rlon=float(paised[7])
+    rlat=d2r(float(paised[6]))
+    rlon=d2r(float(paised[7]))
     img_center=canvasctr
     showrendered(pilt)
     w.coords(radaripilt,tuple(img_center)) #Center image
     msgtostatus(fraasid["drawing"]+" "+fraasid["coastlines"].lower())
-    drawmap(coastlines.points,rlat,rlon,(17,255,17))
+    drawmap(coastlines.points,(rlat,rlon),(17,255,17))
     msgtostatus(fraasid["drawing"]+" "+fraasid["lakes"].lower())
-    drawmap(lakes.points,rlat,rlon,(0,255,255),1)
+    drawmap(lakes.points,(rlat,rlon),(0,255,255),1)
     if rlon < 0:
         msgtostatus(fraasid["drawing"]+" "+fraasid["NA_roads"])
-        drawmap(major_NA_roads.points,rlat,rlon,(125,0,0),2)
+        drawmap(major_NA_roads.points,(rlat,rlon),(125,0,0),2)
     msgtostatus(fraasid["drawing"]+" "+fraasid["rivers"].lower())
-    drawmap(rivers.points,rlat,rlon,(0,255,255),1)
+    drawmap(rivers.points,(rlat,rlon),(0,255,255),1)
     msgtostatus(fraasid["drawing"]+" "+fraasid["states_counties"])
-    drawmap(states.points,rlat,rlon,(255,255,255),1)
+    drawmap(states.points,(rlat,rlon),(255,255,255),1)
     msgtostatus(fraasid["drawing"]+" "+fraasid["country_boundaries"])
-    drawmap(countries.points,rlat,rlon,(255,0,0),2)
-    #Drawing radar icon into the center
-    radaricon=laepilt("../images/radar.png")
-    radarx=int(render_center[0])
-    radary=int(render_center[1])
-    pilt.paste(radaricon,[radarx-8,radary-8,radarx+8,radary+8],radaricon)
-    #Placenames
-    msgtostatus(fraasid["drawing"]+" "+fraasid["placenames"])
-    kohanimed=open("places.json","r")
-    punktid=json.load(kohanimed)
-    kohanimed.close()
-    for kohad in punktid:
-        if punktid[kohad]["min_zoom"] < zoomlevel:
-            loc=geog2polar(punktid[kohad]["lat"],punktid[kohad]["lon"],rlat,rlon)
-            coords=getcoords(loc[1],loc[0],zoomlevel,render_center)
-            if coords[0] < 2000 and coords[0] > 0 and coords[1] < 2000 and coords[1] > 0:
-                if punktid[kohad]["icon"] == None:
-                    joonis.rectangle((coords[0]-2,coords[1]-2,coords[0]+2,coords[1]+2),fill="black")
-                    joonis.rectangle((coords[0]-1,coords[1]-1,coords[0]+1,coords[1]+1),fill="white")
-                    joonis.text((coords[0]+11,coords[1]-2),text=kohad,fill="black",font=pildifont)
-                    joonis.text((coords[0]+10,coords[1]-3),text=kohad,font=pildifont)
-                else:
-                    iconfile=laepilt("../images/"+punktid[kohad]["icon"].lower()+".png")
-                    x=int(coords[0])
-                    y=int(coords[1])
-                    pilt.paste(iconfile,[x-8,y-8,x+8,y+8],iconfile)
+    drawmap(countries.points,(rlat,rlon),(255,0,0),2)
+    #Dynamic information
+    for entry in xrange(len(conf["placesources"])):
+        i=conf["placesources"][entry]
+        if i[4] != 1: continue #If the data source has been disabled, skip.
+        msgtostatus(fraasid["drawing"]+" "+fraasid["placenames"]+" - "+i[1])
+        filepath=i[1]
+        internetOkay=False
+        if i[0] == 0: #If it is internet content
+            filepath="../cache/"+i[1].replace("/","_") #Path of file in cache
+            try:
+                if (time.time()-float(i[3]))>int(i[2])*60: #If sufficient amount has passed since last download
+                    download_file(i[1],filepath) #Download the file
+                    conf["placesources"][entry][3]=time.time() #Save last time of download
+                    save_config_file()
+                internetOkay=True
+            except:
+                tkMessageBox.showerror(fraasid["name"],fraasid["download_failed"]+"\nURL:"+i[1]) #Something went south with download.
+        if not internetOkay and i[0] == 0: continue #Okay, something went wrong with data file download. Onward to next data file.
+        allikas=open(filepath,"r")
+        punktid=json.load(allikas)
+        allikas.close()
+        for kohad in punktid:
+            if punktid[kohad]["min_zoom"] < zoomlevel:
+                pointsamt=len(punktid[kohad]["lat"]) #Amount of coordinate points
+                if pointsamt==1:
+                    loc=geog2polar((d2r(punktid[kohad]["lat"][0]),d2r(punktid[kohad]["lon"][0])),(rlat,rlon))
+                    coords=getcoords((loc[0],loc[1]),zoomlevel,render_center)
+                    if coords[0] < 2000 and coords[0] > 0 and coords[1] < 2000 and coords[1] > 0:
+                        x=int(coords[0])
+                        y=int(coords[1])
+                        if punktid[kohad]["label"]:
+                            fontsize=int(punktid[kohad]["size"])
+                            teksty=y-int(fontsize/2)
+                            joonis.text((x+11,teksty+1),text=kohad,fill="black",font=ImageFont.truetype("../fonts/DejaVuSansCondensed.ttf",fontsize))
+                            joonis.text((x+10,teksty),text=kohad,fill=punktid[kohad]["color"],font=ImageFont.truetype("../fonts/DejaVuSansCondensed.ttf",fontsize))
+                        if punktid[kohad]["icon"] == None:
+                            joonis.rectangle((x-2,y-2,x+2,y+2),fill="black")
+                            joonis.rectangle((x-1,y-1,x+1,y+1),fill="white")
+                        else:
+                            iconfile=laepilt("../images/"+punktid[kohad]["icon"].lower()+".png")
+                            pilt.paste(iconfile,[x-8,y-8,x+8,y+8],iconfile)
+                else: #More than one point in set. Therefore polygon
+                    path=[]
+                    print pointsamt
+                    for p in range(pointsamt):
+                        lat=punktid[kohad]["lat"][p]
+                        lon=punktid[kohad]["lon"][p]
+                        loc=geog2polar((d2r(lat),d2r(lon)),(rlat,rlon))
+                        coords=getcoords((loc[0],loc[1]),zoomlevel,render_center)
+                        for p2 in coords:
+                            path.append(p2)
+                    if punktid[kohad]["connect"]: path+=path[0:2] #Connect the line to the beginning if requested
+                    joonis.line(path,fill="#000000",width=int(punktid[kohad]["width"])+2) #Shadow
+                    joonis.line(path,fill=punktid[kohad]["color"],width=int(punktid[kohad]["width"])) #The line itself
     rendered2=pilt
     showrendered(pilt)
     w.itemconfig(progress,state=Tkinter.HIDDEN)
@@ -782,52 +944,52 @@ def loadurl():
     return 0
 def reloadfile():
     global currentfilepath
-    global viewingcurrent
+    global currenturl
+    if currenturl:
+        download_file(currenturl,currentfilepath)
     if currentfilepath != "":
-        load(currentfilepath,viewingcurrent)
+        load(currentfilepath)
     return 0
-def load(path=None,current=False):
+def load(path=None):
     global paised
     global radials
     global clickbox
-    global viewingcurrent
+    global currenturl
     global currentfilepath
     global hcanames
     global fmt
-    global level2fail #Linguistic note: "Fail" in the variable name does not
+    global level2fail #Language note: "Fail" in the variable name does not
                       #imply failure - it is Estonian for "file."
-    viewingcurrent=current
     clickbox=None
     level2fail=None #Clear the old level 2 file in case one was opened
     if path == None:
         filed=tkFileDialog.Open(None,initialdir="../data")
         path=filed.show()
+        currenturl=None
     if path != "": #If a file was given
         stream=file_read(path)
+        currentfilepath=path
         msgtostatus(fraasid["decoding"])
-        if not current: #If not loading current NEXRAD data
-            if path[-3:]== ".h5" or stream[1:4]=="HDF":
-                product_choice.config(state=Tkinter.NORMAL)
-                elevation_choice.config(state=Tkinter.NORMAL)
-                hcanames=fraasid["iris_hca"]
-                fmt=1
-            elif stream[0:4] == "AR2V":
-                product_choice.config(state=Tkinter.NORMAL)
-                elevation_choice.config(state=Tkinter.NORMAL)
-                level2fail=NEXRADLevel2File(path) #Load a Level 2 file
-                fmt=2
-            else:
-                hcanames=fraasid["hca_names"]
+        if path[-3:]== ".h5" or stream[1:4]=="HDF":
+            product_choice.config(state=Tkinter.NORMAL)
+            elevation_choice.config(state=Tkinter.NORMAL)
+            hcanames=fraasid["iris_hca"]
+            fmt=1
+        elif stream[0:4] == "AR2V":
+            product_choice.config(state=Tkinter.NORMAL)
+            elevation_choice.config(state=Tkinter.NORMAL)
+            level2fail=NEXRADLevel2File(path) #Load a Level 2 file
+            fmt=2
+        else:
+            hcanames=fraasid["hca_names"]
+            if not currenturl or currenturl.find("ftp://tgftp.nws.noaa.gov/SL.us008001/DF.of/DC.radar/") == -1: #Do not clear elevation and product choices when viewing current NOAA Level 3 data
                 product_choice.config(state=Tkinter.DISABLED)
                 elevation_choice.config(state=Tkinter.DISABLED)
                 product_choice['menu'].delete(0, 'end')
                 elevation_choice['menu'].delete(0, 'end')
                 chosen_product.set(None)
                 chosen_elevation.set(None)
-                fmt=0
-        else:
             fmt=0
-        currentfilepath=path
         decodefile(stream,fmt)
     return 0
 def decodefile(stream,fmt=0): #Decodes file content
@@ -864,6 +1026,7 @@ def decodefile(stream,fmt=0): #Decodes file content
     elif fmt == 1:
         produktid=hdf5_productlist(currentfilepath)
         sweeps=hdf5_sweepslist(currentfilepath)
+        print produktid, sweeps
         paised=hdf5_headers(currentfilepath,produktid[0],sweeps[0])
         print paised
         draw_info(headersdecoded(paised,fraasid))
@@ -884,7 +1047,7 @@ def decodefile(stream,fmt=0): #Decodes file content
             elevation_choice['menu'].add_command(label=str(round(float(sweeps[i]),2)), command=lambda index=i: change_elevation(index))
         firstmoments=level2fail.scan_info()[0]["moments"] #First moments of the first scan, as that is going to be loaded by default.
         for j in firstmoments:
-            product_choice["menu"].add_command(label=j, command=lambda moment=j: change_product(moment,1))
+            product_choice["menu"].add_command(label=j, command=lambda moment=j: change_product(moment,0))
         chosen_elevation.set(str(sweeps[0]))
         chosen_product.set("REF")
         paised=level2_headers(level2fail,"REF",0)
@@ -903,6 +1066,28 @@ def decodefile(stream,fmt=0): #Decodes file content
             topan()
             render_radials()
     return 0
+def reset_colortable():
+    global customcolortable
+    global rhishow
+    global rhiaz
+    global renderagain
+    customcolortable=None
+    if rhishow:
+        mkrhi(rhiaz)
+        renderagain=1
+    else:
+        render_radials()
+def change_colortable(tabel):
+    global rhishow
+    global rhiaz
+    global customcolortable
+    global renderagain
+    customcolortable=tabel
+    if rhishow:
+        mkrhi(rhiaz)
+        renderagain=1
+    else:
+        render_radials()
 def change_elevation(index):
     global radials
     global canvasbusy
@@ -1345,15 +1530,20 @@ def mkrhi(az):
     global rhistart
     global rhiend
     global colortablenames
+    global customcolortable
     if not canvasbusy:
         draw_info(rhiheadersdecoded(paised,az,fraasid))
         msgtostatus(fraasid["drawing_pseudorhi"])
         pikkus=int(w.cget("height"))
         laius=int(w.cget("width"))
-        pilt=uuspilt("RGB", (laius,pikkus), "#000022") 
+        pilt=uuspilt("RGB", (laius,pikkus), "#000025") 
         joonis=Draw(pilt)
         samm=paised[25]
-        varvitabel=loadcolortable("../colortables/"+colortablenames[paised[0]]+".txt") #Load a color table
+        if customcolortable: #If color table has been overridden by user
+            varvitabel=loadcolortable("../colortables/"+customcolortable) #Load a custom color table
+        else:
+            varvitabel=loadcolortable("../colortables/"+colortablenames[paised[0]]+".txt") #Load a color table
+        init_drawlegend(paised[0],varvitabel) #Redraw color table just in case it is changed in RHI mode.
         xsamm=(laius-100.0)/((rhiend-rhistart)/samm) if rhiend != rhistart else 0
         a=0
         a0=0
@@ -1392,7 +1582,6 @@ def mkrhi(az):
         joonis.text((10,5),text="h (km)", fill="white", font=pildifont)
         rhiout2=pilt
         rhiout=PhotoImage(image=rhiout2)
-        ##pilt.save("../../rhitest.png")
         taskbarbtn1.config(image=ppiimg)
         taskbarbtn5.config(state=Tkinter.DISABLED)
         product_choice.config(state=Tkinter.DISABLED)
@@ -1405,23 +1594,20 @@ def mkrhi(az):
 def change_language(lang):
     global conf
     conf["lang"]=lang
-    configfile=open("config.json","w")
-    json.dump(conf,configfile) #Save the new selection to config file
-    configfile.close()
+    save_config_file()
     tkMessageBox.showinfo(fraasid["name"],translations.phrases[lang]["conf_restart_required"])
 clickcoords=[]
 output=Tkinter.Tk()
 output.title(fraasid["name"])
 output.bind("<Configure>",on_window_reconf)
-output.config(background="#000044")
 ##Drawing the menu
-menyy = Tkinter.Menu(output,bg="#000044",fg="yellow",activebackground="#000099",activeforeground="yellow")
+menyy = Tkinter.Menu(output)
 output.config(menu=menyy)
-failimenyy = Tkinter.Menu(menyy,tearoff=0,bg="#000044",fg="yellow",activebackground="#000099",activeforeground="yellow")
-radarmenyy = Tkinter.Menu(menyy,tearoff=0,bg="#000044",fg="yellow",activebackground="#000099",activeforeground="yellow")
-toolsmenyy = Tkinter.Menu(menyy,tearoff=0,bg="#000044",fg="yellow",activebackground="#000099",activeforeground="yellow")
-abimenyy = Tkinter.Menu(menyy,tearoff=0,bg="#000044",fg="yellow",activebackground="#000099",activeforeground="yellow")
-languagemenyy=Tkinter.Menu(menyy,tearoff=0,bg="#000044",fg="yellow",activebackground="#000099",activeforeground="yellow")
+failimenyy = Tkinter.Menu(menyy,tearoff=0)
+radarmenyy = Tkinter.Menu(menyy,tearoff=0)
+toolsmenyy = Tkinter.Menu(menyy,tearoff=0)
+abimenyy = Tkinter.Menu(menyy,tearoff=0)
+languagemenyy=Tkinter.Menu(menyy,tearoff=0)
 menyy.add_cascade(label=fraasid["file"], menu=failimenyy)
 menyy.add_cascade(label=fraasid["nexrad"], menu=radarmenyy)
 menyy.add_cascade(label=fraasid["tools"], menu=toolsmenyy)
@@ -1437,6 +1623,12 @@ radarmenyy.add_command(label=fraasid["current_data"], command=activatecurrentnex
 radarmenyy.add_separator()
 radarmenyy.add_command(label=fraasid["level3_station_selection"],command=choosenexrad)
 toolsmenyy.add_command(label=fraasid["add_rmax"],command=configrmaxadd)
+colortablemenu=Tkinter.Menu(toolsmenyy,tearoff=0) #Custom color tables menu
+listcolortables() #Adds all available color tables to the menu
+colortablemenu.add_separator()
+colortablemenu.add_command(label=fraasid["default_colors"],command=reset_colortable)
+toolsmenyy.add_cascade(label=fraasid["color_table"], menu=colortablemenu, underline=0)
+toolsmenyy.add_command(label=fraasid["dyn_labels"],command=dynlabels_settings)
 abimenyy.add_command(label=fraasid["key_shortcuts_menuentry"], command=keys_list)
 abimenyy.add_separator()
 abimenyy.add_command(label=fraasid["about_program"], command=about_program)
@@ -1451,26 +1643,24 @@ w.bind("<B3-Motion>",onmotion)
 w.bind("<ButtonRelease-1>",onrelease)
 w.bind("<ButtonRelease-3>",onrelease)
 w.bind("<Motion>",onmousemove)
-w.config(background="#000022")
+w.config(background="#000025")
 w.config(cursor="crosshair")
-w.grid(row=0,rowspan=2,column=0)
+w.grid(row=0,column=0)
 radaripilt=w.create_image(tuple(img_center))
 clicktext=w.create_image((300,300))
 legend=w.create_image((582,200))
 radardetails=w.create_image((300,380))
 zoomrect=w.create_rectangle((0,0,200,200),outline="white",state=Tkinter.HIDDEN) #Ristkülik, mis joonistatakse ekraanile suurendamise ajal.
-progress=w.create_rectangle((0,390,400,400),fill="#0000ff",state=Tkinter.HIDDEN)
+progress=w.create_rectangle((0,390,400,400),fill="#0044ff",state=Tkinter.HIDDEN)
 #Key bindings
 output.bind("r",resetzoom)
 output.bind("i",toinfo)
 output.bind("p",topan)
 output.bind("z",tozoom)
 output.bind("h",chooserhi)
-kyljeraam=Tkinter.Frame(output)
-kyljeraam.grid(row=2,column=0,sticky="n")
-moderaam=Tkinter.Frame(kyljeraam)
-moderaam.config(bg="#000044")
-moderaam.grid(row=1,column=0)
+moderaam=Tkinter.Frame(output)
+moderaam.grid(row=1,column=0,sticky="we")
+moderaam.config(bg="#0099ff")
 panimg=PhotoImage(file="../images/pan.png")
 zoomimg=PhotoImage(file="../images/zoom.png")
 resetzoomimg=PhotoImage(file="../images/resetzoom.png")
@@ -1478,29 +1668,27 @@ infoimg=PhotoImage(file="../images/info.png")
 rhiimg=PhotoImage(file="../images/rhi.png")
 ppiimg=PhotoImage(file="../images/ppi.png")
 reloadimg=PhotoImage(file="../images/reload.png")
-taskbarbtn1=Tkinter.Button(moderaam, bg="#000044",activebackground="#000099", highlightbackground="#000044", image=panimg, command=topan)
+taskbarbtn1=Tkinter.Button(moderaam, bg="#0099ff",activebackground="#0044ff", highlightbackground="#0044ff", image=panimg, command=topan)
 taskbarbtn1.grid(row=0,column=0)
-taskbarbtn2=Tkinter.Button(moderaam, bg="#000044",activebackground="#000099", highlightbackground="#000044", image=zoomimg, command=tozoom)
+taskbarbtn2=Tkinter.Button(moderaam, bg="#0099ff",activebackground="#0044ff", highlightbackground="#0044ff", image=zoomimg, command=tozoom)
 taskbarbtn2.grid(row=0,column=1)
-taskbarbtn3=Tkinter.Button(moderaam, bg="#000044",activebackground="#000099", highlightbackground="#000044", image=resetzoomimg, command=resetzoom)
+taskbarbtn3=Tkinter.Button(moderaam, bg="#0099ff",activebackground="#0044ff", highlightbackground="#0044ff", image=resetzoomimg, command=resetzoom)
 taskbarbtn3.grid(row=0,column=2)
-taskbarbtn4=Tkinter.Button(moderaam, bg="#000044",activebackground="#000099", highlightbackground="#000044", image=infoimg, command=toinfo)
+taskbarbtn4=Tkinter.Button(moderaam, bg="#0099ff",activebackground="#0044ff", highlightbackground="#0044ff", image=infoimg, command=toinfo)
 taskbarbtn4.grid(row=0,column=3)
-taskbarbtn5=Tkinter.Button(moderaam, bg="#000044",activebackground="#000099", highlightbackground="#000044", image=rhiimg, command=chooserhi)
+taskbarbtn5=Tkinter.Button(moderaam, bg="#0099ff",activebackground="#0044ff", highlightbackground="#0044ff", image=rhiimg, command=chooserhi)
 taskbarbtn5.grid(row=0,column=4)
-taskbarbtn6=Tkinter.Button(moderaam, bg="#000044",activebackground="#000099", highlightbackground="#000044", image=reloadimg, command=reloadfile)
+taskbarbtn6=Tkinter.Button(moderaam, bg="#0099ff",activebackground="#0044ff", highlightbackground="#0044ff", image=reloadimg, command=reloadfile)
 taskbarbtn6.grid(row=0,column=5)
 chosen_elevation = Tkinter.StringVar(moderaam)
 elevation_choice=Tkinter.OptionMenu(moderaam, chosen_elevation,None)
-elevation_choice.config(bg="#000044",fg="yellow",activebackground="#000099",activeforeground="yellow",highlightbackground="#000044",state=Tkinter.DISABLED)
+elevation_choice.config(bg="#44bbff",activebackground="#55ccff",highlightbackground="#55ccff",state=Tkinter.DISABLED)
 elevation_choice.grid(row=0,column=6)
-elevation_choice["menu"].config(bg="#000044",fg="yellow",activebackground="#000099",activeforeground="yellow")
 chosen_product= Tkinter.StringVar(moderaam)
 product_choice=Tkinter.OptionMenu(moderaam, chosen_product,None)
-product_choice.config(bg="#000044",fg="yellow",activebackground="#000099",activeforeground="yellow",highlightbackground="#000044",state=Tkinter.DISABLED)
+product_choice.config(bg="#44bbff",activebackground="#55ccff",highlightbackground="#55ccff",state=Tkinter.DISABLED)
 product_choice.grid(row=0,column=7)
-product_choice["menu"].config(bg="#000044",fg="yellow",activebackground="#000099",activeforeground="yellow")
-status=Tkinter.Label(output, text=None, justify=Tkinter.LEFT, anchor="w", fg="yellow", bg="#000044")
-status.grid(row=3,column=0,sticky="w")
+status=Tkinter.Label(output, text=None, justify=Tkinter.LEFT, anchor="w")
+status.grid(row=2,column=0,sticky="w")
 output.mainloop()
 

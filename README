@@ -6,9 +6,9 @@
 
 --------------------------------------------------
 
-Versioon 2015.3.10
+Versioon 2016.1.11
 
-Tarmo Tanilsoo, 2015
+Tarmo Tanilsoo, 2016
 
 -----
 ** KASUTAMINE
@@ -40,6 +40,8 @@ toetavatesse vormingutesse.
 Samuti on võimalik luua pseudoRHI'sid(ainult NEXRAD Level 2 ja HDF5) kasutaja 
 soovitud asimuutidest.
 
+Alates versioonist 2016.1.11 on võimalik JSON failide kaudu kirjeldada dünaamilisi andmepunkte mille väärtused võivad ajas muutuda. Näiteks on võimalik kirjeldada näiteks hetketemperatuure internetileheküljel JSON failina programmile sobival kujul. Detailsem formaadi kirjeldus on tulemas. Samuti on võimalik vaates ära muuta värviskaala - vaikimisi väärtuste tagasi saamiseks tuleb see uuesti menüüst valida.
+
 Vaata ka demovideot, kus näidatakse töö käiku: http://youtu.be/RZOYDvJv434 
 (videos on liides inglise keeles, kuid olemas on ka eestikeelne 
 kasutajaliides)
@@ -62,7 +64,7 @@ Soovitatavalt vähemalt 1 GB RAM'i.
 * Nexrad Level III - produktid 94, 99, 157, 161, 162, 163, 165
 * Nexrad Level II - kõik produktid (ainult need mida loeb PyART'ki - seega vaid MSG31 sõnumid!)
     NB! NCDC'st saadavad failid on algselt GZipis kokku pakitud, need tuleb enne programmis vaatamist lahti pakkida!
-* HDF5 - Alates H5rad 1.2. PVOL objekt. Produktid DBZ(ka DBZH, DBZV), VRAD, KDP, PHIDP, RHOHV, WRAD, ZDR, TH, TV, HCLASS, SQI.
+* HDF5 - Alates H5rad 1.2. PVOL objekt. Produktid DBZ(ka DBZH, DBZV), VRAD, KDP, PHIDP, RHOHV, WRAD, ZDR, TH, TV, HCLASS, SQI, SW.
 * Varem kasutatud improviseeritud tekstiformaadist on nüüdseks loobutud. 
 
 Kasutatud allikad:

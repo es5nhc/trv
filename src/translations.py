@@ -3,7 +3,7 @@
 #
 
 
-##Copyright (c) 2015, Tarmo Tanilsoo
+##Copyright (c) 2016, Tarmo Tanilsoo
 ##All rights reserved.
 ##
 ##Redistribution and use in source and binary forms, with or without
@@ -37,14 +37,14 @@
 #Estonian
 phrases={"estonian":
          {
-             "name":"TRV 2015.3.10",
+             "name":"TRV 2016.1.11",
              "loading_states":"Laen andmeid... Osariigid",
              "coastlines":"Rannajooned",
              "countries":"Maismaapiirid",
              "country_boundaries":"riigipiirid",
              "lakes":u"Järved",
              "rivers":u"Jõed",
-             "placenames":"kohanimed",
+             "placenames":"andmepunktid",
              "states_counties":"osariigid/maakonnad",
              "NA_roads":u"Põhja-Ameerika suured maanteed",
              "add_rmax":"Liida Rmax",
@@ -80,7 +80,6 @@ phrases={"estonian":
                          "Lumi",
                          "Lumekruubid",
                          "Rahe"],
-             "dualprf_passcount":"/COUNT/. kord",
              "level3_slice":u"Lõik /NR/",
              "export_success":"Eksport edukas",
              "export_format_fail":u"Valitud vormingusse ei saa salvestada või puudub asukohas kirjutamisõigus.",
@@ -123,28 +122,46 @@ phrases={"estonian":
              "dbzv":"peegelduvus (v)", 
              "sqi":"signaalikvaliteedi indeks", 
              "product_radialvelocity":"radiaalkiirus",
+             "vradh":"radiaalkiirus (h)",
+             "vradv":"radiaalkiirus (v)",
+             "vraddh":"dealiasitud radiaalkiirus (h)",
+             "vraddv":"dealiasitud radiaalkiirus (v)",
              "product_rhohv":"korrelatsioonikoefitsent",
              "product_zdr":"diferentsiaalne peegelduvus",
              "product_kdp":"spetsiifiline diferentsiaalne faas",
              "product_hclass":u"hüdrometeoori klassifikatsioon",
              "product_sw":"spektrilaius",
              "product_phi":"diferentsiaalne faas",
+             "qidx":"kvaliteet",
              "no_data_loaded":"Andmeid pole laetud!",
              "current_language":"Keel",
              "language_estonian":"Eesti keel",
              "language_english":"English",
-             "conf_restart_required":"Muutus aktiveerub programmi taaskäivitamisel."
+             "conf_restart_required":"Muutus aktiveerub programmi taaskäivitamisel.",
+             "sweep":"viibe",
+             "dyn_labels":"Dünaamilised andmepunktid",
+             "color_table":"Värvitabeli vahetus",
+             "default_colors":"Vaikimisi värvid",
+             "dyn_new":"Lisa",
+             "dyn_edit":"Muuda",
+             "dyn_rm":"Kustuta",
+             "dyn_rm_sure":"Kindel, et soovid seda allikat kustutada?",
+             "dyn_view":"Vaata",
+             "dyn_online":"Internetis",
+             "dyn_local":"Kohalik",
+             "dyn_path":"Aadress:",
+             "dyn_interval":"Miinimumvahe uuenduste vahel(min): "
              },
          "english":
          {
-             "name":"TRV 2015.3.10",
+             "name":"TRV 2016.1.11",
              "loading_states":"Loading data... States",
              "coastlines":"Coastlines",
              "countries":"Countries",
              "country_boundaries":"country boundaries",
              "lakes":"Lakes",
              "rivers":"Rivers",
-             "placenames":"place names",
+             "placenames":"data points",
              "states_counties":"states/counties",
              "NA_roads":"Major North American highways",
              "add_rmax":"Add Rmax",
@@ -180,7 +197,6 @@ phrases={"estonian":
                          "Snow",
                          "Graupel",
                          "Hail"],
-             "dualprf_passcount":"Pass /COUNT/",
              "level3_slice":u"Slice /NR/",
              "export_success":"Export successful",
              "export_format_fail":"Either unable to save into this format or lacking writing permissions at the destination.",
@@ -221,7 +237,8 @@ phrases={"estonian":
              "tv":u"total reflectivity (V)",
              "dbzh":"reflectivity (H)",
              "dbzv":"reflectivity (V)", 
-             "sqi":"signaalikvaliteedi indeks",
+             "sqi":"signal quality index",
+             "qidx":"quality",
              "product_radialvelocity":"radial velocity",
              "product_zdr":"differential reflectivity",
              "product_rhohv":"correlation coefficient",
@@ -234,5 +251,18 @@ phrases={"estonian":
              "language_estonian":"Eesti keel",
              "language_english":"English",
              "conf_restart_required":"Change will take effect upon next startup.",
+             "sweep":"sweep",
+             "dyn_labels":"Dynamic data points",
+             "color_table":"Color table override",
+             "default_colors":"Default colors",
+             "dyn_new":"Add",
+             "dyn_edit":"Edit",
+             "dyn_rm":"Delete",
+             "dyn_rm_sure":"Are you sure you want to delete this entry?",
+             "dyn_view":"View",
+             "dyn_online":"Online",
+             "dyn_local":"Local",
+             "dyn_path":"Path:",
+             "dyn_interval":"Minimum interval between updates(min):"
              }
     }

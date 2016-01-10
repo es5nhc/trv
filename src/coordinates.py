@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-##Copyright (c) 2015, Tarmo Tanilsoo
+##Copyright (c) 2016, Tarmo Tanilsoo
 ##All rights reserved.
 ##
 ##Redistribution and use in source and binary forms, with or without
@@ -30,6 +30,7 @@
 
 
 from math import sin, cos, sqrt, atan2, asin, pi, floor, degrees as r2d, radians as d2r
+from itertools import groupby
 def parsecoords(lat,lon):
     la="N"
     if lat < 0: la="S"
@@ -65,25 +66,71 @@ def az_range(x,y,zoomlevel):
     angle=180-r2d(atan2(x,y))
     r=sqrt(x**2+y**2)/zoomlevel
     return angle, r
-def getcoords(angle,r,zoom=1,center=[1000,1000]):
+def getcoords(polar,zoom=1,center=[1000,1000]):
     ''' Get coords '''
-    x=(sin(angle)*r)*zoom
-    y=-(cos(angle)*r)*zoom
-    return (x+center[0],y+center[1])
+    r,angle=polar
+    k=r*zoom
+    cx,cy=center
+    x=(sin(angle))*k
+    y=-(cos(angle))*k
+    return (x+cx,y+cy)
+def getmapcoords(placecoords,zoom,center,radarcoords):
+    plat,plong=placecoords
+    rlat,rlong=radarcoords
+    R = 6371.0
+    dLat = plat-rlat
+    dLon = plong-rlong
+    #Intermediate_calcs
+    #Instead of sin(0.5*dLat)**2
+    shd=sin(0.5*dLat)
+    #Instead of sin(0.5*dLon)**2
+    shd2=sin(0.5*dLon)
+    ##
+    a = shd*shd+cos(rlat)*cos(plat)*shd2*shd2
+    c = 2.0*atan2(a**0.5,(1.0-a)**0.5) ##
+    d = R*c*zoom
+    #Bearing
+    y = sin(dLon)*cos(plat)
+    x = cos(rlat)*sin(plat)-sin(rlat)*cos(plat)*cos(dLon)
+    suund = atan2(y,x)
+    cx,cy=center
+    x=(sin(suund))*d
+    y=-(cos(suund))*d
+    return (x+cx,y+cy)
 
-def geog2polar(plat,plong,rlat,rlong):
+    ''' functions getcoords and geog2polar combined in order to save CPU time on function calls'''
+def geog2polar(placecoords,radarcoords,radians=True):
     '''Usage: geog2polar(place latitude, place longitude, radar latitude, radar longitude)'''
-    #Distance
-    R = 6371
-    dLat = d2r(plat-rlat)
-    dLon = d2r(plong-rlong)
-    plat=d2r(plat) #To radians - radiaanidesse
-    rlat=d2r(rlat) #To radians - radiaanidesse
-    a = sin(0.5*dLat)**2+cos(rlat)*cos(plat)*sin(0.5*dLon)**2
-    c = 2*atan2(sqrt(a),sqrt(1-a))
+    plat,plong=placecoords
+    rlat,rlong=radarcoords
+    R = 6371.0
+    dLat = plat-rlat
+    dLon = plong-rlong
+    #Intermediate_calcs
+    #Instead of sin(0.5*dLat)**2
+    shd=sin(0.5*dLat)
+    #Instead of sin(0.5*dLon)**2
+    shd2=sin(0.5*dLon)
+    ##
+    a = shd*shd+cos(rlat)*cos(plat)*shd2*shd2
+    c = 2.0*atan2(a**0.5,(1.0-a)**0.5) ##
     d = R*c
     #Bearing
     y = sin(dLon)*cos(plat)
     x = cos(rlat)*sin(plat)-sin(rlat)*cos(plat)*cos(dLon)
     suund = atan2(y,x)
     return d, suund
+
+def coordsFilter(data,radarcoords):
+    '''Returns true if latitude and/or longitude is within 10° of that of the radar'''
+    rlat,rlon=radarcoords
+    listid=()
+    for k,i in groupby(data,lambda x,a=rlat,b=rlon,:abs(x[0]-a) < 0.08726646259971647 and abs(x[1]-b) < 0.17453292519943295):
+        if k: listid+=[x for x in i],
+    return listid
+def mapcoordsFilter(coords): #Remove path nodes that are off screen:
+    listid=()
+    for k,i in groupby(coords,lambda x:min(x)>=0 and max(x)<=2000):
+        if k:
+            listid+=[x for x in i],
+    return listid

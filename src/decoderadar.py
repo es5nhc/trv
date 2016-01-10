@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-##Copyright (c) 2015, Tarmo Tanilsoo
+##Copyright (c) 2016, Tarmo Tanilsoo
 ##All rights reserved.
 ##
 ##Redistribution and use in source and binary forms, with or without
@@ -76,7 +76,7 @@ def headers(data): #LEVEL 3 Headers
     headerinfo.append((headerinfo[13]*86400-86400)+headerinfo[14]) #Volume Scan time [22]
     headerinfo.append(halfw(data[92:94])) #halfw 47 - min dual pol value [23]
     headerinfo.append(halfw(data[94:96])) #halfw 48 - max dual pol value [24]
-    headerinfo.append(1 if product == 94 else 0.25) #Tühi Level 3 andmete korral [25]
+    headerinfo.append(1 if product == 94 or product == 165 else 0.25) #Tühi Level 3 andmete korral [25]
     headerinfo.append(halfw(data[70:72])) #halfw 36 [26]
     headerinfo.append(floating(data[60:64])) #halfw 32,34 [27] (dual pol)
     headerinfo.append(floating(data[64:68])) #halfw 34,36 [28] (dual pol)
@@ -97,6 +97,7 @@ def productname(jarjend,fraasid):
               "DBZV":fraasid["dbzv"],
               "REF":fraasid["product_reflectivity"],
               "ZDR":fraasid["product_zdr"],
+              "LZDR":fraasid["product_zdr"],
               "RHOHV":fraasid["product_rhohv"],
               "RHO":fraasid["product_rhohv"],
               "KDP":fraasid["product_kdp"],
@@ -106,6 +107,7 @@ def productname(jarjend,fraasid):
               "VRAD":fraasid["product_radialvelocity"],
               "PHI":fraasid["product_phi"],
               "SQI":fraasid["sqi"],
+              "QIDX":fraasid["qidx"],
               "PHIDP":fraasid["product_phi"],
               "SW":fraasid["product_sw"],
               "WRAD":fraasid["product_sw"]
@@ -175,6 +177,13 @@ def hdf5_sweepslist(fail):
             out.append(angle)
     andmefail.close()
     return out
+def dataset_count(nimekiri):
+    '''Count available datasets in newer H5rad files'''
+    count=0
+    for i in nimekiri:
+        if i[0:7]=="dataset":
+            count+=1
+    return count
 def hdf5_productlist(fail):
     andmefail=HDF5Fail(fail,"r")
     produktid=[]
@@ -188,15 +197,14 @@ def hdf5_productlist(fail):
                 except:
                     produktid.append(produkt)
     else:
-        count=0
-        for i in andmefail["dataset1/"].keys():
-            if i[0:4] == "data": count+=1
-        for j in range(1,count+1):
-            product=andmefail["dataset1/data"+str(j)+"/what"].attrs.get("quantity")
-            try:
-                produktid.index(product)
-            except:
-                produktid.append(product)
+        for k in range(1,2 if dataset_count(andmefail.keys())== 1 else 3): #Quick workaround to enable my custom files which has one product in one dataset, another in another due to different elevs.
+            count=0
+            for i in andmefail["dataset"+str(k)+"/"].keys():
+                if i[0:4] == "data": count+=1
+            for j in range(1,count+1):
+                product=andmefail["dataset"+str(k)+"/data"+str(j)+"/what"].attrs.get("quantity")
+                if product not in produktid:
+                    produktid.append(product)
     andmefail.close()
     return produktid
 def hdf5_leiaskann(fail,produkt="DBZ",angle=0):
@@ -225,6 +233,12 @@ def tonone(x): #Convert fill values used in hdf5_vallarray to Python None.
         return None
     else:
         return x
+def IrisMETEO(x):
+    x=int(x)
+    if x > 6:
+        return x-((x >> 3) << 3)
+    else:
+        return x
 def hdf5_valarray(fail,scan=None,rhiaz=None):
     andmefail=HDF5Fail(fail,"r")
     version=andmefail["what"].attrs.get("version")
@@ -239,26 +253,38 @@ def hdf5_valarray(fail,scan=None,rhiaz=None):
     if rhiaz != None: #If was collecting single gates for a whole RHI
         dataraw=[dataraw[int(rhiaz*len(dataraw)/360.0)]]
     whatattrs=andmefail["/"+scan+"/what"].attrs
+    quantity=whatattrs.get(u"quantity")
     gain=whatattrs.get(u"gain")
     offset=whatattrs.get(u"offset")
     nodata=whatattrs.get(u"nodata")
     undetect=whatattrs.get(u"undetect")
-    print "------------"
-    print "Gain:",gain
-    print "Offset:",offset
-    print "Nodata:",nodata
-    print "Undetect",undetect
+    #print "------------"
+    #print "Quantity:",quantity
+    #print "Gain:",gain
+    #print "Offset:",offset
+    #print "Nodata:",nodata
+    #print "Undetect",undetect
+    if nodata == 0:
+        maxval=offset+gain*255
+    else:
+        maxval=offset+gain*nodata
+    #print "Seega maksimaalne võimalik väärtus:",maxval
+    maxradials=[]
     dataarray=[]
     for i in dataraw:
+        maxradials.append(i.min())
         rida=i*1.0
         rida[rida == undetect]=-999
         rida[rida == nodata]=-999
         rida[rida != -999]*=gain
         rida[rida != -999]+=offset
+        rida=rida.tolist()
+        if quantity == "HCLASS":
+            rida=map(IrisMETEO,rida)
         if rhiaz != None:
-            return map(tonone,rida.tolist())
+            return map(tonone,rida)
         else:
-            dataarray.append([angle,d_angle,map(tonone,rida.tolist()),0])
+            dataarray.append([angle,d_angle,map(tonone,rida),0])
         angle+=d_angle
     andmefail.close()
     return dataarray        
@@ -267,9 +293,10 @@ def rhiheadersdecoded(jarjend, az,fraasid):
     msg=productname(jarjend,fraasid).capitalize()+" | "+fraasid["azimuth"]+": "+str(az)+u"° | "+str(aeg)+" UTC"
     return msg
 def headersdecoded(jarjend,fraasid):
-    print jarjend[1], type(jarjend[1])
     aeg=datetime.datetime.utcfromtimestamp(jarjend[1])
     msg=str(float(jarjend[17]))+u"° "+productname(jarjend,fraasid)+" | "+str(aeg)+" UTC"
+    if jarjend[5]=="L2": #Kui on Level 2 fail.
+        msg+=" ("+str(datetime.datetime.utcfromtimestamp(jarjend[4]))+")"
     return msg
 def decompress(data):
     location=data.find("BZ") #Leia BZipi päise algus
@@ -288,9 +315,10 @@ def level2_headers(fileobject,moment="REF",scan=0):
     samm=(steps[2]-steps[1])/1000.0
     volume_header=fileobject.volume_header
     aeg=(volume_header["date"]-1)*86400+volume_header["time"]/1000
+    aeg2=timegm(fileobject.get_times([scan])[0].utctimetuple())
     h=level2_sweepslist(fileobject)[scan]
     dopprfno=fileobject.vcp["cut_parameters"][scan]["dop_prf_num_1"] #doppler prf number
-    return [moment,aeg,dopprfno,scan,0,0,fileobject.location()[0],fileobject.location()[1],0,0,0,0,0,0,0,0,0,h,0,0,0,0,0,0,0,samm]
+    return [moment,aeg,dopprfno,scan,aeg2,"L2",fileobject.location()[0],fileobject.location()[1],0,0,0,0,0,0,0,0,0,h,0,0,0,0,0,0,0,samm]
 def level2_valarray(fileobject,moment="REF",scan=0,rhiaz=False):
     omadused=fileobject.scan_info()[scan]
     try:
@@ -333,15 +361,15 @@ def level2_valarray(fileobject,moment="REF",scan=0,rhiaz=False):
 ##        try: sweeps.append(float(i.splitlines()[0]))
 ##        except: pass
 ##    return sweeps
-def convhca(val): #Convert IRIS HCA to NEXRAD Level 3 HCA
-    val=int(val)
-    if val == 1: return 1
-    elif val == 2: return 5
-    elif val == 3: return 4
-    elif val == 4: return 3
-    elif val == 5: return 8
-    elif val == 6: return 9
-    else: return -999
+##def convhca(val): #Convert IRIS HCA to NEXRAD Level 3 HCA
+##    val=int(val)
+##    if val == 1: return 1
+##    elif val == 2: return 5
+##    elif val == 3: return 4
+##    elif val == 4: return 3
+##    elif val == 5: return 8
+##    elif val == 6: return 9
+##    else: -999
 ##def tt_singlegate(filecontent,az,sweepnr):
 ##    additional=0
 ##    product=filecontent.splitlines()[0].split()[1]
@@ -422,7 +450,7 @@ def valarray(stream,min_val=-32,increment=0.5,product=94): #Values array for NEX
             for j in xrange(p,p+amt):
                 val=getbyte(stream[j])
                 if val > 1:
-                    datarow.append(min_val+increment*(val-2))
+                    datarow.append(min_val+increment*(val-2.0))
                 else:
                     datarow.append(None)
         dataarray.append([d2r(az),d2r(d_az),datarow,mindistance])
@@ -431,10 +459,12 @@ def valarray(stream,min_val=-32,increment=0.5,product=94): #Values array for NEX
 def leiasuund(rad,rad2,y,paised,zoom=1,center=[1000,1000],samm=1):
     '''makepath(algasimuut, (asimuudi) samm, kaugus radarist, suurendusaste, renderduse keskpunkti asukoht), kauguse samm'''
     koosinus=1 if not isinstance(paised[0],int) else cos(d2r(float(paised[17])))#Kui on nexradi produktid, arvesta nurga muutusega!
-    coords1=getcoords(rad,(y+samm)*koosinus,zoom,center)
-    coords2=getcoords(rad+rad2,(y+samm)*koosinus,zoom,center)
-    coords3=getcoords(rad,y*koosinus,zoom,center)
-    coords4=getcoords(rad+rad2,y*koosinus,zoom,center)
+    r=y*koosinus
+    r_new=r+samm*koosinus
+    coords1=getcoords((r_new,rad),zoom,center)
+    coords2=getcoords((r_new,rad+rad2),zoom,center)
+    coords3=getcoords((r,rad),zoom,center)
+    coords4=getcoords((r,rad+rad2),zoom,center)
     startx1,starty1=coords3
     startx2,starty2=coords4
     endx1,endy1=coords1
@@ -443,4 +473,4 @@ def leiasuund(rad,rad2,y,paised,zoom=1,center=[1000,1000],samm=1):
     dx2=endx2-startx2
     dy1=endy1-starty1
     dy2=endy2-starty2
-    return [startx1,startx2,starty1,starty2,dx1,dx2,dy1,dy2]
+    return startx1,startx2,starty1,starty2,dx1,dx2,dy1,dy2
