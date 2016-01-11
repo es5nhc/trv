@@ -209,7 +209,6 @@ class DynamicLabelEditor(Tkinter.Toplevel):
             self.dataPath.set(values[1])
             self.updateInterval.set(values[2])
             self.enabled.set(values[4])
-            print self.enabled.get()
         label1=Tkinter.Label(self,text="Type")
         label1.grid(column=0,row=0,sticky=Tkinter.E)
         type1=Tkinter.Radiobutton(self,text=fraasid["dyn_online"],variable=self.sourceType,value=0,command=self.goonline)
@@ -224,7 +223,7 @@ class DynamicLabelEditor(Tkinter.Toplevel):
         label3.grid(column=0,row=2,sticky=Tkinter.E)
         self.intervalentry=Tkinter.Entry(self,textvariable=self.updateInterval)
         self.intervalentry.grid(column=1,row=2,columnspan=2,sticky=Tkinter.W)
-        self.enabledcheck=Tkinter.Checkbutton(self, variable=self.enabled, text="Enabled")
+        self.enabledcheck=Tkinter.Checkbutton(self, variable=self.enabled, text=fraasid["dyn_enabled"])
         self.enabledcheck.grid(column=2,row=2)
         okbutton=Tkinter.Button(self,text="OK",command=lambda: self.submit_source(parent))
         okbutton.grid(column=2,row=3)
@@ -278,7 +277,12 @@ class DynamicLabelWindow(Tkinter.Toplevel):
         types=[fraasid["dyn_online"],fraasid["dyn_local"]]
         self.customfileslist.delete(0,Tkinter.END)
         for i in conf["placesources"]:
-            self.customfileslist.insert(Tkinter.END,types[i[0]]+" - "+i[1])
+            if i[4] == 1:
+                check=u"☑ "
+            else:
+                check=u"☐ "
+            liststring=check+types[i[0]]+" - "+i[1]
+            self.customfileslist.insert(Tkinter.END,liststring)
     def add(self):
         self.allikaIndeks=-1 #index of selected item. -1 means the option is to be created.
         DynamicLabelEditor(self)
@@ -916,7 +920,6 @@ def render_radials():
                             pilt.paste(iconfile,[x-8,y-8,x+8,y+8],iconfile)
                 else: #More than one point in set. Therefore polygon
                     path=[]
-                    print pointsamt
                     for p in range(pointsamt):
                         lat=punktid[kohad]["lat"][p]
                         lon=punktid[kohad]["lon"][p]
