@@ -76,7 +76,7 @@ def headers(data): #LEVEL 3 Headers
     headerinfo.append((headerinfo[13]*86400-86400)+headerinfo[14]) #Volume Scan time [22]
     headerinfo.append(halfw(data[92:94])) #halfw 47 - min dual pol value [23]
     headerinfo.append(halfw(data[94:96])) #halfw 48 - max dual pol value [24]
-    headerinfo.append(1 if product == 94 or product == 165 else 0.25) #Tühi Level 3 andmete korral [25]
+    headerinfo.append(1 if product == 94 else 0.25) #Tühi Level 3 andmete korral [25]
     headerinfo.append(halfw(data[70:72])) #halfw 36 [26]
     headerinfo.append(floating(data[60:64])) #halfw 32,34 [27] (dual pol)
     headerinfo.append(floating(data[64:68])) #halfw 34,36 [28] (dual pol)
