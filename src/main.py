@@ -198,17 +198,6 @@ class DynamicLabelEditor(Tkinter.Toplevel):
         self.updateInterval=Tkinter.StringVar()
         self.sourceType=Tkinter.IntVar()
         self.enabled=Tkinter.IntVar()
-        if parent.allikaIndeks == -1:
-            self.dataPath.set("")
-            self.updateInterval.set("")
-            self.sourceType.set(0)
-            self.enabled.set(1)
-        else:
-            values=conf["placesources"][parent.allikaIndeks]
-            self.sourceType.set(values[0])
-            self.dataPath.set(values[1])
-            self.updateInterval.set(values[2])
-            self.enabled.set(values[4])
         label1=Tkinter.Label(self,text="Type")
         label1.grid(column=0,row=0,sticky=Tkinter.E)
         type1=Tkinter.Radiobutton(self,text=fraasid["dyn_online"],variable=self.sourceType,value=0,command=self.goonline)
@@ -227,6 +216,20 @@ class DynamicLabelEditor(Tkinter.Toplevel):
         self.enabledcheck.grid(column=2,row=2)
         okbutton=Tkinter.Button(self,text="OK",command=lambda: self.submit_source(parent))
         okbutton.grid(column=2,row=3)
+
+        if parent.allikaIndeks == -1:
+            self.dataPath.set("")
+            self.updateInterval.set("")
+            self.sourceType.set(0)
+            self.enabled.set(1)
+        else:
+            values=conf["placesources"][parent.allikaIndeks]
+            self.sourceType.set(values[0])
+            if values[0] != 0:
+                self.intervalentry.config(state=Tkinter.DISABLED)
+            self.dataPath.set(values[1])
+            self.updateInterval.set(values[2])
+            self.enabled.set(values[4])
         self.mainloop()
     def pickfile(self): #Pick a source file
         self.intervalentry.config(state=Tkinter.DISABLED)
@@ -970,6 +973,7 @@ def load(path=None):
         path=filed.show()
         currenturl=None
     if path != "": #If a file was given
+        toolsmenyy.entryconfig(fraasid["color_table"],state=Tkinter.NORMAL) #Enable ability to override colormaps since we now have something to show
         stream=file_read(path)
         currentfilepath=path
         msgtostatus(fraasid["decoding"])
@@ -1630,7 +1634,7 @@ colortablemenu=Tkinter.Menu(toolsmenyy,tearoff=0) #Custom color tables menu
 listcolortables() #Adds all available color tables to the menu
 colortablemenu.add_separator()
 colortablemenu.add_command(label=fraasid["default_colors"],command=reset_colortable)
-toolsmenyy.add_cascade(label=fraasid["color_table"], menu=colortablemenu, underline=0)
+toolsmenyy.add_cascade(label=fraasid["color_table"], menu=colortablemenu, underline=0, state=Tkinter.DISABLED)
 toolsmenyy.add_command(label=fraasid["dyn_labels"],command=dynlabels_settings)
 abimenyy.add_command(label=fraasid["key_shortcuts_menuentry"], command=keys_list)
 abimenyy.add_separator()
