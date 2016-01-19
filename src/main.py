@@ -40,6 +40,7 @@ from decoderadar import *
 import translations
 from PIL.Image import open as laepilt
 from PIL.Image import new as uuspilt
+from PIL.Image import merge as yhendapilt
 from PIL.ImageDraw import Draw
 from PIL.ImageTk import PhotoImage, BitmapImage
 from PIL import ImageFont
@@ -72,6 +73,145 @@ print fraasid["rivers"]
 import rivers
 print fraasid["NA_roads"]
 import major_NA_roads
+class BatchExportWindow(Tkinter.Toplevel):
+    def __init__(self, parent, title = None):
+        Tkinter.Toplevel.__init__(self,parent)
+        self.title(fraasid["batch_export"])
+        self.protocol("WM_DELETE_WINDOW",self.onclose)
+        self.datadir=None
+        self.outdir=None
+        self.outfmt=Tkinter.StringVar()
+        self.outfmt.set("png") #PNG output by default
+        self.outprod=Tkinter.StringVar()
+        self.outprod.set("DBZH")
+        self.outel=Tkinter.StringVar()
+        self.outel.set("0.5")
+        #Input and output directories
+        frame1=Tkinter.Frame(self)
+        label1=Tkinter.Label(frame1,text=fraasid["batch_input"])
+        label1.grid(column=0,row=0)
+        self.btn1=Tkinter.Button(frame1,text=fraasid["batch_pick"],width=30,command=lambda: self.pickdir(0))
+        self.btn1.grid(column=1,row=0)
+        label2=Tkinter.Label(frame1,text=fraasid["batch_output"])
+        label2.grid(column=0,row=1)
+        self.btn2=Tkinter.Button(frame1,text=fraasid["batch_pick"],width=30,command=lambda: self.pickdir(1))
+        self.btn2.grid(column=1,row=1)
+        frame1.grid(column=0,row=0)
+        #Output format
+        frame2=Tkinter.Frame(self,relief=Tkinter.SUNKEN,borderwidth=1)
+        label3=Tkinter.Label(frame2,text=fraasid["batch_fmt"])
+        label3.grid(column=0,row=0,columnspan=2)
+        radio1=Tkinter.Radiobutton(frame2,text="GIF",variable=self.outfmt,value="gif")
+        radio1.grid(column=0,row=1)
+        radio2=Tkinter.Radiobutton(frame2,text="PNG",variable=self.outfmt,value="png")
+        radio2.grid(column=1,row=1)
+        frame2.grid(column=1,row=0)
+        #Product and sweep selection.
+        frame3=Tkinter.Frame(self)
+        label4=Tkinter.Label(frame3,text="Product")
+        label4.grid(column=0,row=0)
+        list1=Tkinter.Entry(frame3,textvariable=self.outprod,width=7)
+        list1.grid(column=1,row=0)
+        label5=Tkinter.Label(frame3,text="Elevation")
+        label5.grid(column=2,row=0)
+        list2=Tkinter.Entry(frame3,textvariable=self.outel,width=7)
+        list2.grid(column=3,row=0)
+        frame3.grid(column=0,row=1)
+        #OK button
+        okbutton=Tkinter.Button(self,text="OK",command=self.exportdir)
+        okbutton.grid(column=1,row=1)
+        self.mainloop()
+    def pickdir(self,value):
+        dirs=["../data","../radar_images"]
+        directory=tkFileDialog.askdirectory(initialdir=dirs[value])
+        if directory: #If something was entered
+            if value: #If setting output directory (1)
+                button=self.btn2
+                self.outdir=directory
+            else:
+                button=self.btn1
+                self.datadir=directory
+            button.config(text=directory)
+        return 0
+    def exportdir(self): #Process the data files
+        global paised
+        global radials
+        global samemap
+        global radarposprev
+        global level2fail
+        if self.outdir and self.datadir:
+            files=sorted(os.listdir(self.datadir))
+            counter=1
+            for i in files:
+                path=self.datadir+"/"+i
+                currentfilepath=path
+                stream=file_read(path)
+                fmt=self.detectfmt(path,stream)
+                if fmt==0:
+                    paised=headers(stream)
+                    checkradarposition(paised)
+                    draw_info(headersdecoded(paised,fraasid))
+                    radials=level3radials(paised,stream)
+                    render_radials()
+                    exportimg(self.outdir+"/"+str(counter).zfill(5)+"."+self.outfmt.get(),False)
+                    counter+=1
+                elif fmt==1:
+                    produktid=hdf5_productlist(path)
+                    sweeps=hdf5_sweepslist(path)
+                    skanniarv=hdf5_leiaskann(path,self.outprod.get(),self.outel.get())
+                    if skanniarv: #If this scan was found
+                        paised=hdf5_headers(path,self.outprod.get(),sweeps[sweeps.index(float(self.outel.get()))])
+                        checkradarposition(paised)
+                        draw_info(headersdecoded(paised,fraasid))
+                        radials=hdf5_valarray(path,skanniarv)
+                        render_radials()
+                        exportimg(self.outdir+"/"+str(counter).zfill(5)+"."+self.outfmt.get(),False)
+                        counter+=1
+                    else:
+                        tkMessageBox.showerror(fraasid["name"],fraasid["batch_notfound"]+i+"\n\n"+fraasid["batch_notfound2"])
+                        return -1
+                elif fmt==2:
+                    indexes=[]
+                    product=self.outprod.get()
+                    el=float(self.outel.get())
+                    level2fail=NEXRADLevel2File(path) #Load a Level 2 file
+                    sweeps=level2_sweepslist(level2fail)
+                    for x in range(len(sweeps)): #Determining sweeps to be used
+                        products=level2fail.scan_info()[x]["moments"]
+                        if abs(sweeps[x]-el)<=0.05 and product in products:
+                            if product == "REF":
+                                if not "VEL" in products:
+                                    indexes.append(x)
+                            else:
+                                indexes.append(x)
+                    if len(indexes)==0:
+                        tkMessageBox.showerror(fraasid["name"],fraasid["batch_notfound"]+i+"\n\n"+fraasid["batch_notfound2"])
+                        return -1
+                    for sweepsindex in indexes:
+                        paised=level2_headers(level2fail,self.outprod.get(),sweepsindex)
+                        radials=level2_valarray(level2fail,self.outprod.get(),sweepsindex)
+                        draw_info(headersdecoded(paised,fraasid))
+                        render_radials()
+                        exportimg(self.outdir+"/"+str(counter).zfill(5)+"."+self.outfmt.get(),False)
+                        counter+=1
+                self.update()
+            self.onclose()
+            load(path) #Open the last rendered file properly.
+        else:
+            tkMessageBox.showwarning(fraasid["name"],fraasid["batch_notfilled"])
+        return 0
+    def detectfmt(self, path, stream):
+        if path[-3:]== ".h5" or stream[1:4]=="HDF":
+            return 1
+        elif stream[0:4] == "AR2V":
+            return 2
+        else:
+            return 0
+    def onclose(self):
+        global batchexportopen
+        batchexportopen=0
+        self.destroy()
+        return 0
 class AddRMAXChooser(Tkinter.Toplevel):
     def __init__(self, parent, title = None):
         global paised
@@ -195,7 +335,7 @@ class DynamicLabelEditor(Tkinter.Toplevel):
         self.title(fraasid["dyn_labels"])
         self.protocol("WM_DELETE_WINDOW",self.onclose)
         self.dataPath=Tkinter.StringVar()
-        self.updateInterval=Tkinter.StringVar()
+        self.updateInterval=0
         self.sourceType=Tkinter.IntVar()
         self.enabled=Tkinter.IntVar()
         label1=Tkinter.Label(self,text="Type")
@@ -208,44 +348,44 @@ class DynamicLabelEditor(Tkinter.Toplevel):
         label2.grid(column=0,row=1,sticky=Tkinter.E)
         self.pathentry=Tkinter.Entry(self,width=40,textvariable=self.dataPath)
         self.pathentry.grid(column=1,row=1,columnspan=2)
-        label3=Tkinter.Label(self,text=fraasid["dyn_interval"])
-        label3.grid(column=0,row=2,sticky=Tkinter.E)
-        self.intervalentry=Tkinter.Entry(self,textvariable=self.updateInterval)
-        self.intervalentry.grid(column=1,row=2,columnspan=2,sticky=Tkinter.W)
         self.enabledcheck=Tkinter.Checkbutton(self, variable=self.enabled, text=fraasid["dyn_enabled"])
-        self.enabledcheck.grid(column=2,row=2)
+        self.enabledcheck.grid(column=1,row=2)
         okbutton=Tkinter.Button(self,text="OK",command=lambda: self.submit_source(parent))
         okbutton.grid(column=2,row=3)
 
         if parent.allikaIndeks == -1:
             self.dataPath.set("")
-            self.updateInterval.set("")
             self.sourceType.set(0)
             self.enabled.set(1)
         else:
             values=conf["placesources"][parent.allikaIndeks]
             self.sourceType.set(values[0])
-            if values[0] != 0:
-                self.intervalentry.config(state=Tkinter.DISABLED)
             self.dataPath.set(values[1])
-            self.updateInterval.set(values[2])
+            self.updateInterval=values[2]
             self.enabled.set(values[4])
+            self.dataName=values[5]
         self.mainloop()
     def pickfile(self): #Pick a source file
-        self.intervalentry.config(state=Tkinter.DISABLED)
         pathd=tkFileDialog.Open(None,initialdir="../places")
         path=pathd.show()
         self.dataPath.set(path)
     def goonline(self): #Ensure the update interval selection is active
         self.dataPath.set("")
-        self.intervalentry.config(state=Tkinter.NORMAL)
     def submit_source(self,parent):
         global conf
         if parent.allikaIndeks == -1:
-            conf["placesources"].append([self.sourceType.get(),self.dataPath.get(),self.updateInterval.get(),-1,self.enabled.get()]) #New
+            try:
+                if self.sourceType.get() == 1:
+                    name=json.loads(file_read(self.dataPath.get()))["name"]
+                else:
+                    name=self.dataPath.get()
+            except:
+                pass
+            conf["placesources"].append([self.sourceType.get(),self.dataPath.get(),self.updateInterval,-1,self.enabled.get(),name]) #New
         else:
-            conf["placesources"][parent.allikaIndeks]=[self.sourceType.get(),self.dataPath.get(),self.updateInterval.get(),-1,self.enabled.get()] #Edit
+            conf["placesources"][parent.allikaIndeks]=[self.sourceType.get(),self.dataPath.get(),self.updateInterval,-1,self.enabled.get(),self.dataName] #Edit
         ##Format of dynamic information setting [Online/Local, path, update interval if relevant, last download timestamp if online content]
+        ##Open the file to fetch the name.
         save_config_file()
         parent.listsources() #Update sources listing
         self.onclose()
@@ -284,7 +424,7 @@ class DynamicLabelWindow(Tkinter.Toplevel):
                 check=u"☑ "
             else:
                 check=u"☐ "
-            liststring=check+types[i[0]]+" - "+i[1]
+            liststring=check+types[i[0]]+" - "+i[5]
             self.customfileslist.insert(Tkinter.END,liststring)
     def add(self):
         self.allikaIndeks=-1 #index of selected item. -1 means the option is to be created.
@@ -339,11 +479,11 @@ clickbox=None #Pixel information as PhotoImage
 rendered=None #Rendered radar image as PhotoImage
 rhiout=None #PseudoRHI as PhotoImage
 #Above as an PIL/Pillow image.
-rlegend2=uuspilt("RGB",(1,1))
-infotekst2=uuspilt("RGB",(1,1))
-clickbox2=uuspilt("RGB",(1,1))
-rendered2=uuspilt("RGB",(1,1))
-rhiout2=uuspilt("RGB",(1,1))
+rlegend2=uuspilt("RGBA",(1,1))
+infotekst2=uuspilt("RGBA",(1,1))
+clickbox2=uuspilt("RGBA",(1,1))
+rendered2=uuspilt("RGBA",(1,1))
+rhiout2=uuspilt("RGBA",(1,1))
 currentfilepath=None #Path to presently open file
 #Pildifontide laadimine
 pildifont=ImageFont.truetype("../fonts/DejaVuSansCondensed.ttf",12)
@@ -355,6 +495,8 @@ urlwindowopen=0 #1 if dialog to open an URL is open
 nexradchooseopen=0 #1 if dialog to choose a nexrad station is open
 rmaxaddopen=0 #1 if configuration window to add Rmax to chunk of data is open.
 dynlabelsopen=0 #same rule as above for selection of dynamic labels
+batchexportopen=0 #same as when batch export window is open.
+samemap=False #If True, don't render the map again on a new render - Condition: if the resultant map is expected to be identical to previous renders
 zoom=1
 info=0
 rhi=0
@@ -367,6 +509,7 @@ direction=1
 fmt=0 #Data format indicator
 renderagain=0 #Need to render again upon loading the PPI view.
 level2fail=False #Placeholder for pyart.io.nexrad_level2.NEXRADLevel2File object
+radarposprev=None #Radar position during previous render
 canvasdimensions=[600,400]
 canvasctr=[300,200]
 clickboxloc=[0,0]
@@ -441,9 +584,11 @@ colortablenames={94:"dbz",
                  "SW": "sw"} #Names for color tables according to product
 customcolortable=None
 def download_file(url,dst="../cache/urlcache"):
-    req=urllib2.urlopen(url,timeout=10)
-    sisu=req.read()
-    req.close()
+    req=urllib2.Request(url)
+    req.add_header("User-agent","TRV/"+fraasid["name"].split()[1])
+    res=urllib2.urlopen(req,timeout=10)
+    sisu=res.read()
+    res.close()
     cache=open(dst,"wb")
     cache.write(sisu)
     cache.close()
@@ -459,6 +604,11 @@ def configrmaxadd():
         rmaxaddopen=1
         AddRMAXChooser(output)
     return 0
+def batch_export(): #Batch export
+    global batchexportopen
+    if batchexportopen == 0:
+        batchexportopen=1
+        BatchExportWindow(output)
 def dynlabels_settings():#Configuration for dynamic labels
     global dynlabelsopen
     if dynlabelsopen == 0:
@@ -513,7 +663,7 @@ def populatenexradmenus(product="p94r0"):
     product_choice["menu"].add_command(label="KDP",command=lambda x=index: fetchnexrad("163k"+index))
     product_choice["menu"].add_command(label="HCLASS",command=lambda x=index: fetchnexrad("165h"+index))
     return 0
-def exportimg():
+def exportimg(path=None,GUI=True):
     global rendered2
     global rlegend2
     global infotekst2
@@ -536,8 +686,9 @@ def exportimg():
         cbx=clickboxloc[0]
         cby=clickboxloc[1]
         cbh=84 if not rhishow else 45
-        filed=tkFileDialog.SaveAs(None,initialdir="../radar_images")
-        path=filed.show()
+        if not path:
+            filed=tkFileDialog.SaveAs(None,initialdir="../radar_images")
+            path=filed.show()
         if path != "":
             try:
                 outimage=uuspilt("RGB",(x,y),"#000025")
@@ -550,7 +701,7 @@ def exportimg():
                 if rlegend != None: outimage.paste(rlegend2,(x-35,halfy-163,x,halfy+162))
                 if infotekst != None: outimage.paste(infotekst2,(halfx-250,y-30,halfx+250,y-10))
                 outimage.save(path)
-                tkMessageBox.showinfo(fraasid["name"],fraasid["export_success"])
+                if GUI: tkMessageBox.showinfo(fraasid["name"],fraasid["export_success"])
             except:
                 tkMessageBox.showerror(fraasid["name"],fraasid["export_format_fail"])
         return 0
@@ -741,7 +892,7 @@ def drawmap(data,radarcoords,drawcolor,linewidth=1):
     f=0
     hetkeseisusamm=pikkus**-1
     hetkeseis=0
-    teejoon=joonis.line
+    teejoon=kaardijoonis.line
     for joon in paths:
         f+=1
         for rada in joon:
@@ -757,6 +908,11 @@ def update_progress(x):
     w.coords(progress,(0,korgus-66,x,korgus-56))
     w.update()
     return 0
+def image_alpha(i1,i2,start=(0,0)): #Alpha blend two images
+    r,g,b,a=i2.split()
+    m=yhendapilt("RGB",(r,g,b))
+    mm=yhendapilt("L",(a,))
+    i1.paste(m,start,mm)
 def showrendered(pilt):
     global rendered
     rendered=PhotoImage(image=pilt)
@@ -795,6 +951,9 @@ def render_radials():
     global paised
     global canvasdimensions
     global joonis
+    global kaardijoonis
+    global samemap
+    global kaart
     global render_center
     global currentfilepath
     global customcolortable
@@ -804,8 +963,11 @@ def render_radials():
     w.config(cursor="watch")
     w.itemconfig(progress,state=Tkinter.NORMAL)
     msgtostatus(fraasid["drawing"]+" "+fraasid["radar_image"])
-    pilt=uuspilt("RGB",(2000,2000),"#000025")
+    pilt=uuspilt("RGBA",(2000,2000),"#000025") #Image for image itself
     joonis=Draw(pilt)
+    if not samemap:
+        kaart=uuspilt("RGBA",(2000,2000),(0,0,0,0)) #Image for map contours
+        kaardijoonis=Draw(kaart)
     hulknurk=joonis.polygon
     current=0.0
     updateiter=0
@@ -867,19 +1029,22 @@ def render_radials():
     img_center=canvasctr
     showrendered(pilt)
     w.coords(radaripilt,tuple(img_center)) #Center image
-    msgtostatus(fraasid["drawing"]+" "+fraasid["coastlines"].lower())
-    drawmap(coastlines.points,(rlat,rlon),(17,255,17))
-    msgtostatus(fraasid["drawing"]+" "+fraasid["lakes"].lower())
-    drawmap(lakes.points,(rlat,rlon),(0,255,255),1)
-    if rlon < 0:
-        msgtostatus(fraasid["drawing"]+" "+fraasid["NA_roads"])
-        drawmap(major_NA_roads.points,(rlat,rlon),(125,0,0),2)
-    msgtostatus(fraasid["drawing"]+" "+fraasid["rivers"].lower())
-    drawmap(rivers.points,(rlat,rlon),(0,255,255),1)
-    msgtostatus(fraasid["drawing"]+" "+fraasid["states_counties"])
-    drawmap(states.points,(rlat,rlon),(255,255,255),1)
-    msgtostatus(fraasid["drawing"]+" "+fraasid["country_boundaries"])
-    drawmap(countries.points,(rlat,rlon),(255,0,0),2)
+    if not samemap:
+        msgtostatus(fraasid["drawing"]+" "+fraasid["coastlines"].lower())
+        drawmap(coastlines.points,(rlat,rlon),(17,255,17,255))
+        msgtostatus(fraasid["drawing"]+" "+fraasid["lakes"].lower())
+        drawmap(lakes.points,(rlat,rlon),(0,255,255,255),1)
+        if rlon < 0:
+            msgtostatus(fraasid["drawing"]+" "+fraasid["NA_roads"])
+            drawmap(major_NA_roads.points,(rlat,rlon),(125,0,0,255),2)
+        msgtostatus(fraasid["drawing"]+" "+fraasid["rivers"].lower())
+        drawmap(rivers.points,(rlat,rlon),(0,255,255,255),1)
+        msgtostatus(fraasid["drawing"]+" "+fraasid["states_counties"])
+        drawmap(states.points,(rlat,rlon),(255,255,255,255),1)
+        msgtostatus(fraasid["drawing"]+" "+fraasid["country_boundaries"])
+        drawmap(countries.points,(rlat,rlon),(255,0,0,255),2)
+    image_alpha(pilt,kaart)
+    samemap=True #Don't render the map contours again unless the view has changed(pan, zoom)
     #Dynamic information
     for entry in xrange(len(conf["placesources"])):
         i=conf["placesources"][entry]
@@ -892,47 +1057,65 @@ def render_radials():
             try:
                 if (time.time()-float(i[3]))>int(i[2])*60: #If sufficient amount has passed since last download
                     download_file(i[1],filepath) #Download the file
-                    conf["placesources"][entry][3]=time.time() #Save last time of download
+                    conf["placesources"][entry][3]=time.time() #Save last time of download    
                     save_config_file()
                 internetOkay=True
             except:
                 tkMessageBox.showerror(fraasid["name"],fraasid["download_failed"]+"\nURL:"+i[1]) #Something went south with download.
         if not internetOkay and i[0] == 0: continue #Okay, something went wrong with data file download. Onward to next data file.
-        allikas=open(filepath,"r")
-        punktid=json.load(allikas)
-        allikas.close()
-        for kohad in punktid:
-            if punktid[kohad]["min_zoom"] < zoomlevel:
-                pointsamt=len(punktid[kohad]["lat"]) #Amount of coordinate points
-                if pointsamt==1:
-                    loc=geog2polar((d2r(punktid[kohad]["lat"][0]),d2r(punktid[kohad]["lon"][0])),(rlat,rlon))
-                    coords=getcoords((loc[0],loc[1]),zoomlevel,render_center)
-                    if coords[0] < 2000 and coords[0] > 0 and coords[1] < 2000 and coords[1] > 0:
-                        x=int(coords[0])
-                        y=int(coords[1])
-                        if punktid[kohad]["label"]:
-                            fontsize=int(punktid[kohad]["size"])
-                            teksty=y-int(fontsize/2)
-                            joonis.text((x+11,teksty+1),text=kohad,fill="black",font=ImageFont.truetype("../fonts/DejaVuSansCondensed.ttf",fontsize))
-                            joonis.text((x+10,teksty),text=kohad,fill=punktid[kohad]["color"],font=ImageFont.truetype("../fonts/DejaVuSansCondensed.ttf",fontsize))
-                        if punktid[kohad]["icon"] == None:
-                            joonis.rectangle((x-2,y-2,x+2,y+2),fill="black")
-                            joonis.rectangle((x-1,y-1,x+1,y+1),fill="white")
-                        else:
-                            iconfile=laepilt("../images/"+punktid[kohad]["icon"].lower()+".png")
-                            pilt.paste(iconfile,[x-8,y-8,x+8,y+8],iconfile)
-                else: #More than one point in set. Therefore polygon
-                    path=[]
-                    for p in range(pointsamt):
-                        lat=punktid[kohad]["lat"][p]
-                        lon=punktid[kohad]["lon"][p]
-                        loc=geog2polar((d2r(lat),d2r(lon)),(rlat,rlon))
+        try:
+            allikas=open(filepath,"r")
+            punktid=json.load(allikas)
+            allikas.close()
+            #Update data source config
+            conf["placesources"][entry][5]=punktid["name"] #Name
+            if i[0] == 0: conf["placesources"][entry][2]=punktid["interval"] #Update interval, not to be checked on local files
+            for koht in punktid["data"]:
+                if koht["min"] < zoomlevel:
+                    andmetyyp=koht["type"] #Data type
+                    if andmetyyp==0: #In case of point
+                        loc=geog2polar((d2r(koht["la"]),d2r(koht["lo"])),(rlat,rlon))
                         coords=getcoords((loc[0],loc[1]),zoomlevel,render_center)
-                        for p2 in coords:
-                            path.append(p2)
-                    if punktid[kohad]["connect"]: path+=path[0:2] #Connect the line to the beginning if requested
-                    joonis.line(path,fill="#000000",width=int(punktid[kohad]["width"])+2) #Shadow
-                    joonis.line(path,fill=punktid[kohad]["color"],width=int(punktid[kohad]["width"])) #The line itself
+                        if coords[0] < 2000 and coords[0] > 0 and coords[1] < 2000 and coords[1] > 0: #Filter out points outside of plot
+                            x,y=map(int,coords)
+                            if koht["icon"] == None:
+                                joonis.rectangle((x-2,y-2,x+2,y+2),fill="black")
+                                joonis.rectangle((x-1,y-1,x+1,y+1),fill="white")
+                                textx=x+10 #X coordinate of label if one is to be shown
+                            else:
+                                iconfile=laepilt("../images/icons/"+koht["icon"].lower()+".png")
+                                icw,ich=iconfile.size
+                                textx=x+icw/2+2
+                                pilt.paste(iconfile,(int(x-icw/2),int(y-ich/2)),iconfile)
+                            if koht["label"]:
+                                fontsize=int(koht["size"])
+                                teksty=y-int(fontsize/2) #Y coordinate of the label
+                                joonis.text((textx+1,teksty+1),text=koht["txt"],fill="black",font=ImageFont.truetype("../fonts/DejaVuSansCondensed.ttf",fontsize))
+                                joonis.text((textx,teksty),text=koht["txt"],fill=koht["color"],font=ImageFont.truetype("../fonts/DejaVuSansCondensed.ttf",fontsize))
+                    elif andmetyyp==1: #More than one point in set. Therefore polygon
+                        path=[]
+                        for p in xrange(len(koht["la"])):
+                            lat=koht["la"][p]
+                            lon=koht["lo"][p]
+                            loc=geog2polar((d2r(lat),d2r(lon)),(rlat,rlon))
+                            coords=getcoords((loc[0],loc[1]),zoomlevel,render_center)
+                            for p2 in coords:
+                                path.append(p2)
+                        if koht["conn"]: path+=path[0:2] #Connect the line to the beginning if requested
+                        joonis.line(path,fill="#000000",width=int(koht["width"])+2) #Shadow
+                        joonis.line(path,fill=koht["color"],width=int(koht["width"])) #The line itself
+                    elif andmetyyp==2: #Label
+                        loc=geog2polar((d2r(koht["la"]),d2r(koht["lo"])),(rlat,rlon))
+                        coords=getcoords((loc[0],loc[1]),zoomlevel,render_center)
+                        if coords[0] < 3000 and coords[0] > 0 and coords[1] < 3000 and coords[1] > 0: #Filter out points outside of plot
+                            x,y=map(int,coords)
+                            fontsize=int(koht["size"])
+                            txtx,txty=map(lambda x:x/2,joonis.textsize(koht["txt"],font=ImageFont.truetype("../fonts/DejaVuSansCondensed.ttf",fontsize))) #Determine size of the plot
+                            joonis.text((x-txtx+1,y-txty+1),text=koht["txt"],fill="black",font=ImageFont.truetype("../fonts/DejaVuSansCondensed.ttf",fontsize))
+                            joonis.text((x-txtx,y-txty),text=koht["txt"],fill=koht["color"],font=ImageFont.truetype("../fonts/DejaVuSansCondensed.ttf",fontsize))
+            save_config_file() #Update config file with updated data.
+        except:
+            tkMessageBox.showerror(fraasid["name"],fraasid["ddp_error"]+i[5]+"\n"+str(sys.exc_info()))
     rendered2=pilt
     showrendered(pilt)
     w.itemconfig(progress,state=Tkinter.HIDDEN)
@@ -956,6 +1139,21 @@ def reloadfile():
     if currentfilepath != "":
         load(currentfilepath)
     return 0
+def checkradarposition(paised):
+    global radarposprev
+    global samemap
+    global render_center
+    global img_center
+    global zoomlevel
+    radarpos=paised[6:8]
+    if radarpos != radarposprev:
+        #Reset map settings
+        samemap=False
+        img_center=canvasctr
+        render_center=[1000,1000]
+        zoomlevel=1
+    radarposprev=radarpos
+    return samemap
 def load(path=None):
     global paised
     global radials
@@ -1011,29 +1209,21 @@ def decodefile(stream,fmt=0): #Decodes file content
     global renderagain
     global chosen_elevation
     global currentfilepath
+    global radarposprev
     global rhiaz
+    global img_center
+    global canvasctr
+    global render_center
     global level2fail
+    global zoomlevel
+    global samemap
     if fmt == 0:
         paised=headers(stream)
         draw_info(headersdecoded(paised,fraasid))
-        if paised[0] > 255:
-            #As far as Level 3 goes, the product code cannot exceed 255 (11111111).
-            msgtostatus(fraasid["incorrect_format"])
-            return None
-        if paised[0] == 94 or paised[0] == 99: 
-            radials=valarray(decompress(stream),paised[18],paised[19])
-        elif paised[0] == 161 or paised[0] == 159 or paised[0] == 163:
-            scale=paised[27]
-            offset=paised[28]
-            radials=valarray(decompress(stream),offset,scale,paised[0])
-        if paised[0] == 165:
-            minval=0
-            increment=1
-            radials=valarray(decompress(stream),minval,increment,paised[0])
+        radials=level3file_radials(paised,stream)
     elif fmt == 1:
         produktid=hdf5_productlist(currentfilepath)
         sweeps=hdf5_sweepslist(currentfilepath)
-        print produktid, sweeps
         paised=hdf5_headers(currentfilepath,produktid[0],sweeps[0])
         print paised
         draw_info(headersdecoded(paised,fraasid))
@@ -1061,6 +1251,8 @@ def decodefile(stream,fmt=0): #Decodes file content
         print paised
         draw_info(headersdecoded(paised,fraasid))
         radials=level2_valarray(level2fail,"REF",0)
+    checkradarposition(paised) #Checking if radar position has changed
+    #Checking if showing RHI
     if not rhishow:
         render_radials()
     else:
@@ -1237,11 +1429,13 @@ def resetzoom(event=None):
     global rhiaz
     global rhistart
     global rhiend
+    global samemap
     if rhishow:
         rhistart=0
         rhiend=250
         mkrhi(rhiaz)
     else:
+        samemap=False
         clearclicktext()
         render_center=[1000,1000]
         img_center=canvasctr
@@ -1324,9 +1518,11 @@ def onrelease(event):
     global rhishow
     global rhistart
     global rhiend
+    global samemap
     if canvasbusy == False and radials != []:
         if zoom: #If was zooming
             if not rhishow:
+                samemap=False #Make sure map gets re-rendered at next render
                 #Calculating zoom level
                 dy=event.y-clickcoords[1] 
                 if dy!=0:
@@ -1364,6 +1560,7 @@ def onrelease(event):
         else: #If I was moving around
             if not info: #If was not gathering info
                 if not rhishow:
+                    samemap=False #Make sure map gets re-rendered at next render
                     if direction == 1: #On left mouseclick
                         dx_2=event.x-clickcoords[0]
                         dy_2=event.y-clickcoords[1]
@@ -1624,6 +1821,7 @@ failimenyy.add_command(label=fraasid["open_datafile"], command=load)
 failimenyy.add_command(label=fraasid["open_url"], command=loadurl)
 failimenyy.add_separator()
 failimenyy.add_command(label=fraasid["export_img"], command=exportimg)
+failimenyy.add_command(label=fraasid["batch_export"], command=batch_export)
 failimenyy.add_separator()
 failimenyy.add_command(label=fraasid["quit"], command=output.destroy)
 radarmenyy.add_command(label=fraasid["current_data"], command=activatecurrentnexrad)

@@ -37,7 +37,7 @@
 #Estonian
 phrases={"estonian":
          {
-             "name":"TRV 2016.1.11",
+             "name":"TRV 2016.1.19",
              "loading_states":"Laen andmeid... Osariigid",
              "coastlines":"Rannajooned",
              "countries":"Maismaapiirid",
@@ -137,11 +137,11 @@ phrases={"estonian":
              "current_language":"Keel",
              "language_estonian":"Eesti keel",
              "language_english":"English",
-             "conf_restart_required":"Muutus aktiveerub programmi taaskäivitamisel.",
+             "conf_restart_required":u"Muutus aktiveerub programmi taaskäivitamisel.",
              "sweep":"viibe",
-             "dyn_labels":"Dünaamilised andmepunktid",
-             "color_table":"Värvitabeli vahetus",
-             "default_colors":"Vaikimisi värvid",
+             "dyn_labels":u"Dünaamilised andmepunktid",
+             "color_table":u"Värvitabeli vahetus",
+             "default_colors":u"Vaikimisi värvid",
              "dyn_new":"Lisa",
              "dyn_edit":"Muuda",
              "dyn_rm":"Kustuta",
@@ -151,11 +151,22 @@ phrases={"estonian":
              "dyn_local":"Kohalik",
              "dyn_path":"Aadress:",
              "dyn_interval":"Miinimumvahe uuenduste vahel(min): ",
-             "dyn_enabled":"Sisse lülitatud"
+             "dyn_enabled":u"Sisse lülitatud",
+             "batch_export":"Ekspordi hulgi",
+             "batch_input":"Andmete kaust: ",
+             "batch_output":u"Väljundi kaust: ",
+             "batch_pick":"Vali kaust",
+             "batch_fmt":u"Väljundi vorming",
+             "batch_product":u"Produkt",
+             "batch_el":"Kaldenurk",
+             "batch_notfound":u"Päritud andmeid ei leitud sellel kõrgustasemel failis ",
+             "batch_notfound2":"Eksport katkestatakse.",
+             "batch_notfilled":u"Palun vaadake, et nii andmete kui ka väljundi kaust oleks määratud.",
+             "ddp_error":u"Viga dünaamiliste andmepunktide failis: "
              },
          "english":
          {
-             "name":"TRV 2016.1.11",
+             "name":"TRV 2016.1.19",
              "loading_states":"Loading data... States",
              "coastlines":"Coastlines",
              "countries":"Countries",
@@ -265,6 +276,17 @@ phrases={"estonian":
              "dyn_local":"Local",
              "dyn_path":"Path:",
              "dyn_interval":"Minimum interval between updates(min):",
-             "dyn_enabled":"Enabled"
+             "dyn_enabled":"Enabled",
+             "batch_export":"Batch export",
+             "batch_input":"Input directory: ",
+             "batch_output":"Output directory: ",
+             "batch_pick":"Pick a directory",
+             "batch_fmt":"Output format",
+             "batch_product":"Product",
+             "batch_el":"Elevation",
+             "batch_notfound":"Requested data not found at this elevation in file ",
+             "batch_notfound2":"Export will be stopped.",
+             "batch_notfilled":"Please ensure that input and output directories are both specified",
+             "ddp_error":"Error in dynamic data point file: "
              }
     }

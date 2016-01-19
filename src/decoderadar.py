@@ -348,6 +348,22 @@ def level2_valarray(fileobject,moment="REF",scan=0,rhiaz=False):
                 return andmed[i].tolist(None)
         vanapiir=uuspiir
     return dataarray
+def level3file_radials(paised,stream):
+    if paised[0] > 255:
+        #As far as Level 3 goes, the product code cannot exceed 255 (11111111).
+        msgtostatus(fraasid["incorrect_format"])
+        return None
+    if paised[0] == 94 or paised[0] == 99: 
+        radials=valarray(decompress(stream),paised[18],paised[19])
+    elif paised[0] == 161 or paised[0] == 159 or paised[0] == 163:
+        scale=paised[27]
+        offset=paised[28]
+        radials=valarray(decompress(stream),offset,scale,paised[0])
+    if paised[0] == 165:
+        minval=0
+        increment=1
+        radials=valarray(decompress(stream),minval,increment,paised[0])
+    return radials
 ##def tt_headers(filecontent,sweepnr=0):
 ##    row=filecontent.splitlines()[0].split()
 ##    h=str(float(filecontent.split("!?")[sweepnr+1].splitlines()[0]))
