@@ -216,7 +216,7 @@ phrases={"estonian":
              "export_success":"Export successful",
              "export_format_fail":"Either unable to save into this format or lacking writing permissions at the destination.",
              "no_data":"No data",
-             "about_text":"Tarmo Tanilsoo, 2018\ntarmotanilsoo@gmail.com\n\nPython version:"+sys.version,
+             "about_text":"Tarmo Tanilsoo, 2018\ntarmotanilsoo@gmail.com\n\nPython version: "+sys.version,
              "key_shortcuts_dialog_text":u"Shortcuts on keyboard:\n\nz - zoom mode\np - panning mode\ni - data gathering mode\nr - reset zoom",
              "azimuth":"Azimuth",
              "range":"Range",
