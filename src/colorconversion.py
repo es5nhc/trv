@@ -46,6 +46,7 @@ def loadcolortable(fail):
     return tabel
 
 def getcolor(tabel,val,smoothing=True):
+    if val == "RF": return (125,0,125)
     if val == None: return None
     i=0
     esi=tabel[0]

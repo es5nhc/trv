@@ -1,9 +1,9 @@
-#!/usr/bin/python2
+#!/usr/bin/python3
 # -*- coding: utf-8 -*-
 #
 
 
-##Copyright (c) 2016, Tarmo Tanilsoo
+##Copyright (c) 2018, Tarmo Tanilsoo
 ##All rights reserved.
 ##
 ##Redistribution and use in source and binary forms, with or without
@@ -16,7 +16,7 @@
 ##this list of conditions and the following disclaimer in the documentation
 ##and/or other materials provided with the distribution.
 ##
-##3. Neither the name of the copyright holder nor the names of its contributors
+####3. Neither the name of the copyright holder nor the names of its contributors
 ##may be used to endorse or promote products derived from this software without
 ##specific prior written permission.
 ##
@@ -33,8 +33,6 @@
 ##POSSIBILITY OF SUCH DAMAGE.
 #
 
-from __future__ import division
-
 import bz2
 from decoderadar import *
 import translations
@@ -44,36 +42,65 @@ from PIL.Image import merge as yhendapilt
 from PIL.ImageDraw import Draw
 from PIL.ImageTk import PhotoImage, BitmapImage
 from PIL import ImageFont
-from math import floor, sqrt, radians as d2r, degrees as r2d, cos, copysign
+from math import floor, sqrt, radians as d2r, degrees as r2d, cos, copysign, pi
 from colorconversion import *
 from coordinates import *
 import sys
 import datetime
-import Tkinter
-import tkFileDialog
-import tkMessageBox
-import urllib2
+import tkinter as Tkinter
+from tkinter import filedialog as tkFileDialog
+from tkinter import messagebox as tkMessageBox
+import urllib.request
 import json
 import os
-from nexrad_level2 import NEXRADLevel2File
 configfile=open("config.json","r")
 conf=json.load(configfile)
 configfile.close()
 fraasid=translations.phrases[conf["lang"]]
 #Importing geodata
-print fraasid["loading_states"]
+print(fraasid["loading_states"])
 import states
-print fraasid["coastlines"]
+print(fraasid["coastlines"])
 import coastlines
-print fraasid["countries"]
+print(fraasid["countries"])
 import countries
-print fraasid["lakes"]
+print(fraasid["lakes"])
 import lakes
-print fraasid["rivers"]
+print(fraasid["rivers"])
 import rivers
-print fraasid["NA_roads"]
+print(fraasid["NA_roads"])
 import major_NA_roads
-class BatchExportWindow(Tkinter.Toplevel):
+class Display(): #Class for storing properties of current display
+    def __init__(self):
+        self.quantity=None
+        self.elevationNumber=None
+        self.softElIndex=None
+        self.elevation=None
+        self.productTime=None
+        self.scanTime=None
+        self.fileType=None
+        self.data=None
+        self.rhiAzimuth=None
+        self.rhiData=None
+        self.rhiElevations=None
+        self.isRHI=False
+        self.rhiStart=0
+        self.rhiEnd=250
+        self.gain=None
+        self.offset=None
+        self.nodata=None
+        self.undetect=None
+        self.rangefolding=None
+        self.rstart=None
+        self.rscale=None
+        #former separate globals
+        self.imageCentre=[300,200]
+        self.renderCentre=[1000,1000] #former currentDisplay.renderCentre
+        self.zoomLevel=1
+        self.isSameMap=False #If True, don't render the map again on a new render - Condition: if the resultant map is expected to be identical to previous renders
+        self.renderAgain=False #If true, product, colour table etc as been changed while in PseudoRHI view. Need to render again upon returning to PPI
+        self.isCanvasBusy=False
+class BatchExportWindow(Tkinter.Toplevel): #Window for batch export
     def __init__(self, parent, title = None):
         Tkinter.Toplevel.__init__(self,parent)
         self.title(fraasid["batch_export"])
@@ -134,9 +161,8 @@ class BatchExportWindow(Tkinter.Toplevel):
             button.config(text=directory)
         return 0
     def exportdir(self): #Process the data files
-        global paised
-        global radials
-        global samemap
+        global currentlyOpenData
+        global currentDisplay
         global radarposprev
         global level2fail
         if self.outdir and self.datadir:
@@ -146,55 +172,28 @@ class BatchExportWindow(Tkinter.Toplevel):
                 path=self.datadir+"/"+i
                 currentfilepath=path
                 stream=file_read(path)
-                fmt=self.detectfmt(path,stream)
-                if fmt==0:
-                    paised=headers(stream)
-                    checkradarposition(paised)
-                    draw_info(headersdecoded(paised,fraasid))
-                    radials=level3radials(paised,stream)
-                    render_radials()
-                    exportimg(self.outdir+"/"+str(counter).zfill(5)+"."+self.outfmt.get(),False)
-                    counter+=1
-                elif fmt==1:
-                    produktid=hdf5_productlist(path)
-                    sweeps=hdf5_sweepslist(path)
-                    skanniarv=hdf5_leiaskann(path,self.outprod.get(),self.outel.get())
-                    if skanniarv: #If this scan was found
-                        paised=hdf5_headers(path,self.outprod.get(),sweeps[sweeps.index(float(self.outel.get()))])
-                        checkradarposition(paised)
-                        draw_info(headersdecoded(paised,fraasid))
-                        radials=hdf5_valarray(path,skanniarv)
-                        render_radials()
-                        exportimg(self.outdir+"/"+str(counter).zfill(5)+"."+self.outfmt.get(),False)
-                        counter+=1
-                    else:
-                        tkMessageBox.showerror(fraasid["name"],fraasid["batch_notfound"]+i+"\n\n"+fraasid["batch_notfound2"])
-                        return -1
-                elif fmt==2:
-                    indexes=[]
-                    product=self.outprod.get()
-                    el=float(self.outel.get())
-                    level2fail=NEXRADLevel2File(path) #Load a Level 2 file
-                    sweeps=level2_sweepslist(level2fail)
-                    for x in range(len(sweeps)): #Determining sweeps to be used
-                        products=level2fail.scan_info()[x]["moments"]
-                        if abs(sweeps[x]-el)<=0.05 and product in products:
-                            if product == "REF":
-                                if not "VEL" in products:
-                                    indexes.append(x)
-                            else:
-                                indexes.append(x)
-                    if len(indexes)==0:
-                        tkMessageBox.showerror(fraasid["name"],fraasid["batch_notfound"]+i+"\n\n"+fraasid["batch_notfound2"])
-                        return -1
-                    for sweepsindex in indexes:
-                        paised=level2_headers(level2fail,self.outprod.get(),sweepsindex)
-                        radials=level2_valarray(level2fail,self.outprod.get(),sweepsindex)
-                        draw_info(headersdecoded(paised,fraasid))
-                        render_radials()
-                        exportimg(self.outdir+"/"+str(counter).zfill(5)+"."+self.outfmt.get(),False)
-                        counter+=1
-                self.update()
+                if path[-3:]== ".h5" or stream[1:4]==b"HDF":
+                    productChoice.config(state=Tkinter.NORMAL)
+                    elevationChoice.config(state=Tkinter.NORMAL)
+                    hcanames=fraasid["iris_hca"]
+                    currentlyOpenData=HDF5(path)
+                elif stream[0:4] == b"AR2V" or stream[0:8] == b"ARCHIVE2":
+                    productChoice.config(state=Tkinter.NORMAL)
+                    elevationChoice.config(state=Tkinter.NORMAL)
+                    currentlyOpenData=NEXRADLevel2(path)
+                else:
+                    hcanames=fraasid["hca_names"]
+                    currentlyOpenData=NEXRADLevel3(path)
+                #Getting elevation index
+                for j in range(len(currentlyOpenData.nominalElevations)):
+                    if abs(float(self.outel.get())-currentlyOpenData.nominalElevations[j]) < 0.05:
+                        if self.outprod.get() in currentlyOpenData.data[j]:
+                            if not (currentlyOpenData.type=="NEXRAD2" and "VRAD" in currentlyOpenData.data[j]):
+                                loadData(self.outprod.get(),j)
+                                drawInfo()
+                                renderRadarData()
+                                exportimg(self.outdir+"/"+str(counter).zfill(4)+"."+self.outfmt.get(),False)
+                                counter+=1
             self.onclose()
             load(path) #Open the last rendered file properly.
         else:
@@ -203,7 +202,7 @@ class BatchExportWindow(Tkinter.Toplevel):
     def detectfmt(self, path, stream):
         if path[-3:]== ".h5" or stream[1:4]=="HDF":
             return 1
-        elif stream[0:4] == "AR2V":
+        elif stream[0:4] == "AR2V" or stream[0:8]=="ARCHIVE2":
             return 2
         else:
             return 0
@@ -214,7 +213,6 @@ class BatchExportWindow(Tkinter.Toplevel):
         return 0
 class AddRMAXChooser(Tkinter.Toplevel):
     def __init__(self, parent, title = None):
-        global paised
         Tkinter.Toplevel.__init__(self,parent)
         self.title(fraasid["add_rmax"])
         self.protocol("WM_DELETE_WINDOW",self.onclose)
@@ -253,32 +251,36 @@ class AddRMAXChooser(Tkinter.Toplevel):
         #And now the main loop
         self.mainloop()
     def processgate(self,i,paddingamt,rmaxbins,slicestart,sliceend):
-        global paised
-        global radials
-        for j in xrange(paddingamt):
-            radials[i][2].append(None)
-        for k in xrange(slicestart,sliceend,1):
-            radials[i][2][k+rmaxbins]=radials[i][2][k]
-            radials[i][2][k]=None
+        global currentDisplay
+        for j in range(paddingamt):
+            currentDisplay.data[i].append(None)
+        for k in range(slicestart,sliceend,1):
+            currentDisplay.data[i][k+rmaxbins]=currentDisplay.data[i][k]
+            currentDisplay.data[i][k]=None
         return 0
     def addrmax(self):
-        global radials
-        az0=round(d2r(float(self.az0.get())),7)
-        az1=round(d2r(float(self.az1.get())),7)
+        global currentlyOpenData
+        global currentDisplay
+        az0=round(float(self.az0.get()),7)
+        az1=round(float(self.az1.get()),7)
         r0=float(self.r0.get())
         r1=float(self.r1.get())
         prf=float(self.prf.get())
         rmax=299792.458/prf/2
-        if isinstance(paised[0],int): rmax*=cos(d2r(float(paised[17])))
+        if currentlyOpenData.type == "NEXRAD3": rmax*=cos(d2r(float(paised[17])))
         r0new=r0+rmax
         r1new=r1+rmax
-        for i in xrange(len(radials)):
-            r=radials[i]
-            curaz=round(r[0],7)
-            slicestart=int(r0/paised[25])
-            sliceend=int(r1/paised[25])
-            rmaxbins=int(round(rmax/paised[25])) #Amount of bins that coorespond to Rmax
-            paddingamt=int(round(r1new/paised[25]))-len(r[2])
+        asimuudid=currentlyOpenData.azimuths[currentDisplay.softElIndex]
+        for i in range(len(currentDisplay.data)):
+            r=currentDisplay.data[i]
+            curaz=asimuudid[i]
+            firstBinOffset=int((currentDisplay.rstart/currentDisplay.rscale)) #Correct range to a particular bin!
+            slicestart=int(r0/currentDisplay.rscale)-firstBinOffset
+            sliceend=int(r1/currentDisplay.rscale)-firstBinOffset
+            if slicestart < 0: slicestart=0
+            if sliceend < 0: sliceend=0 #Seems like overkill but these days always pays to check everything that is related to user input
+            rmaxbins=int(round(rmax/currentDisplay.rscale)) #Amount of bins that coorespond to Rmax
+            paddingamt=int(round(r1new/currentDisplay.rscale)-firstBinOffset)-len(r)
             if az0 < az1:
                 if curaz >= az0 and curaz < az1:
                     self.processgate(i,paddingamt,rmaxbins,slicestart,sliceend)
@@ -286,7 +288,7 @@ class AddRMAXChooser(Tkinter.Toplevel):
                 if curaz >= az0 or curaz < az1:
                     self.processgate(i,paddingamt,rmaxbins,slicestart,sliceend)
         self.onclose()
-        render_radials()
+        renderRadarData()
     def onclose(self):
         global rmaxaddopen
         rmaxaddopen=0
@@ -306,7 +308,7 @@ class NEXRADChooser(Tkinter.Toplevel): #Choice of NEXRAD station
         self.jaamaentry.pack(side=Tkinter.LEFT, fill=Tkinter.BOTH)
         kerimisriba.config(command=self.jaamaentry.yview)
         jaamavalik.pack()
-        jaamad=file_read("nexradstns.txt").split("\n")
+        jaamad=file_read("nexradstns.txt").decode("utf-8").split("\n")
         for i in jaamad:
             rida=i.split("|")
             self.jaamaentry.insert(Tkinter.END, rida[0]+" - "+rida[1]+", "+rida[2])
@@ -317,7 +319,7 @@ class NEXRADChooser(Tkinter.Toplevel): #Choice of NEXRAD station
         global conf
         selection=self.jaamaentry.curselection()
         if selection != ():
-            print selection
+            print(selection)
             jaam=self.jaamaentry.get(selection)[:4]
             conf["nexradstn"]=jaam.lower()
             save_config_file()
@@ -461,18 +463,20 @@ class URLAken(Tkinter.Toplevel): ##Dialog to open a web URL
         global currentfilepath
         global currenturl
         currenturl=self.url.get()
-        download_file(currenturl)
-        currentfilepath="../cache/urlcache"
-        load(currentfilepath)
-       # try:
-      #  except:
-      #      print sys.exc_info()
-      #      tkMessageBox.showerror(fraasid["name"],fraasid["download_failed"])
+        try:
+            self.onclose()
+            download_file(currenturl)
+            currentfilepath="../cache/urlcache"
+            load(currentfilepath)
+        except:
+            print(sys.exc_info())
+            tkMessageBox.showerror(fraasid["name"],fraasid["download_failed"])
     def onclose(self):
         global urlwindowopen
         urlwindowopen=0
         self.destroy()
 sizeb4=[] #Latest window dimensions for on_window_reconf 
+currentDisplay=Display()
 rlegend=None #Legend as PhotoImage
 infotekst=None #Information as PhotoImage
 clickbox=None #Pixel information as PhotoImage
@@ -488,7 +492,6 @@ currentfilepath=None #Path to presently open file
 #Pildifontide laadimine
 pildifont=ImageFont.truetype("../fonts/DejaVuSansCondensed.ttf",12)
 pildifont2=ImageFont.truetype("../fonts/DejaVuSansCondensed.ttf",13)
-canvasbusy=False
 currenturl=None
 nexradstn=conf["nexradstn"] #Chosen NEXRAD station
 urlwindowopen=0 #1 if dialog to open an URL is open
@@ -496,28 +499,15 @@ nexradchooseopen=0 #1 if dialog to choose a nexrad station is open
 rmaxaddopen=0 #1 if configuration window to add Rmax to chunk of data is open.
 dynlabelsopen=0 #same rule as above for selection of dynamic labels
 batchexportopen=0 #same as when batch export window is open.
-samemap=False #If True, don't render the map again on a new render - Condition: if the resultant map is expected to be identical to previous renders
 zoom=1
 info=0
 rhi=0
-rhiaz=0 ##RHI asimuut -- RHI Azimuth
-rhistart=0
-rhiend=250
-rhishow=0 ##Yes, if RHI is shown
-zoomlevel=1
 direction=1
-fmt=0 #Data format indicator
-renderagain=0 #Need to render again upon loading the PPI view.
-level2fail=False #Placeholder for pyart.io.nexrad_level2.NEXRADLevel2File object
+currentlyOpenData=None #Object storing unscaled data from the opened file.
 radarposprev=None #Radar position during previous render
-canvasdimensions=[600,400]
-canvasctr=[300,200]
+canvasdimensions=[600,600]
+canvasctr=[300,300]
 clickboxloc=[0,0]
-paised=[]
-radials=[]
-rhidata=[]
-sweeps=[] #All elevation levels
-productsweeps=[] #Only the elevation levels for a particular product
 units={94:"dBZ", #Defining units for particular products
        99:"m/s",
        159:"dB",
@@ -529,7 +519,6 @@ units={94:"dBZ", #Defining units for particular products
        "DBZV":"dBZ",
        "TH":"dBZ",
        "TV":"dBZ",
-       "REF":"dBZ",
        "ZDR":"dB",
        "LZDR":"dB",
        "RHOHV": "",
@@ -540,18 +529,17 @@ units={94:"dBZ", #Defining units for particular products
        "QIDX": "",
        "HCLASS": "",
        "KDP":u"°/km",
-       "V":"m/s",
-       "VEL":"m/s",
        "VRAD": "m/s",
-       "SW": "m/s",
+       "VRADH": "m/s",
+       "VRADV": "m/s",
+       "VRADDH": "m/s",
+       "VRADDV": "m/s",
        "WRAD": "m/s",
-       "PHI": u"°",
+       "WRADH": "m/s",
+       "WRADV": "m/s",
        "PHIDP": u"°"}
-img_center=[300,200]
-render_center=[1000,1000]
 hcanames=fraasid["hca_names"] #Hydrometeor classifications
-colortablenames={94:"dbz",
-                 "DBZ":"dbz",
+colortablenames={"DBZ":"dbz",
                  "TH":"dbz",
                  "TV":"dbz",
                  "DBZH":"dbz",
@@ -565,30 +553,29 @@ colortablenames={94:"dbz",
                  "VRAD":"v",
                  "VRADH":"v",
                  "VRADV":"v",
+                 "VRADDH":"v",
+                 "VRADDV":"v",
                  "V":"v",
                  "VEL":"v",
-                 99:"v",
-                 159:"zdr",
                  "ZDR":"zdr",
                  "LZDR":"zdr",
-                 161:"rhohv",
                  "RHOHV":"rhohv",
                  "RHO":"rhohv",
-                 163:"kdp",
                  "KDP":"kdp",
-                 165: "hca",
-                 "HCLASS": "hclass",
-                 "PHI": "phi",
+                 "HCLASS": "hclass", #hca kui level 3!"
                  "PHIDP": "phi",
                  "WRAD": "sw",
+                 "WRADH": "sw",
+                 "WRADV": "sw",
                  "SW": "sw"} #Names for color tables according to product
 customcolortable=None
 def download_file(url,dst="../cache/urlcache"):
-    req=urllib2.Request(url)
+    req=urllib.request.Request(url)
     req.add_header("User-agent","TRV/"+fraasid["name"].split()[1])
-    res=urllib2.urlopen(req,timeout=10)
+    res=urllib.request.urlopen(req,timeout=10)
     sisu=res.read()
     res.close()
+        
     cache=open(dst,"wb")
     cache.write(sisu)
     cache.close()
@@ -621,12 +608,12 @@ def choosenexrad(): #Opening NEXRAD station selection window
         NEXRADChooser(output)
 def fetchnexrad(product): #Downloading a current NEXRAD Level 3 file from NOAA's FTP
     global conf
-    global rhishow
+    global currentDisplay
     global currentfilepath
     global currenturl
-    if rhishow: topan()    
-    product_choice.config(state=Tkinter.NORMAL)
-    elevation_choice.config(state=Tkinter.NORMAL)
+    if currentDisplay.isRHI: topan()    
+    productChoice.config(state=Tkinter.NORMAL)
+    elevationChoice.config(state=Tkinter.NORMAL)
     populatenexradmenus(product)
     currenturl="ftp://tgftp.nws.noaa.gov/SL.us008001/DF.of/DC.radar/DS."+product+"/SI."+conf["nexradstn"]+"/sn.last"
     try:
@@ -634,34 +621,34 @@ def fetchnexrad(product): #Downloading a current NEXRAD Level 3 file from NOAA's
         currentfilepath="../cache/nexradcache/"+product
         load(currentfilepath)
     except:
-        print sys.exc_info()
+        print(sys.exc_info())
         tkMessageBox.showerror(fraasid["name"],fraasid["download_failed"])
 def activatecurrentnexrad():
-    product_choice.config(state=Tkinter.NORMAL)
-    elevation_choice.config(state=Tkinter.NORMAL)
+    productChoice.config(state=Tkinter.NORMAL)
+    elevationChoice.config(state=Tkinter.NORMAL)
     fetchnexrad("p94r0")
     return 0
 def populatenexradmenus(product="p94r0"):
     ids={"p94":"DBZ",
-         "p99":"VRAD",
+         "p99":"VRADDH", #[sic!] - Level 3 product 99 is dealiased radial velocity
          "159":"ZDR",
          "161":"RHOHV",
          "163":"KDP",
          "165":"HCLASS"}
-    elevation_choice["menu"].delete(0, 'end')
-    for i in xrange(4):
+    elevationChoice["menu"].delete(0, 'end')
+    for i in range(4):
         productcode=product[:-1]+str(i)
-        elevation_choice["menu"].add_command(label=fraasid["level3_slice"].replace("/NR/",str(i+1)),command=lambda x=productcode: fetchnexrad(x))
+        elevationChoice["menu"].add_command(label=fraasid["level3_slice"].replace("/NR/",str(i+1)),command=lambda x=productcode: fetchnexrad(x))
     index=product[-1]
-    chosen_elevation.set(fraasid["level3_slice"].replace("/NR/",str(int(product[-1])+1)))
-    chosen_product.set(ids[product[0:3]])
-    product_choice["menu"].delete(0, 'end')
-    product_choice["menu"].add_command(label="DBZ",command=lambda x=index: fetchnexrad("p94r"+index))
-    product_choice["menu"].add_command(label="VRAD",command=lambda x=index: fetchnexrad("p99v"+index))
-    product_choice["menu"].add_command(label="ZDR",command=lambda x=index: fetchnexrad("159x"+index))
-    product_choice["menu"].add_command(label="RHOHV",command=lambda x=index: fetchnexrad("161c"+index))
-    product_choice["menu"].add_command(label="KDP",command=lambda x=index: fetchnexrad("163k"+index))
-    product_choice["menu"].add_command(label="HCLASS",command=lambda x=index: fetchnexrad("165h"+index))
+    chosenElevation.set(fraasid["level3_slice"].replace("/NR/",str(int(product[-1])+1)))
+    chosenProduct.set(ids[product[0:3]])
+    productChoice["menu"].delete(0, 'end')
+    productChoice["menu"].add_command(label="DBZ",command=lambda x=index: fetchnexrad("p94r"+index))
+    productChoice["menu"].add_command(label="VRADDH",command=lambda x=index: fetchnexrad("p99v"+index))
+    productChoice["menu"].add_command(label="ZDR",command=lambda x=index: fetchnexrad("159x"+index))
+    productChoice["menu"].add_command(label="RHOHV",command=lambda x=index: fetchnexrad("161c"+index))
+    productChoice["menu"].add_command(label="KDP",command=lambda x=index: fetchnexrad("163k"+index))
+    productChoice["menu"].add_command(label="HCLASS",command=lambda x=index: fetchnexrad("165h"+index))
     return 0
 def exportimg(path=None,GUI=True):
     global rendered2
@@ -670,22 +657,19 @@ def exportimg(path=None,GUI=True):
     global rhiout
     global clickbox2
     global clickboxloc
-    global img_center
-    global render_center
-    global rhishow
-    global radials
-    if len(radials) > 0:
+    global currentDisplay
+    if len(currentDisplay.data) > 0:
         y=int(w.cget("height"))
-        if y % 2 != 0 and not rhishow: y+=1
+        if y % 2 != 0 and not currentDisplay.isRHI: y+=1
         x=int(w.cget("width"))
-        if x % 2 != 0 and not rhishow: x+=1
+        if x % 2 != 0 and not currentDisplay.isRHI: x+=1
         halfx=int(x/2.0)
         halfy=int(y/2.0)
-        cy=int(1000-img_center[1]+halfy)
-        cx=int(1000-img_center[0]+halfx)
+        cy=int(1000-currentDisplay.imageCentre[1]+halfy)
+        cx=int(1000-currentDisplay.imageCentre[0]+halfx)
         cbx=clickboxloc[0]
         cby=clickboxloc[1]
-        cbh=84 if not rhishow else 45
+        cbh=84 if not currentDisplay.isRHI else 45
         if not path:
             filed=tkFileDialog.SaveAs(None,initialdir="../radar_images")
             path=filed.show()
@@ -693,12 +677,12 @@ def exportimg(path=None,GUI=True):
             try:
                 outimage=uuspilt("RGB",(x,y),"#000025")
                 joonis=Draw(outimage)
-                if not rhishow:
+                if not currentDisplay.isRHI:
                     if rendered != None: outimage.paste(rendered2.crop((cx-halfx,cy-halfy,cx+halfx,cy+halfy)),((0,0,x,y))) #PPI
                 else:
                     outimage.paste(rhiout2,(0,0,x,y)) #PseudoRHI
                 if clickbox != None: outimage.paste(clickbox2,(cbx,cby+1,cbx+170,cby+cbh+1))
-                if rlegend != None: outimage.paste(rlegend2,(x-35,halfy-163,x,halfy+162))
+                if rlegend != None: outimage.paste(rlegend2,(x-35,halfy-213,x,halfy+212))
                 if infotekst != None: outimage.paste(infotekst2,(halfx-250,y-30,halfx+250,y-10))
                 outimage.save(path)
                 if GUI: tkMessageBox.showinfo(fraasid["name"],fraasid["export_success"])
@@ -708,54 +692,61 @@ def exportimg(path=None,GUI=True):
     else:
         tkMessageBox.showerror(fraasid["name"],fraasid["no_data_loaded"])
 def getrhibin(h,gr,a):
-    global productsweeps
-    global rhidata
-    global paised
-    kordaja=paised[25]**-1
-    if a < 0: return fraasid["no_data"]
-    if a > productsweeps[-1]: return fraasid["no_data"]
-    for i in xrange(len(productsweeps)):
-        cond=0 if i == 0 else productsweeps[i-1]
-        if a > cond and a <= productsweeps[i]:
+    global currentDisplay
+    kordaja=currentDisplay.rscale**-1
+    lowestBeamStart=min(currentDisplay.rhiElevations)-0.5 #Assuming beamwidth of 1°
+    highestBeamEnd=max(currentDisplay.rhiElevations)+0.5
+    if a < lowestBeamStart: return fraasid["no_data"]
+    if a >= highestBeamEnd: return fraasid["no_data"]
+    elevationsCount=len(currentDisplay.rhiElevations)
+    for i in range(elevationsCount):
+        condition1=lowestBeamStart if i == 0 else (currentDisplay.rhiElevations[i-1]+currentDisplay.rhiElevations[i])/2
+        condition2=(currentDisplay.rhiElevations[i]+currentDisplay.rhiElevations[i+1])/2 if i < elevationsCount-1 else highestBeamEnd
+        if a >= condition1 and a < condition2:
             indeks=int(gr*kordaja)
-            if len(rhidata[i]) <= indeks:
+            if len(currentDisplay.rhiData[i]) <= indeks:
                 val=None
             else:
-                val=rhidata[i][indeks]
-            if val != None and (paised[0] == 165 or paised[0] == "HCLASS"):
+                val=currentDisplay.rhiData[i][indeks]
+            if val != None and (currentDisplay.quantity == "HCLASS"):
                 val=hcanames[int(val)]
             elif val == None:
                 val=fraasid["no_data"]
             return val
 def getbin(azr):
     global hcanames
-    global paised
-    global radials
+    global currentDisplay
+    global currentlyOpenData
     delta=None #Difference between adjacent azimuths
-    h=beamheight(azr[1],float(paised[17])) #Radar beam height
+    h=beamheight(azr[1],currentDisplay.elevation) #Radar beam height
     try:
-        azalg=d2r(azr[0])
-        for i in xrange(len(radials)):
-            vahe=azalg-radials[i][0]
-            if vahe < radials[i][1] and vahe > 0:
-                azi=i
+        selected_az=azr[0]
+        elIndex=currentDisplay.softElIndex
+        for i in range(len(currentDisplay.data)):
+            previous=currentlyOpenData.azimuths[elIndex][i-1]
+            current=currentlyOpenData.azimuths[elIndex][i]
+            if previous-current > 350:  #Great reason to believe we've crossed North
+                current+=360
+            if selected_az >= previous and selected_az < current:
+                azi=i-1
                 break
-        kordaja=paised[25]**-1
-        kaugus=azr[1] if not isinstance(paised[0],int) else azr[1]/cos(d2r(float(paised[17])))
-        mindistance=radials[int(azi)][3]
+        kordaja=currentDisplay.rscale**-1
+        kaugus=azr[1] if not currentlyOpenData.type == "NEXRAD3" else azr[1]/cos(d2r(currentDisplay.elevation))
+        mindistance=currentDisplay.rstart
         if kaugus >= mindistance:
-            val=radials[int(azi)][2][int((kaugus-mindistance)*kordaja)]
+            val=currentDisplay.data[int(azi)][int((kaugus-mindistance)*kordaja)]
         else:
             val=None
         delta=None
-        if val != None and (paised[0] == 99 or paised[0] == "V" or paised[0] == "VRAD" or paised[0] == "VEL"):
-            valprev=radials[int(azi)-1][2][int((kaugus-mindistance)*kordaja)]
-            delta=abs(float(val)-valprev) if valprev != None else None
-        elif val != None and paised[0] == 165 or paised[0] == "HCLASS":
+        if val != currentDisplay.nodata and val != currentDisplay.undetect and val != currentDisplay.rangefolding and (currentDisplay.quantity == "VRAD"):
+            valprev=currentDisplay.data[int(azi)-1][int((kaugus-mindistance)*kordaja)]
+            delta=abs(float(val)-valprev) if (valprev != None and valprev != "RF") else None
+        elif val != currentDisplay.nodata and currentDisplay.quantity == "HCLASS":
             val=hcanames[int(val)]
-        elif val == None:
+        elif val == currentDisplay.nodata or val == None:
             val=fraasid["no_data"]
-    except: val = fraasid["no_data"]
+    except:
+        val = fraasid["no_data"]
     return val, delta, h
 def msgtostatus(msg):
     status.config(text=msg)
@@ -771,19 +762,23 @@ def shouldirender(path):
         if i > 0 and i < 2000:
             return True
     return False
-def draw_infobox(x,y):
+def drawInfobox(x,y):
     global clickbox
     global clickbox2
     global clickboxloc
     global units
-    global paised
-    global rhishow
+    global currentDisplay
     andmed=getinfo(x,y)
     azrange=andmed[1]
     data=andmed[2]
-    vaartus=data[0] if not rhishow else data
-    row0=u"%s %s" % (vaartus, units[paised[0]]) if vaartus != fraasid["no_data"] else fraasid["no_data"]
-    if not rhishow:        
+    vaartus=data[0] if not currentDisplay.isRHI else data
+    if vaartus == "RF":
+        row0="RF"
+    elif vaartus == fraasid["no_data"]:
+        row0=fraasid["no_data"]
+    else:
+        row0=u"%s %s" % (vaartus, units[currentDisplay.quantity]) 
+    if not currentDisplay.isRHI:        
         coords=andmed[0]
         latletter="N" if coords[0] > 0 else "S"
         lonletter="E" if coords[1] > 0 else "W"
@@ -791,11 +786,11 @@ def draw_infobox(x,y):
         row2=u"%s: %.1f°" % (fraasid["azimuth"],azrange[0])
         row3=u"%s: %.3f km" % (fraasid["range"],azrange[1])
         row4=u"%s: ~%.1f km" % (fraasid["beam_height"],data[2])
-        row5=None if data[1] == None else fraasid["g2g_shear"]+": %.1f m/s" % (data[1])
+        row5=None if (data[1] == None or data[1] == "RF") else fraasid["g2g_shear"]+": %.1f m/s" % (data[1])
     else:
         row1=u"%s: %.3f km" % (fraasid["range"],andmed[0])
         row2=u"%s: %.3f km" % (fraasid["height"],andmed[1])
-    kastikorgus=84 if not rhishow else 45
+    kastikorgus=84 if not currentDisplay.isRHI else 45
     kast=uuspilt("RGB",(170,kastikorgus),"#44ccff")
     kastdraw=Draw(kast)
     kastdraw.rectangle((0,0,170,16),fill="#0033ee")
@@ -803,7 +798,7 @@ def draw_infobox(x,y):
     kastdraw.text((9,1),text=row0, font=pildifont2)
     kastdraw.text((5,17),text=row1, fill="#000000", font=pildifont)
     kastdraw.text((5,30),text=row2, fill="#000000", font=pildifont)
-    if not rhishow:
+    if not currentDisplay.isRHI:
         kastdraw.text((5,43),text=row3, fill="#000000", font=pildifont)
         kastdraw.text((5,56),text=row4, fill="#000000", font=pildifont)
         if row5 != None: kastdraw.text((5,69),text=row5, fill="#000000", font=pildifont)
@@ -813,9 +808,15 @@ def draw_infobox(x,y):
     w.itemconfig(clicktext,image=clickbox)
     w.coords(clicktext,(x+85,y+kastikorgus/2))
     return 0
-def draw_info(tekst):
+def drawInfo():
     global infotekst
     global infotekst2
+    global currentDisplay
+    global fraasid
+    if currentDisplay.isRHI:
+        tekst=rhiheadersdecoded(currentDisplay,fraasid)
+    else:
+        tekst=headersdecoded(currentDisplay,fraasid)
     textimg=uuspilt("RGB",(500,20), "#0033ee")
     textdraw=Draw(textimg)
     textdraw.text((5,3),text=tekst, font=pildifont)
@@ -827,52 +828,53 @@ def listcolortables():
     global colortablemenu
     failid=os.listdir("../colortables")
     for i in failid:
-        colortablemenu.add_command(label=i, command=lambda x=i:change_colortable(x))
+        colortablemenu.add_command(label=i, command=lambda x=i:changeColourTable(x))
     return 0
 def drawlegend(product,minimum,maximum,colortable):
     global rlegend
     global rlegend2
     global colortablenames
     global units
+    global customcolortable
+    global currentDisplay
     tabel=colortable
     unit=units[product]
     tosmooth=1
     if product == 165 or product == "HCLASS":
         tosmooth=0
-    increment=(maximum-minimum)/300.0
-    legendimg=uuspilt("RGB",(35,325),"#0033ee")
+    increment=(maximum-minimum)/400.0
+    legendimg=uuspilt("RGB",(35,425),"#0033ee")
     legenddraw=Draw(legendimg)
-    for i in xrange(300):
+    for i in range(400):
         val=minimum+increment*i
-        legenddraw.rectangle((25,324-i,35,324-i),fill=getcolor(tabel,val,tosmooth))
+        legenddraw.rectangle((25,424-i,35,424-i),fill=getcolor(tabel,val,tosmooth))
     step=1.0/increment
     majorstep=10
-    if product == "PHI":
+    if customcolortable == "hurricane.txt": majorstep=20
+    if product == "PHIDP":
         majorstep=45
-    if product == 159 or product == 163 or product == 165 or product == "HCLASS":
+    if product in [159, 163, 165, "HCLASS"]:
         majorstep=1
-    if product == 161: #RHOHV aka CC
-        majorstep=0.1
-    if product == "SQI" or product == "QIDX" or product == "SQIH" or product == "SQIV":
+    if product in [161, "SQI"]: #RHOHV aka CC
         majorstep=0.1
     firstten=majorstep+minimum-minimum%majorstep
     if firstten == majorstep+minimum: firstten = minimum
-    ystart=324-(firstten-minimum)*step
+    ystart=424-(firstten-minimum)*step
     lastten=maximum-maximum%majorstep
     hulk=int((lastten-firstten)/majorstep)
     yend=ystart-majorstep*step*hulk #If the next full step is too close to the edge.
     if yend < 30: hulk-=1 #Let's not list this last point on legend
     legenddraw.text((5,0),text=unit, font=pildifont)
-    for j in xrange(hulk+1):
+    for j in range(hulk+1):
         y=ystart-majorstep*step*j
-        if product == 165: #Other products have a numeric value
+        if product == "HCLASS" and currentDisplay.fileType=="NEXRAD3": #Other products have a numeric value
             legendlist=["BI","AP","IC","DS","WS","RA","+RA","BDR","GR","HA","UNK","RF"]; #List of classifications
             legendtext=legendlist[int(firstten+j*majorstep)]
-        elif product == "HCLASS":
+        elif product == "HCLASS" and currentDisplay.fileType=="HDF5":
             legendlist=["NM","RA","WS","SN","GR","HA"]
             legendtext=legendlist[int(firstten+j*majorstep)-1]
         else:
-            legendval=firstten+j*majorstep
+            legendval=round(firstten+j*majorstep,4)
             if legendval % 1 == 0: #If a full integer, strip decimals.
                 legendtext=str(int(legendval))
             else:
@@ -896,7 +898,7 @@ def drawmap(data,radarcoords,drawcolor,linewidth=1):
     for joon in paths:
         f+=1
         for rada in joon:
-            coords=mapcoordsFilter(map(lambda x,y=zoomlevel,z=render_center,a=radarcoords:getmapcoords(x,y,z,a),rada)) #To polar coords
+            coords=mapcoordsFilter(map(lambda x,y=currentDisplay.zoomLevel,z=currentDisplay.renderCentre,a=radarcoords:getmapcoords(x,y,z,a),rada)) #To polar coords
             for i in coords:
                 teejoon(i,fill=drawcolor,width=linewidth)
         if f % 800 == 0: update_progress(hetkeseis*canvasdimensions[0])
@@ -918,78 +920,87 @@ def showrendered(pilt):
     rendered=PhotoImage(image=pilt)
     w.itemconfig(radaripilt,image=rendered)
 def init_drawlegend(product,tabel):
-    if product == 99 or product == "V" or product == "VRAD" or product == "VEL":
+    global currentDisplay
+    if product in [99, "VRAD", "VRADH", "VRADV", "VRADDH", "VRADDV"]:
         drawlegend(99,-63.5,63.5,tabel)
-    elif product == 159 or product == "ZDR" or product == "LZDR":
+    elif product in [159, "ZDR", "LZDR"]:
         drawlegend(159,-6,6,tabel)
-    elif product == 161 or product == "RHOHV" or product == "RHO":
+    elif product in [161, "RHOHV", product == "RHO"]:
         drawlegend(161,0.2,1.05,tabel)
-    elif product == 163 or product == "KDP":
+    elif product in [163, "KDP"]:
         drawlegend(163,-2,7,tabel)
-    elif product == 165:
-        drawlegend(165,0,12,tabel)
-    elif product == "HCLASS":
+    elif product == "HCLASS" and currentDisplay.fileType=="NEXRAD3":
+        drawlegend("HCLASS",0,12,tabel)
+    elif product == "HCLASS" and currentDisplay.fileType=="HDF5":
         drawlegend("HCLASS",1,7,tabel)
-    elif product == "DBZ" or product == "REF" or product == "TH" or product == "TV" or product == "DBZH" or product == "DBZV":
+    elif product in ["DBZ", "TH", "TV", "DBZH", "DBZV"]:
         drawlegend(94,-25,75,tabel)
-    elif product == "SW" or product == "WRAD":
+    elif product == ["WRAD","WRADH","WRADV"]:
         drawlegend("SW",0,30,tabel)
-    elif product == "PHI" or product =="PHIDP":
-        drawlegend("PHI",0,180,tabel)
-    elif product == "SQI" or product == "QIDX":
+    elif product == "PHIDP":
+        drawlegend("PHIDP",0,180,tabel)
+    elif product in ["SQI","QIDX","SQIH","SQIV"]:
         drawlegend("SQI",0,1,tabel)
     else:
         drawlegend(94,-25,75,tabel)
-def render_radials():
+def renderRadarData():
     global rendered
     global rendered2
     global canvasctr
     global conf
-    global img_center
-    global canvasbusy
-    global radials
-    global paised
     global canvasdimensions
     global joonis
     global kaardijoonis
-    global samemap
     global kaart
-    global render_center
     global currentfilepath
     global customcolortable
-    product=paised[0]
-    canvasbusy=True
+    global currentDisplay
+    global currentlyOpenData
+    product=currentDisplay.quantity
+    elIndex=currentlyOpenData.elevationNumbers.index(currentDisplay.elevationNumber)
+    currentDisplay.isCanvasBusy=True
     alguses=time.time()
     w.config(cursor="watch")
     w.itemconfig(progress,state=Tkinter.NORMAL)
     msgtostatus(fraasid["drawing"]+" "+fraasid["radar_image"])
     pilt=uuspilt("RGBA",(2000,2000),"#000025") #Image for image itself
     joonis=Draw(pilt)
-    if not samemap:
+    if not currentDisplay.isSameMap:
         kaart=uuspilt("RGBA",(2000,2000),(0,0,0,0)) #Image for map contours
         kaardijoonis=Draw(kaart)
     hulknurk=joonis.polygon
     current=0.0
     updateiter=0
-    samm=paised[25]
+    mindistance=currentDisplay.rstart
+    samm=currentDisplay.rscale
+    selectedColorTable=colortablenames[product]
+    if currentDisplay.quantity == "HCLASS" and currentDisplay.fileType == "NEXRAD3":
+        selectedColorTable="hca" #Override for HCLASS in NEXRAD Level 3
     if customcolortable:
         tabel=loadcolortable("../colortables/"+customcolortable)
     else:
-        tabel=loadcolortable("../colortables/"+colortablenames[product]+".txt")
+        tabel=loadcolortable("../colortables/"+selectedColorTable+".txt")
     tosmooth=True #True if transitions in color table are to be smooth.
     if product == 165 or product == "HCLASS":
         tosmooth=False
     init_drawlegend(product,tabel) #Start drawing the color legend
-    radialslen=len(radials) #Length of radials
+    radarData=currentDisplay.data
+    radarDatalen=len(radarData) #Length of radarData
     #Some variables for feedback on drawing progress
-    hetkeseisusamm=radialslen**-1 
+    hetkeseisusamm=radarDatalen**-1 
     hetkeseis=0
     #Setting Drawing resolution
-    res=zoomlevel*samm
+    res=currentDisplay.zoomLevel*samm
     aste=int((res)**-1)
-    for i in radials:
-        az,d_az,gate,mindistance=i
-        kiiresuund=leiasuund(az,d_az,mindistance,paised,zoomlevel,render_center,samm)
+    #Get constants to avoid excessive calls.
+    azimuths=[x for x in map(d2r,currentlyOpenData.azimuths[elIndex])]
+    for i in range(radarDatalen):
+        az=azimuths[i-1]
+        d_az=azimuths[i]-az
+        if d_az < -6: #We are crossing North
+            d_az+=2*pi
+        gate=radarData[i-1]
+        kiiresuund=leiasuund(az,d_az,mindistance,currentDisplay,currentDisplay.zoomLevel,currentDisplay.renderCentre,samm)
         x1,x2,y1,y2,dx1,dx2,dy1,dy2=kiiresuund
         if aste > 1:
             gate=gate[::aste]
@@ -1010,10 +1021,10 @@ def render_radials():
             if val!= None:
                 path=(x1,y1,x2,y2,x2new,y2new,x1new,y1new)
                 if shouldirender(path):
-                    hulknurk(path, fill=val)
+                    hulknurk(path, fill=val) #PROBABLY MOST CPU-EXPENSIVE PART OF PLOTTING!!! HOW TO IMPROVE??
                     loetudtegelikke+=1
-                    jubarenderdanud=True
-                elif jubarenderdanud:
+                    jubarenderdanud=True #Sign that we have already rendered at least part of this ray.
+                elif jubarenderdanud: #We've gone out of drawing area
                     break
             x1=x1new
             x2=x2new
@@ -1024,12 +1035,12 @@ def render_radials():
         hetkeseis+=hetkeseisusamm
         current+=1
     #Drawing geodata
-    rlat=d2r(float(paised[6]))
-    rlon=d2r(float(paised[7]))
-    img_center=canvasctr
+    rlat=d2r(float(currentlyOpenData.headers["latitude"]))
+    rlon=d2r(float(currentlyOpenData.headers["longitude"]))
+    currentDisplay.imageCentre=canvasctr
     showrendered(pilt)
-    w.coords(radaripilt,tuple(img_center)) #Center image
-    if not samemap:
+    w.coords(radaripilt,tuple(currentDisplay.imageCentre)) #centre image
+    if not currentDisplay.isSameMap:
         msgtostatus(fraasid["drawing"]+" "+fraasid["coastlines"].lower())
         drawmap(coastlines.points,(rlat,rlon),(17,255,17,255))
         msgtostatus(fraasid["drawing"]+" "+fraasid["lakes"].lower())
@@ -1044,9 +1055,9 @@ def render_radials():
         msgtostatus(fraasid["drawing"]+" "+fraasid["country_boundaries"])
         drawmap(countries.points,(rlat,rlon),(255,0,0,255),2)
     image_alpha(pilt,kaart)
-    samemap=True #Don't render the map contours again unless the view has changed(pan, zoom)
+    currentDisplay.isSameMap=True #Don't render the map contours again unless the view has changed(pan, zoom)
     #Dynamic information
-    for entry in xrange(len(conf["placesources"])):
+    for entry in range(len(conf["placesources"])):
         i=conf["placesources"][entry]
         if i[4] != 1: continue #If the data source has been disabled, skip.
         msgtostatus(fraasid["drawing"]+" "+fraasid["placenames"]+" - "+i[1])
@@ -1071,11 +1082,11 @@ def render_radials():
             conf["placesources"][entry][5]=punktid["name"] #Name
             if i[0] == 0: conf["placesources"][entry][2]=punktid["interval"] #Update interval, not to be checked on local files
             for koht in punktid["data"]:
-                if koht["min"] < zoomlevel:
+                if koht["min"] < currentDisplay.zoomLevel:
                     andmetyyp=koht["type"] #Data type
                     if andmetyyp==0: #In case of point
                         loc=geog2polar((d2r(koht["la"]),d2r(koht["lo"])),(rlat,rlon))
-                        coords=getcoords((loc[0],loc[1]),zoomlevel,render_center)
+                        coords=getcoords((loc[0],loc[1]),currentDisplay.zoomLevel,currentDisplay.renderCentre)
                         if coords[0] < 2000 and coords[0] > 0 and coords[1] < 2000 and coords[1] > 0: #Filter out points outside of plot
                             x,y=map(int,coords)
                             if koht["icon"] == None:
@@ -1094,11 +1105,11 @@ def render_radials():
                                 joonis.text((textx,teksty),text=koht["txt"],fill=koht["color"],font=ImageFont.truetype("../fonts/DejaVuSansCondensed.ttf",fontsize))
                     elif andmetyyp==1: #More than one point in set. Therefore polygon
                         path=[]
-                        for p in xrange(len(koht["la"])):
+                        for p in range(len(koht["la"])):
                             lat=koht["la"][p]
                             lon=koht["lo"][p]
                             loc=geog2polar((d2r(lat),d2r(lon)),(rlat,rlon))
-                            coords=getcoords((loc[0],loc[1]),zoomlevel,render_center)
+                            coords=getcoords((loc[0],loc[1]),currentDisplay.zoomLevel,currentDisplay.renderCentre)
                             for p2 in coords:
                                 path.append(p2)
                         if koht["conn"]: path+=path[0:2] #Connect the line to the beginning if requested
@@ -1106,7 +1117,7 @@ def render_radials():
                         joonis.line(path,fill=koht["color"],width=int(koht["width"])) #The line itself
                     elif andmetyyp==2: #Label
                         loc=geog2polar((d2r(koht["la"]),d2r(koht["lo"])),(rlat,rlon))
-                        coords=getcoords((loc[0],loc[1]),zoomlevel,render_center)
+                        coords=getcoords((loc[0],loc[1]),currentDisplay.zoomLevel,currentDisplay.renderCentre)
                         if coords[0] < 3000 and coords[0] > 0 and coords[1] < 3000 and coords[1] > 0: #Filter out points outside of plot
                             x,y=map(int,coords)
                             fontsize=int(koht["size"])
@@ -1120,9 +1131,9 @@ def render_radials():
     showrendered(pilt)
     w.itemconfig(progress,state=Tkinter.HIDDEN)
     msgtostatus(fraasid["ready"])
-    canvasbusy=False
+    currentDisplay.isCanvasBusy=False
     lopus=time.time()
-    print "Time elapsed:", lopus-alguses,"seconds"
+    print("Time elapsed:", lopus-alguses,"seconds")
     setcursor()
     return 0
 def loadurl():
@@ -1139,33 +1150,70 @@ def reloadfile():
     if currentfilepath != "":
         load(currentfilepath)
     return 0
-def checkradarposition(paised):
+def checkradarposition():
     global radarposprev
-    global samemap
-    global render_center
-    global img_center
-    global zoomlevel
-    radarpos=paised[6:8]
+    global currentDisplay
+    global currentlyOpenData
+    radarpos=[currentlyOpenData.headers["latitude"],currentlyOpenData.headers["longitude"]]
     if radarpos != radarposprev:
         #Reset map settings
-        samemap=False
-        img_center=canvasctr
-        render_center=[1000,1000]
-        zoomlevel=1
+        currentDisplay.isSameMap=False
+        currentDisplay.imageCentre=canvasctr
+        currentDisplay.renderCentre=[1000,1000]
+        currentDisplay.zoomLevel=1
     radarposprev=radarpos
-    return samemap
+    return currentDisplay.isSameMap
+def loadData(quantity,elevation=None): #Processes and insert data into cache in currentDisplay variable
+    global currentDisplay
+    global currentlyOpenData
+    if elevation == None: elevation = currentDisplay.softElIndex
+    
+    currentDisplay.quantity = quantity
+    currentDisplay.productTime = currentlyOpenData.headers["timestamp"]
+    currentDisplay.scanTime = currentlyOpenData.times[elevation]
+    currentDisplay.gain = currentlyOpenData.data[elevation][quantity]["gain"]
+    currentDisplay.offset = currentlyOpenData.data[elevation][quantity]["offset"]
+    currentDisplay.nodata = currentlyOpenData.data[elevation][quantity]["nodata"]
+    currentDisplay.undetect = currentlyOpenData.data[elevation][quantity]["undetect"]
+    if "rangefolding" in currentlyOpenData.data[elevation][quantity]:
+        currentDisplay.rangefolding = currentlyOpenData.data[elevation][quantity]["rangefolding"] #We know what value represents range folding
+    else:
+        currentDisplay.rangefolding = None #No data 
+    currentDisplay.elevation = currentlyOpenData.nominalElevations[elevation]
+    currentDisplay.elevationNumber = currentlyOpenData.elevationNumbers[elevation]
+    currentDisplay.softElIndex=elevation
+    currentDisplay.rstart=currentlyOpenData.data[elevation][quantity]["rstart"]
+    currentDisplay.rscale=currentlyOpenData.data[elevation][quantity]["rscale"]
+    currentDisplay.fileType = currentlyOpenData.type
+    if currentDisplay.fileType == "HDF5":
+        currentDisplay.data=[[HDF5scaleValue(y, currentDisplay.gain, currentDisplay.offset, currentDisplay.nodata, currentDisplay.undetect, currentDisplay.rangefolding, currentDisplay.quantity) for y in x] for x in currentlyOpenData.data[elevation][quantity]["data"]]   #Load default data
+    else:
+        currentDisplay.data=[[scaleValue(y, currentDisplay.gain, currentDisplay.offset, currentDisplay.nodata, currentDisplay.undetect, currentDisplay.rangefolding) for y in x] for x in currentlyOpenData.data[elevation][quantity]["data"]]   #Load default data
+
+def listProducts(elIndex=None): #Populates products selection menu
+    global productChoice
+    global currentlyOpenData
+    productChoice['menu'].delete(0, 'end')
+    if elIndex != None:
+        for i in currentlyOpenData.quantities[elIndex]:
+            productChoice['menu'].add_command(label = i, command = lambda produkt = i: changeProduct(produkt))
+    else:
+        allProducts=[]
+        for i in range(len(currentlyOpenData.quantities)):
+            for j in currentlyOpenData.quantities[i]:
+                if not j in allProducts:
+                    allProducts.append(j)
+                    productChoice['menu'].add_command(label = j, command = lambda produkt = j: changeProduct(produkt))
+        
 def load(path=None):
-    global paised
-    global radials
     global clickbox
     global currenturl
     global currentfilepath
     global hcanames
     global fmt
-    global level2fail #Language note: "Fail" in the variable name does not
-                      #imply failure - it is Estonian for "file."
+    global currentlyOpenData
+    global currentDisplay
     clickbox=None
-    level2fail=None #Clear the old level 2 file in case one was opened
     if path == None:
         filed=tkFileDialog.Open(None,initialdir="../data")
         path=filed.show()
@@ -1175,185 +1223,119 @@ def load(path=None):
         stream=file_read(path)
         currentfilepath=path
         msgtostatus(fraasid["decoding"])
-        if path[-3:]== ".h5" or stream[1:4]=="HDF":
-            product_choice.config(state=Tkinter.NORMAL)
-            elevation_choice.config(state=Tkinter.NORMAL)
+        if path[-3:]== ".h5" or stream[1:4]==b"HDF":
+            productChoice.config(state=Tkinter.NORMAL)
+            elevationChoice.config(state=Tkinter.NORMAL)
             hcanames=fraasid["iris_hca"]
-            fmt=1
-        elif stream[0:4] == "AR2V":
-            product_choice.config(state=Tkinter.NORMAL)
-            elevation_choice.config(state=Tkinter.NORMAL)
-            level2fail=NEXRADLevel2File(path) #Load a Level 2 file
-            fmt=2
+            currentlyOpenData=HDF5(path)
+        elif stream[0:4] == b"AR2V" or stream[0:8] == b"ARCHIVE2":
+            productChoice.config(state=Tkinter.NORMAL)
+            elevationChoice.config(state=Tkinter.NORMAL)
+            currentlyOpenData=NEXRADLevel2(path)
         else:
             hcanames=fraasid["hca_names"]
-            if not currenturl or currenturl.find("ftp://tgftp.nws.noaa.gov/SL.us008001/DF.of/DC.radar/") == -1: #Do not clear elevation and product choices when viewing current NOAA Level 3 data
-                product_choice.config(state=Tkinter.DISABLED)
-                elevation_choice.config(state=Tkinter.DISABLED)
-                product_choice['menu'].delete(0, 'end')
-                elevation_choice['menu'].delete(0, 'end')
-                chosen_product.set(None)
-                chosen_elevation.set(None)
-            fmt=0
-        decodefile(stream,fmt)
-    return 0
-def decodefile(stream,fmt=0): #Decodes file content
-                            #FMT values:
-                            #0 - NEXRAD Level 3
-                            #1 - HDF5
-                            #2 - NEXRAD Level 2
-    global paised
-    global radials
-    global sweeps
-    global rhishow
-    global renderagain
-    global chosen_elevation
-    global currentfilepath
-    global radarposprev
-    global rhiaz
-    global img_center
-    global canvasctr
-    global render_center
-    global level2fail
-    global zoomlevel
-    global samemap
-    if fmt == 0:
-        paised=headers(stream)
-        draw_info(headersdecoded(paised,fraasid))
-        radials=level3file_radials(paised,stream)
-    elif fmt == 1:
-        produktid=hdf5_productlist(currentfilepath)
-        sweeps=hdf5_sweepslist(currentfilepath)
-        paised=hdf5_headers(currentfilepath,produktid[0],sweeps[0])
-        print paised
-        draw_info(headersdecoded(paised,fraasid))
-        radials=hdf5_valarray(currentfilepath)
-        product_choice['menu'].delete(0, 'end')
-        elevation_choice['menu'].delete(0, 'end')
-        for i in produktid:
-            product_choice['menu'].add_command(label=i, command=lambda produkt=i: change_product(produkt))
-        chosen_product.set(produktid[0])
-        for j in xrange(len(sweeps)):
-            elevation_choice['menu'].add_command(label=str(float(sweeps[j])), command=lambda index=j: change_elevation(index))
-        chosen_elevation.set(str(float(sweeps[0])))
-    elif fmt == 2:
-        product_choice['menu'].delete(0, 'end')
-        elevation_choice['menu'].delete(0, 'end')
-        sweeps=level2_sweepslist(level2fail)
-        for i in xrange(len(sweeps)):
-            elevation_choice['menu'].add_command(label=str(round(float(sweeps[i]),2)), command=lambda index=i: change_elevation(index))
-        firstmoments=level2fail.scan_info()[0]["moments"] #First moments of the first scan, as that is going to be loaded by default.
-        for j in firstmoments:
-            product_choice["menu"].add_command(label=j, command=lambda moment=j: change_product(moment,0))
-        chosen_elevation.set(str(sweeps[0]))
-        chosen_product.set("REF")
-        paised=level2_headers(level2fail,"REF",0)
-        print paised
-        draw_info(headersdecoded(paised,fraasid))
-        radials=level2_valarray(level2fail,"REF",0)
-    checkradarposition(paised) #Checking if radar position has changed
-    #Checking if showing RHI
-    if not rhishow:
-        render_radials()
-    else:
-        if len(sweeps) > 1:
-            getrhi(rhiaz)
-            mkrhi(rhiaz)
-            tozoom()
-            renderagain=1
+            currentlyOpenData=NEXRADLevel3(path)
+        ## PROCESSING (former decode_file_function)
+        defaultProduct=currentlyOpenData.quantities[0][0]
+
+        #TODO: currentDisplay populeerimine viia eraldi funktsiooni. Siis vähem dubleerimist
+        loadData(defaultProduct,0)
+        ## Clear product and elevation menus
+        ## Configuring product selectors according to the default scan shown on file open
+        if not currenturl or currenturl.find("ftp://tgftp.nws.noaa.gov/SL.us008001/DF.of/DC.radar/") == -1: #Do not clear elevation and product choices when viewing current NOAA Level 3 data
+            listProducts(0)
+            ## Elevation menu
+            elevationChoice['menu'].delete(0, 'end')
+            for j in currentlyOpenData.elevationNumbers:
+                elevationIndex=currentlyOpenData.elevationNumbers.index(j)
+                elevationChoice['menu'].add_command(label = str(currentlyOpenData.nominalElevations[elevationIndex]), command=lambda index = elevationIndex: changeElevation(index))
+            productChoice.config(state=Tkinter.ACTIVE)
+            elevationChoice.config(state=Tkinter.ACTIVE)
+        ## Set default values for product and menu selectors
+        chosenElevation.set(str(currentlyOpenData.nominalElevations[0]))
+        if currentlyOpenData.type == "NEXRAD3":
+            chosenProduct.set(currentDisplay.quantity)
+        elif currentlyOpenData.type == "NEXRAD2":
+            chosenProduct.set("DBZH")
         else:
-            topan()
-            render_radials()
+            chosenProduct.set(currentlyOpenData.quantities[0][0])
+        drawInfo()
+        
+        checkradarposition() #Checking if radar position has changed
+        #Checking if showing RHI
+        if not currentDisplay.isRHI:
+            renderRadarData()
+        else:
+            if len(currentlyOpenData.nominalElevations) > 1:
+                getrhi(currentDisplay.rhiAzimuth)
+                mkrhi()
+                tozoom()
+                currentDisplay.renderAgain=1
+            else:
+                topan()
+                currentDisplay.isRHI=False
+                renderRadarData()
     return 0
 def reset_colortable():
     global customcolortable
-    global rhishow
-    global rhiaz
-    global renderagain
+    global currentDisplay
     customcolortable=None
-    if rhishow:
-        mkrhi(rhiaz)
-        renderagain=1
+    if currentDisplay.isRHI:
+        mkrhi()
+        currentDisplay.renderAgain=1
     else:
-        render_radials()
-def change_colortable(tabel):
-    global rhishow
-    global rhiaz
+        renderRadarData()
+def changeColourTable(tabel):
+    global currentDisplay
     global customcolortable
-    global renderagain
     customcolortable=tabel
-    if rhishow:
-        mkrhi(rhiaz)
-        renderagain=1
+    if currentDisplay.isRHI:
+        mkrhi()
+        currentDisplay.renderAgain=1
     else:
-        render_radials()
-def change_elevation(index):
-    global radials
-    global canvasbusy
-    global sweeps
-    global currentfilepath
-    global level2fail
-    global fmt
-    global paised
-    if not canvasbusy:
-        if fmt == 1:
-            paised[17]=sweeps[index]
-            paised[0]=chosen_product.get()
-            chosen_elevation.set(str(float(paised[17])))
-            skanniarv=hdf5_leiaskann(currentfilepath,paised[0],sweeps[index])
-            if skanniarv != None:
-                radials=hdf5_valarray(currentfilepath,skanniarv)
-                draw_info(headersdecoded(paised,fraasid))
-                render_radials()
-            else:
-                msgtostatus(fraasid["not_found_at_this_level"])
-        elif level2fail:            
-            #Load data.
-            try:
-                chosen_elevation.set(str(float(sweeps[index])))
-                product_choice['menu'].delete(0, 'end') #Clean up products menu for below.
-                #Moments available for a particular scan
-                moments=level2fail.scan_info()[index]["moments"] #First moments of the first scan, as that is going to be loaded by default.
-                for j in moments:
-                    product_choice["menu"].add_command(label=j, command=lambda scan=index, moment=j: change_product(moment,index))
-                paised=level2_headers(level2fail, paised[0], index)
-                print paised
-                radials=level2_valarray(level2fail, paised[0], index)
-            except: #Most likely not found, defaulting back to reflectivity product, which should be present at all scans.
-                radials=level2_valarray(level2fail, "REF", index)
-                chosen_product.set("REF")
-            draw_info(headersdecoded(paised,fraasid))
-            if radials != None: render_radials() #If the data is in fact there..
+        renderRadarData()
+def changeElevation(index):
+    global chosenElevation
+    global chosenProduct
+    global currentDisplay
+    global currentlyOpenData
+    listProducts(index)
+    try:
+        loadData(currentDisplay.quantity,index)
+    except:
+        firstQuantity=currentlyOpenData.quantities[index][0]
+        loadData(firstQuantity,index)
+        chosenProduct.set(firstQuantity)
+    chosenElevation.set(currentDisplay.elevation)
+    if not currentDisplay.isRHI:
+        drawInfo()
+        renderRadarData()
     return 0
-def change_product(newproduct,level2scan=0):
-    global sweeps
-    global radials
-    global paised
-    global canvasbusy
-    global currentfilepath
-    global level2fail
-    global fmt
-    if not canvasbusy:
-        if fmt == 1:
-            chosen_product.set(newproduct)
-            skanniarv=hdf5_leiaskann(currentfilepath,newproduct,float(chosen_elevation.get()))
-            if skanniarv != None:
-                radials=hdf5_valarray(currentfilepath,skanniarv)
-                paised[0]=newproduct
-                draw_info(headersdecoded(paised,fraasid))
-                render_radials()
-            else:
-                msgtostatus(fraasid["not_found_at_this_level"])
-        elif level2fail:
-            chosen_product.set(newproduct)
-            paised=level2_headers(level2fail,newproduct,level2scan)
-            print paised
-            try:
-                radials=level2_valarray(level2fail,newproduct,level2scan)
-                draw_info(headersdecoded(paised,fraasid))
-                render_radials()
-            except:
-                msgtostatus(fraasid["error_during_loading"]) #Different kind of error because on Level 2, the product HAS to be there!(Product list is reloaded every elevation change)
+def changeProduct(newProduct):
+    global chosenProduct
+    global currentDisplay
+    global currentlyOpenData
+    # Workarounds for NEXRAD LEVEL 2 which has products distributed over multiple scans in some elevations
+    if currentDisplay.isRHI and newProduct=="DBZH" and "VRAD" in currentlyOpenData.data[currentDisplay.softElIndex] and currentDisplay.elevation < 1.6 and currentDisplay.fileType == "NEXRAD2":
+        changeElevation(currentDisplay.softElIndex-1)
+    if newProduct not in currentlyOpenData.data[currentDisplay.softElIndex]:
+        if currentlyOpenData.type == "NEXRAD2" and currentDisplay.isRHI:
+            if newProduct in ["VRAD","WRAD"]: #If doppler
+                changeElevation(currentDisplay.softElIndex+1)
+            elif newProduct in ["DBZH","RHOHV","PHIDP","ZDR"]: #Otherwise
+                changeElevation(currentDisplay.softElIndex-1)
+        else:
+            tkMessageBox.showerror(fraasid["name"],fraasid["not_found_at_this_level"]) #This shouldn't really be happening but apparently it has
+
+    loadData(newProduct)
+    chosenProduct.set(newProduct)
+    drawInfo()
+    if not currentDisplay.isRHI:
+        renderRadarData()
+    else:
+        currentDisplay.renderAgain = True
+        getrhi(currentDisplay.rhiAzimuth)
+        mkrhi()
     return 0
 def setcursor():
     global zoom
@@ -1383,31 +1365,26 @@ def tozoom(event=None):
     return 0
 def topan(event=None):
     global zoom
-    global paised
-    global radials
     global info
-    global rhi
-    global rhishow
     global panimg
-    global img_center
-    global renderagain
+    global currentDisplay
     zoom=0
     info=0
     rhi=0
     clearclicktext()
     setcursor()
-    if rhishow:
-        w.coords(radaripilt,tuple(img_center))
+    if currentDisplay.isRHI:
+        w.coords(radaripilt,tuple(currentDisplay.imageCentre))
         taskbarbtn1.config(image=panimg)
         taskbarbtn5.config(state=Tkinter.NORMAL)
-        product_choice.config(state=Tkinter.NORMAL)
-        elevation_choice.config(state=Tkinter.NORMAL)
-        draw_info(headersdecoded(paised,fraasid))
-        if renderagain:
-            renderagain=0
-            render_radials()
+        elevationChoice.config(state=Tkinter.NORMAL)
+        currentDisplay.isRHI = False
+        listProducts(currentDisplay.softElIndex)
+        drawInfo()
+        if currentDisplay.renderAgain:
+            currentDisplay.renderAgain=0
+            renderRadarData()
         w.itemconfig(radaripilt,image=rendered)
-        rhishow=0
     return 0
 def toinfo(event=None):
     global zoom
@@ -1419,38 +1396,28 @@ def toinfo(event=None):
     setcursor()
     return 0
 def resetzoom(event=None):
-    global radials
-    global paised
-    global zoomlevel
     global canvasctr
-    global render_center
-    global img_center
-    global rhishow
-    global rhiaz
-    global rhistart
-    global rhiend
-    global samemap
-    if rhishow:
-        rhistart=0
-        rhiend=250
-        mkrhi(rhiaz)
+    global currentDisplay
+    if currentDisplay.isRHI:
+        currentDisplay.rhiStart=0
+        currentDisplay.rhiEnd=250
+        mkrhi()
     else:
-        samemap=False
+        currentDisplay.isSameMap=False
         clearclicktext()
-        render_center=[1000,1000]
-        img_center=canvasctr
-        zoomlevel=1
-        if len(paised) != 0:
-            render_radials()
+        currentDisplay.renderCentre=[1000,1000]
+        currentDisplay.imageCentre=canvasctr
+        currentDisplay.zoomLevel=1
+        if currentDisplay.quantity != 0:
+            renderRadarData()
     return 0
 #Drawing area events
 def mouseclick(event):
     global clickcoords
     global canvasdimensions
     global canvasctr
-    global img_center
-    global render_center
-    if not canvasbusy:
+    global currentDisplay
+    if not currentDisplay.isCanvasBusy:
         x=int(w.cget("width"))
         y=int(w.cget("height"))
         canvasdimensions=[x,y]
@@ -1471,18 +1438,14 @@ def onmotion(event):
     #Since only visual changes take place, I use the same function for both mouse keys.
     global clickcoords
     global zoom
-    global zoomlevel
     global canvasdimensions
-    global img_center
-    global render_center
     global rhi
-    global rhishow
-    global radials
+    global currentDisplay
     x=canvasdimensions[0]
     y=canvasdimensions[1]
-    if canvasbusy == False and radials != []:
+    if currentDisplay.isCanvasBusy == False and currentDisplay.quantity != None:
         if zoom:
-            if not rhishow:
+            if not currentDisplay.isRHI:
                 dy=event.y-clickcoords[1]
                 w.itemconfig(zoomrect, state=Tkinter.NORMAL)
                 w.coords(zoomrect,(clickcoords[0]-dy,clickcoords[1]-dy,clickcoords[0]+dy,event.y))
@@ -1492,98 +1455,85 @@ def onmotion(event):
                 w.coords(zoomrect,(clickcoords[0]-dx,-1,clickcoords[0]+dx,canvasdimensions[1]))
         else: #Not zooming
             if info: #If gathering pixel value
-                draw_infobox(event.x,event.y)
+                drawInfobox(event.x,event.y)
             else: #Moving
-                if not rhishow: #And no RHI is being displayed
+                if not currentDisplay.isRHI: #And no RHI is being displayed
                     if direction==1: #If left mouse button was clicked
                         dx=event.x-clickcoords[0]
                         dy=event.y-clickcoords[1]
-                        w.coords(radaripilt, (img_center[0]+dx,img_center[1]+dy))
+                        w.coords(radaripilt, (currentDisplay.imageCentre[0]+dx,currentDisplay.imageCentre[1]+dy))
     return 0
 def onrelease(event):
     global clickcoords
-    global img_center
-    global render_center
     global canvasdimensions
     global canvasctr
-    global zoomlevel
     global direction
-    global radials
+    global currentDisplay
     global sweeps
-    global paised
     global rendered
     global info
-    global rhi
-    global rhiaz
-    global rhishow
-    global rhistart
-    global rhiend
-    global samemap
-    if canvasbusy == False and radials != []:
+    if currentDisplay.isCanvasBusy == False and currentDisplay.quantity != None:
         if zoom: #If was zooming
-            if not rhishow:
-                samemap=False #Make sure map gets re-rendered at next render
+            if not currentDisplay.isRHI:
+                currentDisplay.isSameMap=False #Make sure map gets re-rendered at next render
                 #Calculating zoom level
                 dy=event.y-clickcoords[1] 
                 if dy!=0:
                     newzoom=(float(canvasdimensions[1])/(abs(dy*2)))**direction
                 else: newzoom=2**direction
-                #Finding new coordinates for the center of data
+                #Finding new coordinates for the centre of data
                 pdx=canvasctr[0]-clickcoords[0]
                 pdy=canvasctr[1]-clickcoords[1]
-                render_center[0]=1000+newzoom*(pdx+render_center[0]-1000)
-                render_center[1]=1000+newzoom*(pdy+render_center[1]-1000)
-                zoomlevel*=newzoom
+                currentDisplay.renderCentre[0]=1000+newzoom*(pdx+currentDisplay.renderCentre[0]-1000)
+                currentDisplay.renderCentre[1]=1000+newzoom*(pdy+currentDisplay.renderCentre[1]-1000)
+                currentDisplay.zoomLevel*=newzoom
                 w.itemconfig(zoomrect, state=Tkinter.HIDDEN)
-                if len(paised) != 0: render_radials()
+                if currentDisplay.quantity != None: renderRadarData()
             else: #If was zooming among the RHI
                 keskpunkt=rhix(clickcoords[0])
                 kauguskeskpunktist=abs(rhix(event.x)-keskpunkt)
-                samm=paised[25]
+                samm=currentDisplay.rscale
                 if direction == 1:
-                    rhistart=keskpunkt-kauguskeskpunktist
-                    rhiend=keskpunkt+kauguskeskpunktist
+                    currentDisplay.rhiStart=keskpunkt-kauguskeskpunktist
+                    currentDisplay.rhiEnd=keskpunkt+kauguskeskpunktist
                 else:
-                    kauguskeskpunktist*=(rhiend-rhistart)*2/kauguskeskpunktist
-                    rhistart=keskpunkt-kauguskeskpunktist
-                    rhiend=keskpunkt+kauguskeskpunktist
-                if rhistart < 0: rhistart=0
+                    kauguskeskpunktist*=(currentDisplay.rhiEnd-currentDisplay.rhiStart)*2/kauguskeskpunktist
+                    currentDisplay.rhiStart=keskpunkt-kauguskeskpunktist
+                    currentDisplay.rhiEnd=keskpunkt+kauguskeskpunktist
+                if currentDisplay.rhiStart < 0: currentDisplay.rhiStart=0
                 w.itemconfig(zoomrect, state=Tkinter.HIDDEN)
-                mkrhi(rhiaz)
-        elif rhi and not rhishow: ##If was choosing an azimuth for PseudoRHI
-            rhiaz=int(getinfo(event.x,event.y)[1][0])
+                mkrhi()
+        elif rhi and not currentDisplay.isRHI: ##If was choosing an azimuth for PseudoRHI
+            rhiaz=round(getinfo(event.x,event.y)[1][0],1)
             getrhi(rhiaz)
-            rhistart=0
-            rhiend=250
-            mkrhi(rhiaz)
+            currentDisplay.rhiStart=0
+            currentDisplay.rhiEnd=250
+            mkrhi()
             tozoom()
         else: #If I was moving around
             if not info: #If was not gathering info
-                if not rhishow:
-                    samemap=False #Make sure map gets re-rendered at next render
+                if not currentDisplay.isRHI:
+                    currentDisplay.isSameMap=False #Make sure map gets re-rendered at next render
                     if direction == 1: #On left mouseclick
                         dx_2=event.x-clickcoords[0]
                         dy_2=event.y-clickcoords[1]
-                        img_center[0]+=dx_2
-                        img_center[1]+=dy_2
-                        render_center[0]+=dx_2
-                        render_center[1]+=dy_2
+                        currentDisplay.imageCentre[0]+=dx_2
+                        currentDisplay.imageCentre[1]+=dy_2
+                        currentDisplay.renderCentre[0]+=dx_2
+                        currentDisplay.renderCentre[1]+=dy_2
                         #If going out of rendering area
-                        if img_center[0] > 1000 or img_center[0] < -600  or img_center[1] > 1000 or img_center[1] < -600:
-                            if len(paised) != 0: render_radials()
+                        if currentDisplay.imageCentre[0] > 1000 or currentDisplay.imageCentre[0] < -600  or currentDisplay.imageCentre[1] > 1000 or currentDisplay.imageCentre[1] < -600:
+                            if currentDisplay.quantity != None: renderRadarData()
             else: #If information was queried.
-                draw_infobox(event.x,event.y)
+                drawInfobox(event.x,event.y)
     return 0
 def on_window_reconf(event):
     global sizeb4
-    global img_center
     global canvasctr
     global clickboxloc
-    global canvasbusy
     global canvasdimensions
-    global rhishow
+    global currentDisplay
     global rhiagain
-    global rhiaz
     dim=[output.winfo_width(),output.winfo_height()]
     if sizeb4 == []: sizeb4=dim #If sizeb4 is empty, assume previous size was current one.
     if dim != sizeb4: #If there has been change in size...
@@ -1594,33 +1544,28 @@ def on_window_reconf(event):
         w.config(width=cdim[0],height=cdim[1])
         w.coords(legend,(cdim[0]-18,cdim[1]/2))
         w.coords(radardetails,(cdim[0]/2,cdim[1]-20))
-        img_center=[img_center[0]+delta[0],img_center[1]+delta[1]]
+        currentDisplay.imageCentre=[currentDisplay.imageCentre[0]+delta[0],currentDisplay.imageCentre[1]+delta[1]]
         canvasctr=[cdim[0]/2,cdim[1]/2]
-        w.coords(radaripilt,tuple(img_center))
+        w.coords(radaripilt,tuple(currentDisplay.imageCentre))
         clickboxloc=[clickboxloc[0]+delta[0],clickboxloc[1]+delta[1]]
         w.coords(clicktext,(clickboxloc[0]+85,clickboxloc[1]+42))
         sizeb4=dim
-        if rhishow:
-            if not canvasbusy:
-                mkrhi(rhiaz)
+        if currentDisplay.isRHI:
+            if not currentDisplay.isCanvasBusy:
+                mkrhi()
     return 0
 def getinfo(x,y):
-    global render_center
     global canvasdimensions
-    global zoomlevel
-    global paised
-    global rhishow
-    global rhistart
-    global rhiend
+    global currentDisplay
     dimx=canvasdimensions[0]
     dimy=canvasdimensions[1]
-    pointx=x-dimx/2-(render_center[0]-1000)
-    pointy=y-dimy/2-(render_center[1]-1000)
-    rlat=paised[6]
-    rlon=paised[7]
-    if not rhishow:
-        azrange=az_range(pointx,pointy,zoomlevel)
-        return geocoords(azrange,float(rlat),float(rlon),float(zoomlevel)), azrange, getbin(azrange)
+    pointx=x-dimx/2-(currentDisplay.renderCentre[0]-1000)
+    pointy=y-dimy/2-(currentDisplay.renderCentre[1]-1000)
+    rlat=currentlyOpenData.headers["latitude"]
+    rlon=currentlyOpenData.headers["longitude"]
+    if not currentDisplay.isRHI:
+        azrange=az_range(pointx,pointy,currentDisplay.zoomLevel)
+        return geocoords(azrange,float(rlat),float(rlon),float(currentDisplay.zoomLevel)), azrange, getbin(azrange)
     else:
         gr=rhix(x)
         h=(canvasdimensions[1]-y-80)/((canvasdimensions[1]-120)/17.0)
@@ -1628,50 +1573,41 @@ def getinfo(x,y):
         a=beamangle(h,r)
         return gr, h, getrhibin(h,gr,float(a))
 def onmousemove(event):
-    global canvasbusy
-    global rhishow
-    if not canvasbusy and len(paised) > 0:
+    global currentDisplay
+    global currentlyOpenData
+    if not currentDisplay.isCanvasBusy and currentlyOpenData:
         x=event.x
         y=event.y
         info=getinfo(x,y)
-        if not rhishow:
+        if not currentDisplay.isRHI:
             lat=info[0][0]
             latl="N" if lat >= 0 else "S"
             lon=info[0][1]
             lonl="E" if lon >= 0 else "W"
             val=info[2][0]
-            infostring=u"%.3f°%s %.3f°%s; %s: %.1f°; %s: %.3f km; %s: %s" % (abs(lat),latl,abs(lon),lonl,fraasid["azimuth"],floor(info[1][0]*10)/10.0,fraasid["range"],floor(info[1][1]*1000)/1000.0,fraasid["value"],val)
+            infostring=u"%.3f°%s %.3f°%s; %s: %.2f°; %s: %.3f km; %s: %s" % (abs(lat),latl,abs(lon),lonl,fraasid["azimuth"],floor(info[1][0]*100)/100.0,fraasid["range"],floor(info[1][1]*1000)/1000.0,fraasid["value"],val)
             msgtostatus(infostring)
         else:
             gr,h,val=info
             msgtostatus(u"x: %.3f km; y: %.3f km; %s: %s" % (gr, h, fraasid["value"], val))
-def file_read(path):
-    andmefail=open(path,"rb")
-    sisu=andmefail.read()
-    andmefail.close()
-    return sisu
 #RHI speficic functions
 def chooserhi(): #Choose RHI
-    global currentfilepath
+    global currentDisplay
+    global currentlyOpenData
     global zoom
     global info
     global rhi
     global sweeps
-    global radials
+    global radarData
     global level2fail
-    if radials!=[]:
-        if len(sweeps) > 1:
-            if currentfilepath[-3:]==".h5":
-                sweeps=hdf5_sweepslist(currentfilepath)
-            elif level2fail:
-                sweeps=level2_sweepslist(level2fail)
-            if len(sweeps) > 1:
-                clearclicktext()
-                zoom=0
-                info=0
-                rhi=1
-                setcursor()
-                msgtostatus(fraasid["choose_pseudorhi_status"])
+    if currentDisplay.data != []:
+        if len(currentlyOpenData.nominalElevations) > 1:
+            clearclicktext()
+            zoom=0
+            info=0
+            rhi=1
+            setcursor()
+            msgtostatus(fraasid["choose_pseudorhi_status"])
         else:
             tkMessageBox.showerror(fraasid["name"],fraasid["cant_make_pseudorhi"])
 def rhiypix(h,bottom):
@@ -1681,89 +1617,83 @@ def rhiy(r,a,bottom):
     samm=(bottom-120)/17.0
     return bottom-80-beamheight(r,float(a))*samm
 def rhix(x):
-    global rhistart
-    global rhiend
+    global currentDisplay
     global canvasdimensions
-    return rhistart+(x-50)*((rhiend-rhistart)/(canvasdimensions[0]-100.0))
+    return currentDisplay.rhiStart+(x-50)*((currentDisplay.rhiEnd-currentDisplay.rhiStart)/(canvasdimensions[0]-100.0))
 ##Vastupidised funktsioonid RHI koordinaatidele
 ##Reverse functions of RHI coords
 def getrhi(az):
-    global sweeps
-    global productsweeps
-    global currentfilepath
-    global rhidata
-    global canvasbusy
-    global level2fail
-    rhidata=[]
-    if not currentfilepath[-3:]==".h5": sisu=file_read(currentfilepath)
-    canvasbusy=1
-    productsweeps=[]
-    for i in xrange(len(sweeps)):
-        if currentfilepath[-3:]==".h5" or sisu[1:4]=="HDF":
-            try:
-                skanniarv=hdf5_leiaskann(currentfilepath,paised[0],sweeps[i])
-                rhidata.append(hdf5_valarray(currentfilepath,skanniarv,az))
-                productsweeps.append(sweeps[i])
-            except:
-                pass
-        elif level2fail:
-            rida=level2_valarray(level2fail,paised[0],i,az)
-            if rida != None:
-                if sweeps[i] > sweeps[i-1] or sweeps[i]-sweeps[i-1] < 0.2:
-                    productsweeps.append(sweeps[i])
-                    #Additional check for SAILS scans.
-                    if len(productsweeps) > 1 and productsweeps[-2]-productsweeps[-1] > 1: #If reduction of elevation over a degree, normally would indicate SAILS scan
-                        productsweeps.pop(-1) #Don't add it to the list
-                    else:
-                        rhidata.append(level2_valarray(level2fail,paised[0],i,az))
-        msgtostatus(fraasid["reading_elevation"]+str(sweeps[i])+u"°")
-        w.update()
-    canvasbusy=0
+    global currentlyOpenData
+    global currentDisplay
+    currentDisplay.isCanvasBusy = True
+    currentDisplay.rhiElevations = []
+    currentDisplay.rhiData = []
+    currentDisplay.isRHI = True
+    currentDisplay.rhiAzimuth = az
+    lastElev = currentlyOpenData.nominalElevations[0]
+    for i in range(len(currentlyOpenData.nominalElevations)):
+        currentElev=currentlyOpenData.nominalElevations[i]
+        if currentDisplay.quantity in currentlyOpenData.data[i]:
+            azimuths=currentlyOpenData.azimuths[i]
+            for j in range(len(azimuths)):
+                msgtostatus(fraasid["reading_elevation"]+str(currentElev)+u"°")
+                w.update()
+                if az >= azimuths[j-1] and az < azimuths[j]:
+                    if not (currentDisplay.quantity == "DBZH" and "VRAD" in currentlyOpenData.data[i] and currentlyOpenData.type == "NEXRAD2") or currentElev-lastElev > 0.2:
+                        if i == 0 or currentElev-lastElev > -1.0: #Check to filter out SAILS extra lower scans if present
+                            try:
+                                currentDisplay.rhiData.append([scaleValue(k, currentDisplay.gain, currentDisplay.offset, currentDisplay.nodata, currentDisplay.undetect, currentDisplay.rangefolding) for k in currentlyOpenData.data[i][currentDisplay.quantity]["data"][j]])
+                                if currentlyOpenData.type == "NEXRAD2": currentDisplay.rhiElevations.append(currentlyOpenData.elevations[i][j])
+                                else: currentDisplay.rhiElevations.append(currentlyOpenData.nominalElevations[i])
+                                lastElev = currentElev
+                            except:
+                                print("Incomplete record. Processing bug in Level 2? Problematic elevation: ",currentElev)
+    currentDisplay.isCanvasBusy=False
     return 0
-def mkrhi(az):
-    global paised
-    global canvasbusy
+def mkrhi():
+    global currentDisplay
     global productsweeps
-    global rhidata
     global rhiout
     global rhiout2
     global ppiimg
-    global rhishow
     global canvasctr
     global pildifont
-    global rhistart
-    global rhiend
     global colortablenames
     global customcolortable
-    if not canvasbusy:
-        draw_info(rhiheadersdecoded(paised,az,fraasid))
+    if not currentDisplay.isCanvasBusy:
+        currentDisplay.isCanvasBusy = True
+        drawInfo()
         msgtostatus(fraasid["drawing_pseudorhi"])
         pikkus=int(w.cget("height"))
         laius=int(w.cget("width"))
         pilt=uuspilt("RGB", (laius,pikkus), "#000025") 
         joonis=Draw(pilt)
-        samm=paised[25]
+        samm=currentDisplay.rscale
         if customcolortable: #If color table has been overridden by user
             varvitabel=loadcolortable("../colortables/"+customcolortable) #Load a custom color table
         else:
-            varvitabel=loadcolortable("../colortables/"+colortablenames[paised[0]]+".txt") #Load a color table
-        init_drawlegend(paised[0],varvitabel) #Redraw color table just in case it is changed in RHI mode.
-        xsamm=(laius-100.0)/((rhiend-rhistart)/samm) if rhiend != rhistart else 0
+            varvitabel=loadcolortable("../colortables/"+colortablenames[currentDisplay.quantity]+".txt") #Load a color table
+        init_drawlegend(currentDisplay.quantity,varvitabel) #Redraw color table just in case it is changed in RHI mode.
+        xsamm=(laius-100.0)/((currentDisplay.rhiEnd-currentDisplay.rhiStart)/samm) if currentDisplay.rhiEnd != currentDisplay.rhiStart else 0
         a=0
-        a0=0
-        for i in xrange(len(productsweeps)):
+        a0=currentDisplay.rhiElevations[0]-0.5
+        elevationsCount=len(currentDisplay.rhiElevations)
+        for i in range(elevationsCount):
             r=0
-            a=float(productsweeps[i])
+            if i < elevationsCount-1:
+                a=(float(currentDisplay.rhiElevations[i])+float(currentDisplay.rhiElevations[i+1]))/2
+            else:
+                a=float(currentDisplay.rhiElevations[i])+0.5
             x0=50
             first=1
-            for j in rhidata[i]:
-                if rhistart-r <= samm and r < rhiend:
+            for j in currentDisplay.rhiData[i]:
+                if currentDisplay.rhiStart-r <= samm and r < currentDisplay.rhiEnd:
                     if first:
-                        x0+=(r-rhistart)*xsamm/samm
+                        x0+=(r-currentDisplay.rhiStart)*xsamm/samm
                         first=0
-                    x1=x0+xsamm if rhiend-r > samm else laius-50
+                    x1=x0+xsamm if currentDisplay.rhiEnd-r > samm else laius-50
                     if j != None:
-                        if r-rhistart < 0:
+                        if r-currentDisplay.rhiStart < 0:
                             path=[50,rhiy(r, a0, pikkus),x1,rhiy(r+samm, a0, pikkus),x1,rhiy(r+samm,a,pikkus),50,rhiy(r,a,pikkus)]
                         else:
                             path=[x0,rhiy(r, a0, pikkus),x1,rhiy(r+samm, a0, pikkus),x1,rhiy(r+samm,a,pikkus),x0,rhiy(r,a,pikkus)]
@@ -1771,16 +1701,16 @@ def mkrhi(az):
                     x0=x1
                 r+=samm
             a0=a
-        for k in xrange (0,18):
+        for k in range (0,18):
             korgus=rhiypix(k,pikkus)
             joonis.line((50,korgus,laius-50,korgus),fill="white")
             joonis.text((30,korgus-10),text=str(k),fill="white",font=pildifont)
-        ulatus=(rhiend-rhistart)
+        ulatus=(currentDisplay.rhiEnd-currentDisplay.rhiStart)
         teljesamm=ulatus/5.0
         teljexsamm=(laius-100)/5.0
-        for l in xrange(5):
+        for l in range(5):
             joonis.line((50+teljexsamm*l,rhiypix(0,pikkus)+10,50+teljexsamm*l,rhiypix(17,pikkus)),fill="white")
-            joonis.text((50+teljexsamm*l-10,rhiypix(0,pikkus)+15),text=str(round(rhistart+teljesamm*l,2)),fill="white",font=pildifont)
+            joonis.text((50+teljexsamm*l-10,rhiypix(0,pikkus)+15),text=str(round(currentDisplay.rhiStart+teljesamm*l,2)),fill="white",font=pildifont)
         joonis.line((50,rhiypix(0,pikkus),50,rhiypix(17,pikkus)),fill="white")
         joonis.text((laius/2,pikkus-50),text="r (km)",fill="white",font=pildifont) #x telje silt
         joonis.text((10,5),text="h (km)", fill="white", font=pildifont)
@@ -1788,12 +1718,14 @@ def mkrhi(az):
         rhiout=PhotoImage(image=rhiout2)
         taskbarbtn1.config(image=ppiimg)
         taskbarbtn5.config(state=Tkinter.DISABLED)
-        product_choice.config(state=Tkinter.DISABLED)
-        elevation_choice.config(state=Tkinter.DISABLED)
+        elevationChoice.config(state=Tkinter.DISABLED)
         w.coords(radaripilt,tuple(canvasctr))
         w.itemconfig(radaripilt, image=rhiout)
         msgtostatus(fraasid["ready"])
-        rhishow=1
+        currentDisplay.isRHI=True
+        if currentDisplay.fileType == "NEXRAD2": #A workaround to get all products which otherwise are distributed over different scans on some elevations
+            listProducts()
+        currentDisplay.isCanvasBusy=False            
     return 0
 def change_language(lang):
     global conf
@@ -1840,7 +1772,7 @@ abimenyy.add_command(label=fraasid["about_program"], command=about_program)
 languagemenyy.add_command(label=fraasid["language_estonian"], command=lambda: change_language("estonian"))
 languagemenyy.add_command(label=fraasid["language_english"], command=lambda: change_language("english"))
 ##Drawing area
-w = Tkinter.Canvas(output,width=600,height=400,highlightthickness=0)
+w = Tkinter.Canvas(output,width=600,height=600,highlightthickness=0)
 w.bind("<Button-1>",leftclick)
 w.bind("<Button-3>",rightclick)
 w.bind("<B1-Motion>",onmotion)
@@ -1851,12 +1783,12 @@ w.bind("<Motion>",onmousemove)
 w.config(background="#000025")
 w.config(cursor="crosshair")
 w.grid(row=0,column=0)
-radaripilt=w.create_image(tuple(img_center))
+radaripilt=w.create_image(tuple(currentDisplay.imageCentre))
 clicktext=w.create_image((300,300))
-legend=w.create_image((582,200))
-radardetails=w.create_image((300,380))
+legend=w.create_image((582,300))
+radardetails=w.create_image((300,580))
 zoomrect=w.create_rectangle((0,0,200,200),outline="white",state=Tkinter.HIDDEN) #Ristkülik, mis joonistatakse ekraanile suurendamise ajal.
-progress=w.create_rectangle((0,390,400,400),fill="#0044ff",state=Tkinter.HIDDEN)
+progress=w.create_rectangle((0,590,400,600),fill="#0044ff",state=Tkinter.HIDDEN)
 #Key bindings
 output.bind("r",resetzoom)
 output.bind("i",toinfo)
@@ -1885,14 +1817,14 @@ taskbarbtn5=Tkinter.Button(moderaam, bg="#0099ff",activebackground="#0044ff", hi
 taskbarbtn5.grid(row=0,column=4)
 taskbarbtn6=Tkinter.Button(moderaam, bg="#0099ff",activebackground="#0044ff", highlightbackground="#0044ff", image=reloadimg, command=reloadfile)
 taskbarbtn6.grid(row=0,column=5)
-chosen_elevation = Tkinter.StringVar(moderaam)
-elevation_choice=Tkinter.OptionMenu(moderaam, chosen_elevation,None)
-elevation_choice.config(bg="#44bbff",activebackground="#55ccff",highlightbackground="#55ccff",state=Tkinter.DISABLED)
-elevation_choice.grid(row=0,column=6)
-chosen_product= Tkinter.StringVar(moderaam)
-product_choice=Tkinter.OptionMenu(moderaam, chosen_product,None)
-product_choice.config(bg="#44bbff",activebackground="#55ccff",highlightbackground="#55ccff",state=Tkinter.DISABLED)
-product_choice.grid(row=0,column=7)
+chosenElevation = Tkinter.StringVar(moderaam)
+elevationChoice=Tkinter.OptionMenu(moderaam, chosenElevation,None)
+elevationChoice.config(bg="#44bbff",activebackground="#55ccff",highlightbackground="#55ccff",state=Tkinter.DISABLED)
+elevationChoice.grid(row=0,column=6)
+chosenProduct= Tkinter.StringVar(moderaam)
+productChoice=Tkinter.OptionMenu(moderaam, chosenProduct,None)
+productChoice.config(bg="#44bbff",activebackground="#55ccff",highlightbackground="#55ccff",state=Tkinter.DISABLED)
+productChoice.grid(row=0,column=7)
 status=Tkinter.Label(output, text=None, justify=Tkinter.LEFT, anchor="w")
 status.grid(row=2,column=0,sticky="w")
 output.mainloop()

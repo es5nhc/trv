@@ -1,9 +1,9 @@
-#!/usr/bin/python2
+#!/usr/bin/python3
 # -*- coding: utf-8 -*-
 #
 
 
-##Copyright (c) 2016, Tarmo Tanilsoo
+##Copyright (c) 2018, Tarmo Tanilsoo
 ##All rights reserved.
 ##
 ##Redistribution and use in source and binary forms, with or without
@@ -37,7 +37,7 @@
 #Estonian
 phrases={"estonian":
          {
-             "name":"TRV 2016.1.19",
+             "name":"TRV EX1",
              "loading_states":"Laen andmeid... Osariigid",
              "coastlines":"Rannajooned",
              "countries":"Maismaapiirid",
@@ -84,7 +84,7 @@ phrases={"estonian":
              "export_success":"Eksport edukas",
              "export_format_fail":u"Valitud vormingusse ei saa salvestada või puudub asukohas kirjutamisõigus.",
              "no_data":"Andmed puuduvad",
-             "about_text":"Tarmo Tanilsoo, 2016\ntarmotanilsoo@gmail.com",
+             "about_text":"Tarmo Tanilsoo, 2018\ntarmotanilsoo@gmail.com",
              "key_shortcuts_dialog_text":u"Otseteed klaviatuuril:\n\nz - suurendamisrežiimi\np - ringiliikumisrežiimi\ni - infokogumiserežiimi\nr - algsuurendusse tagasi",
              "azimuth":"Asimuut",
              "range":"Kaugus",
@@ -131,6 +131,8 @@ phrases={"estonian":
              "product_kdp":"spetsiifiline diferentsiaalne faas",
              "product_hclass":u"hüdrometeoori klassifikatsioon",
              "product_sw":"spektrilaius",
+             "wradh":"spektrilaius (h)",
+             "wradv":"spektrilaius (v)",
              "product_phi":"diferentsiaalne faas",
              "qidx":"kvaliteet",
              "no_data_loaded":"Andmeid pole laetud!",
@@ -166,7 +168,7 @@ phrases={"estonian":
              },
          "english":
          {
-             "name":"TRV 2016.1.19",
+             "name":"TRV EX1",
              "loading_states":"Loading data... States",
              "coastlines":"Coastlines",
              "countries":"Countries",
@@ -213,7 +215,7 @@ phrases={"estonian":
              "export_success":"Export successful",
              "export_format_fail":"Either unable to save into this format or lacking writing permissions at the destination.",
              "no_data":"No data",
-             "about_text":"Tarmo Tanilsoo, 2016\ntarmotanilsoo@gmail.com",
+             "about_text":"Tarmo Tanilsoo, 2018\ntarmotanilsoo@gmail.com",
              "key_shortcuts_dialog_text":u"Shortcuts on keyboard:\n\nz - zoom mode\np - panning mode\ni - data gathering mode\nr - reset zoom",
              "azimuth":"Azimuth",
              "range":"Range",
@@ -245,18 +247,24 @@ phrases={"estonian":
              "key_shortcuts_menuentry":"Keyboard shortcuts",
              "about_program":"About",
              "product_reflectivity":"reflectivity",
-             "th":u"total reflectivity (H)",
-             "tv":u"total reflectivity (V)",
-             "dbzh":"reflectivity (H)",
-             "dbzv":"reflectivity (V)", 
+             "th":u"total reflectivity (h)",
+             "tv":u"total reflectivity (v)",
+             "dbzh":"reflectivity (h)",
+             "dbzv":"reflectivity (v)", 
              "sqi":"signal quality index",
              "qidx":"quality",
              "product_radialvelocity":"radial velocity",
+             "vradh":"radial velocity (h)",
+             "vradv":"radial velocity (v)",
+             "vraddh":"dealiased radial velocity (h)",
+             "vraddv":"dealiased radial velocity (v)",
              "product_zdr":"differential reflectivity",
              "product_rhohv":"correlation coefficient",
              "product_kdp":"specific differential phase",
              "product_hclass":"hydrometeor classification",
              "product_sw":"spectrum width",
+             "wradh":"spectrum width (h)",
+             "wradv":"spectrum width (v)",
              "product_phi":"differential phase",
              "no_data_loaded":"No data loaded!",
              "current_language":"Language",

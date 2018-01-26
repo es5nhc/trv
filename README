@@ -6,9 +6,15 @@
 
 --------------------------------------------------
 
-Versioon 2016.1.19
+Versioon EX1
 
-Tarmo Tanilsoo, 2016
+Tarmo Tanilsoo, 2018
+
+-----
+TÄHELEPANU! Alates sellest versioonist töötab rakendus Python 3 all! Python 2 versioon on repositooriumis saadaval, kuid seda edasi enam ei arendata.
+Juhtimaks tähelepanu sellele muudatusele, kasutan tavapärasest erinevat versiooninime. Versiooni numbrid stiilis aaaa.kk.pp naasevad järgmisest redaktsioonist.
+
+Kuna toimunud on muudatusi ka "kapoti" all, võivad olla võimalikud regressioonid. Probleemide esinemisel palun saata ka fail, millega probleem esineb, et mul oleks võimalik probleemi diagnoosida.
 
 -----
 ** KASUTAMINE
@@ -43,47 +49,46 @@ soovitud asimuutidest.
 Alates versioonist 2016.1.11 on võimalik JSON failide kaudu kirjeldada dünaamilisi andmepunkte mille väärtused võivad ajas muutuda. Näiteks on võimalik kirjeldada näiteks hetketemperatuure internetileheküljel JSON failina programmile sobival kujul. Detailsem formaadi kirjeldus on tulemas. Samuti on võimalik vaates ära muuta värviskaala - vaikimisi väärtuste tagasi saamiseks tuleb see uuesti menüüst valida.
 
 Vaata ka demovideot, kus näidatakse töö käiku: http://youtu.be/RZOYDvJv434 
-(videos on liides inglise keeles, kuid olemas on ka eestikeelne 
-kasutajaliides)
+(videos on liides inglise keeles, kuid olemas on ka eestikeelne kasutajaliides)
 
 -----
 ** NÕUDED
 
-* Python 2.x, eeldatavalt 2.7. Võimalik et võib töötada ka varasemate seeriatega aga YMMV.
+* Python 3!!!
 * Tkinteri jooksutamise võimalus
-* Python Imaging Library, võib olla ka selle Pillow fork(arendusmasinal jooksebki juba see, kuna see 
-tuleb uuemate Ubuntu distributsioonidega kaasa). Muuhulgas peab olema ka ImageTk moodul, vähemalt Ubuntulistel
-on see eraldi pakis.
+* Python Imaging Library, võib olla ka selle Pillow fork(arendusmasinal jooksebki juba see, kuna see tuleb uuemate Ubuntu distributsioonidega kaasa). Muuhulgas peab olema ka ImageTk moodul, vähemalt Ubuntulistel on see eraldi pakis.
 * H5Py
 * numpy
 
 Soovitatavalt vähemalt 1 GB RAM'i.
+
+Kui olete seni kasutanud Python 2 versiooni, siis on vaja paigaldada eeltoodud nõutud moodulite Python 3 versioonid!
 -----
 ** TOETATUD FORMAADID
 
 * Nexrad Level III - produktid 94, 99, 157, 161, 162, 163, 165
-* Nexrad Level II - kõik produktid (ainult need mida loeb PyART'ki - seega vaid MSG31 sõnumid!)
+* Nexrad Level II - kõik produktid (alates versioonist EX1 nii MSG1 Kui MSG31)
     NB! NCDC'st saadavad failid on algselt GZipis kokku pakitud, need tuleb enne programmis vaatamist lahti pakkida!
-* HDF5 - Alates H5rad 1.2. PVOL objekt. Produktid DBZ(ka DBZH, DBZV), VRAD, KDP, PHIDP, RHOHV, WRAD, ZDR, TH, TV, HCLASS, SQI, SW.
+* HDF5 - Alates H5rad 1.2. PVOL objekt. Produktid DBZ(ka DBZH, DBZV), VRAD, KDP, PHIDP, RHOHV, WRAD, ZDR, TH, TV, HCLASS, SQI.
 * Varem kasutatud improviseeritud tekstiformaadist on nüüdseks loobutud. 
+
+Olen avatud täiendavatele formaatidele toe lisamisele, kuid sellisel juhul vajan formaadi dokumentatsiooni, näidisfaile ning näidet nende väljundist.
 
 Kasutatud allikad:
 
 Kaardikontuurid - Natural Earth - http://www.naturalearthdata.com
 Pildiosas kasutatav font - DejaVu Sans Condensed - http://dejavu-fonts.org
-Moodul nexrad_level2.py: pyART - http://arm-doe.github.io/pyart/
-Näidisfail /data kaustas: NEXRAD Level 2 arhiiv(Vaata märget ülalpool!) - www.ncdc.noaa.gov/nexradinv/
+Näidisfail /data kaustas: NEXRAD Level 2 arhiiv(Vaata märget ülalpool!) - www.ncdc.noaa.gov/nexradinv/ (doi:10.7289/V5W9574V)
 
 -------
 Märkused:
 
 * Esimesel käivitamisel võib kuluda kaartide .pyc'sse kompileerimise tõttu rohkem aega 
 ning mälu. Edasistel käivitamistel läheb juba ladusamalt.
-* Asi on paiguti veel üsnagi toores. Vaadete täpsuses võib olla puudusi(nende avastamisel palun 
-lahkesti teada anda).
-* Kuna kasutatakse ainult ühte protsessorilõime, näib näiteks Level 2 andmete, või 
-internetist faili laadimisel programm tarduvat. See peabki nii olema.
-* NEXRAD andmete puhul piksleid väärtusega RF(Range Folding) ignoreeritakse.
+* Produktivaliku menüüs kasutatakse nüüd allika tüübist hoolimata ODIM H5 lühendeid.
+* Vaadete täpsuses võib olla puudusi(nende avastamisel palun lahkesti teada anda).
+* Kuna kasutatakse ainult ühte protsessorilõime, näib näiteks Level 2 andmete, või internetist faili laadimisel programm tarduvat. See peabki nii olema.
+* Alates EX1 versioonist (välja antud 26.01.2018) on muudetud pseudoRHI joonistamise metoodikat, seetõttu paistavad andmed senisest natuke kõrgemad.
 
 ---------
 Kontakt:
