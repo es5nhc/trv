@@ -11,8 +11,9 @@ Versioon EX1-a
 Tarmo Tanilsoo, 2018
 
 -----
-TÄHELEPANU! Alates sellest versioonist töötab rakendus Python 3 all! Python 2 versioon on repositooriumis saadaval, kuid seda edasi enam ei arendata.
-Juhtimaks tähelepanu sellele muudatusele, kasutan tavapärasest erinevat versiooninime. Versiooni numbrid stiilis aaaa.kk.pp naasevad järgmisest redaktsioonist.
+TÄHELEPANU! Alates sellest versioonist on põhirõhk Python3 all arendamisel. Esialgu on siiski pakett ka Python 2 all jooksutatav, kuid asjad võivad minna katki ja jääda kahe silma vahele.
+
+Juhtimaks tähelepanu sellele muudatusele, kasutan tavapärasest erinevat versiooninime. Versiooninumbrid stiilis aaaa.kk.pp naasevad järgmisest suuremast redaktsioonist.
 
 Kuna toimunud on muudatusi ka "kapoti" all, võivad olla võimalikud regressioonid. Probleemide esinemisel palun saata ka fail, millega probleem esineb, et mul oleks võimalik probleemi diagnoosida.
 
@@ -46,7 +47,7 @@ toetavatesse vormingutesse.
 Samuti on võimalik luua pseudoRHI'sid(ainult NEXRAD Level 2 ja HDF5) kasutaja 
 soovitud asimuutidest.
 
-Alates versioonist 2016.1.11 on võimalik JSON failide kaudu kirjeldada dünaamilisi andmepunkte mille väärtused võivad ajas muutuda. Näiteks on võimalik kirjeldada näiteks hetketemperatuure internetileheküljel JSON failina programmile sobival kujul. Detailsem formaadi kirjeldus on tulemas. Samuti on võimalik vaates ära muuta värviskaala - vaikimisi väärtuste tagasi saamiseks tuleb see uuesti menüüst valida.
+Alates versioonist 2016.1.11 on võimalik JSON failide kaudu kirjeldada dünaamilisi andmepunkte mille väärtused võivad ajas muutuda. Näiteks on võimalik kirjeldada näiteks hetketemperatuure internetileheküljel JSON failina programmile sobival kujul. Detailsem formaadi kirjeldus on kaustas /doc (ingl. k). Samuti on võimalik vaates ära muuta värviskaala - vaikimisi väärtuste tagasi saamiseks tuleb see uuesti menüüst valida.
 
 Vaata ka demovideot, kus näidatakse töö käiku: http://youtu.be/RZOYDvJv434 
 (videos on liides inglise keeles, kuid olemas on ka eestikeelne kasutajaliides)
@@ -54,15 +55,13 @@ Vaata ka demovideot, kus näidatakse töö käiku: http://youtu.be/RZOYDvJv434
 -----
 ** NÕUDED
 
-* Python 3!!!
+* Python 2 või Python 3
 * Tkinteri jooksutamise võimalus
 * Python Imaging Library, võib olla ka selle Pillow fork(arendusmasinal jooksebki juba see, kuna see tuleb uuemate Ubuntu distributsioonidega kaasa). Muuhulgas peab olema ka ImageTk moodul, vähemalt Ubuntulistel on see eraldi pakis.
 * H5Py
 * numpy
 
 Soovitatavalt vähemalt 1 GB RAM'i.
-
-Kui olete seni kasutanud Python 2 versiooni, siis on vaja paigaldada eeltoodud nõutud moodulite Python 3 versioonid!
 -----
 ** TOETATUD FORMAADID
 
@@ -79,6 +78,7 @@ Kasutatud allikad:
 Kaardikontuurid - Natural Earth - http://www.naturalearthdata.com
 Pildiosas kasutatav font - DejaVu Sans Condensed - http://dejavu-fonts.org
 Näidisfail /data kaustas: NEXRAD Level 2 arhiiv(Vaata märget ülalpool!) - www.ncdc.noaa.gov/nexradinv/ (doi:10.7289/V5W9574V)
+Näites kasutatud dünaamiline andmefail põhineb USA tormiennustuskeskuse (SPC) tormiraportitel 20. mai 2013 kohta.
 
 -------
 Märkused:
