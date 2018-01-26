@@ -1,4 +1,4 @@
-##Copyright (c) 2015, Tarmo Tanilsoo
+##Copyright (c) 2018, Tarmo Tanilsoo
 ##All rights reserved.
 ##
 ##Redistribution and use in source and binary forms, with or without

@@ -33,6 +33,7 @@
 ##POSSIBILITY OF SUCH DAMAGE.
 #
 
+from __future__ import division
 import bz2
 from decoderadar import *
 import translations
@@ -50,7 +51,10 @@ import datetime
 import tkinter as Tkinter
 from tkinter import filedialog as tkFileDialog
 from tkinter import messagebox as tkMessageBox
-import urllib.request
+if sys.version_info[0] > 2:
+    import urllib.request as urllibRequest
+else:
+    import urllib2 as urllibRequest
 import json
 import os
 configfile=open("config.json","r")
@@ -570,9 +574,9 @@ colortablenames={"DBZ":"dbz",
                  "SW": "sw"} #Names for color tables according to product
 customcolortable=None
 def download_file(url,dst="../cache/urlcache"):
-    req=urllib.request.Request(url)
+    req=urllibRequest.Request(url)
     req.add_header("User-agent","TRV/"+fraasid["name"].split()[1])
-    res=urllib.request.urlopen(req,timeout=10)
+    res=urllibRequest.urlopen(req,timeout=10)
     sisu=res.read()
     res.close()
         

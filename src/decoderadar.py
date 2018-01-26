@@ -28,6 +28,7 @@
 ##ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 ##POSSIBILITY OF SUCH DAMAGE.
 
+from __future__ import division
 from bz2 import decompress
 import translations
 from bitprocessing import halfw
@@ -42,6 +43,7 @@ import time
 from h5py import File as HDF5Fail
 import string
 import os
+import sys
 
 from array import array
 import numpy as np
@@ -60,6 +62,7 @@ class FileFormatError(Exception): ##Exception to throw if decoding classes fed w
 class NEXRADLevel3():
     #RELEVANT NEXRAD ICD: 2620001U
     def __init__(self, path):
+        python2 = True if sys.version_info[0] == 2 else False #Check for Python 2 in use
         stream = file_read(path) #Load the data file
         self.type = "NEXRAD3"
         self.headers = {}
@@ -134,13 +137,13 @@ class NEXRADLevel3():
                 self.data[0][self.headers["productCode"]]["nodata"]=-999
                 #Override usual decoding system and plot them as numbers
                 for j in range(p,p+amt):
-                    val=bins[j]
+                    val=bins[j] if not python2 else ord(bins[j])
                     if val == 0: row.append(-999)
                     elif val > 0 and val < 140: row.append(int(val/10-1))
                     elif val >= 140: row.append(int(val/10-4))
             else:
                 for j in range(p,p+amt):
-                    val=bins[j]
+                    val=bins[j] if not python2 else ord(bins[j])
                     row.append(val)
             self.data[0][self.headers["productCode"]]["data"].append(row)
             p+=amt
@@ -150,6 +153,7 @@ class NEXRADLevel3():
 class NEXRADLevel2():
     ##RELEVANT NEXRAD ICD'S: 2620002P, 2620010E
     def __init__(self,path):
+        python2 = True if sys.version_info[0] == 2 else False #Check whether we are on Python 2
         sisu=file_read(path)
         if sisu[0:4] == b"AR2V" and sisu[0:8] != b"AR2V0001":
             self.type="NEXRAD2"
@@ -178,25 +182,25 @@ class NEXRADLevel2():
                 else:
                     messageSize=halfw(sisu[ptr+12:ptr+14],False)
                     fullmsg=sisu[ptr+12:ptr+messageSize*2]
-                    messageType=sisu[ptr+15]
+                    messageType=ord(sisu[ptr+15]) if python2 else sisu[ptr+15]
                     if messageSize != 0 and messageSize > 0:
                         if messageType != 31:
                             ptr+=2432
                         else:
                             ptr+=messageSize*2+12
                     else:
-                        while sisu[ptr+12] == 0: ptr+=2432
+                        while sisu[ptr+12] in [0,"\0"]: ptr+=2432
                 msgptr=0 #Pointer within a message
                 while msgptr < len(fullmsg):
                     msg=fullmsg[msgptr:msgptr+messageSize*2+12]
                     if compressionControlWord:
-                        messageType=msg[3]
+                        messageType=ord(msg[3]) if python2 else msg[3]
                     if messageType == 31:
                         #azNumber=halfw(msg[26:28])
                         azAngle=floating(msg[28:32])
                         #azimuthResolutionSpacing=msg[36]*0.5
                         #radialStatus=msg[37]
-                        elevationNumber=msg[38]
+                        elevationNumber=ord(msg[38]) if python2 else msg[38]
                         elIndex=elevationNumber-1
                         elevationAngle=floating(msg[40:44])
                         if elevationNumber not in self.elevationNumbers:
@@ -235,7 +239,7 @@ class NEXRADLevel2():
                                 quantityType=msg[x]
                                 quantityName=convertNEXRAD2Code(msg[x+1:x+4].decode("utf-8"))
                                 dataQuantityGatesNr=halfw(msg[x+8:x+10])
-                                dataWordSize=msg[x+19]
+                                dataWordSize=ord(msg[x+19]) if python2 else msg[x+19]
                                 dataGain=1/floating(msg[x+20:x+24]) #Converting to Gain/Offset values as known in HDF5 files.
                                 dataOffset=-floating(msg[x+24:x+28])*dataGain
                                 if quantityName not in self.data[-1]:
@@ -291,7 +295,7 @@ class NEXRADLevel2():
             while ptr < fileSize:
                 messageSize=halfw(sisu[ptr+12:ptr+14],False)
                 fullmsg=sisu[ptr+12:ptr+2432]
-                messageType=sisu[ptr+15]
+                messageType=ord(sisu[ptr+15]) if python2 else sisu[ptr+15]
                 if messageType == 1:
                     #rmax=halfw(fullmsg[22:24])/10
                     azAngle=(halfw(fullmsg[24:26])/8)*(180/4096) % 360
@@ -441,7 +445,7 @@ class HDF5():
                 if type(elevation) is np.ndarray: elevation=elevation[0]
                 elevation=round(elevation,2) #Round just in case there are floating point inaccuracies in the original data.
                 nrays=datasetwhere.get("nrays")
-                if nrays == None: nrays = 360 #If no nrays defined assume 360. Workaround for personal stopgap HDF5 creations from the past)
+                if nrays is None: nrays = 360 #If no nrays defined assume 360. Workaround for personal stopgap HDF5 creations from the past)
                 if type(nrays) is np.ndarray: nrays=nrays[0] #Oh brother. Value saved as array again.
                 
                 if elevation not in self.nominalElevations:
