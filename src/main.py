@@ -48,12 +48,15 @@ from colorconversion import *
 from coordinates import *
 import sys
 import datetime
-import tkinter as Tkinter
-from tkinter import filedialog as tkFileDialog
-from tkinter import messagebox as tkMessageBox
 if sys.version_info[0] > 2:
+    import tkinter as Tkinter
+    from tkinter import filedialog as tkFileDialog
+    from tkinter import messagebox as tkMessageBox
     import urllib.request as urllibRequest
 else:
+    import Tkinter
+    import tkFileDialog
+    import tkMessageBox
     import urllib2 as urllibRequest
 import json
 import os
