@@ -1,0 +1,3 @@
+See kaust puhverdab KNMIst alla laetud andmeid nii et neid ei oleks taas tarvis alla laadida.
+
+This folder will contain cached files fetched from KNMI to limit the amount of downloads from the server.

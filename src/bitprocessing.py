@@ -29,6 +29,45 @@
 
 # -*- coding: utf-8 -*-
 from struct import *
+import sys
+
+class BitStream(): #FOR BUFR's. Variables whose bit length are not multiple of 8. Yuck!
+    def __init__(self, dataBytes):
+        if sys.version_info[0] == 2: dataBytes = map(ord, dataBytes)
+        self._bitsInBuffer = 8 #Counter of bits in buffer
+        self.stream = dataBytes #Data stream in bytes
+        self.dataPointer = 0 #Byte pointer in stream
+        self.buffer = dataBytes[0] #Buffer of numeric data where we'll do operations
+        self.streamLength = len(dataBytes)
+    def getBits(self,amount):
+        while amount > self._bitsInBuffer:
+            self.dataPointer+=1
+            if self.dataPointer >= self.streamLength:
+                break
+            self.buffer <<= 8
+            self.buffer += self.stream[self.dataPointer]
+            self._bitsInBuffer += 8
+        bitsRemaining=(self._bitsInBuffer-amount) if self._bitsInBuffer >= amount else amount
+        queriedData=self.buffer >> bitsRemaining
+        self.buffer-=(queriedData << bitsRemaining)
+        self._bitsInBuffer-=amount
+        return queriedData
+    def getBytes(self,amount):
+        if sys.version_info[0] == 2:
+            byteStream=""
+            for i in range(amount):            
+                byteStream+=str(chr(self.getBits(8)))
+                if self.dataPointer >= self.streamLength: break
+            return byteStream
+        else:
+            return self.getBits(amount*8).to_bytes(amount,"big")
+
+def convertToSigned(value,bitLength=8):
+    ''' Convert unsigned integer to signed '''
+    if (value >> (bitLength-1)):
+        return -(value - (1 << (bitLength-1)))
+    else:
+        return value
     
 def halfw(halfw,signed=True):
     '''Read half word'''
