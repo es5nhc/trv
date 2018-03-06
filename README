@@ -6,27 +6,25 @@
 
 --------------------------------------------------
 
-Versioon EX1-a
+Versioon 2018.3.6
 
 Tarmo Tanilsoo, 2018
 
 -----
-TÄHELEPANU! Alates sellest versioonist on põhirõhk Python3 all arendamisel. Esialgu on siiski pakett ka Python 2 all jooksutatav, kuid asjad võivad minna katki ja jääda kahe silma vahele.
-
-Juhtimaks tähelepanu sellele muudatusele, kasutan tavapärasest erinevat versiooninime. Versiooninumbrid stiilis aaaa.kk.pp naasevad järgmisest suuremast redaktsioonist.
+Põhirõhk on Python3 all arendamisel. Esialgu on siiski pakett ka Python 2 all jooksutatav, kuid asjad võivad minna katki ja jääda kahe silma vahele.
 
 Kuna toimunud on muudatusi ka "kapoti" all, võivad olla võimalikud regressioonid. Probleemide esinemisel palun saata ka fail, millega probleem esineb, et mul oleks võimalik probleemi diagnoosida.
 
 -----
 ** KASUTAMINE
-:
+
 Käivitamine 
 
 Linuxi(ja teiste Bashi shelli kasutavate opsüsteemide all) all selles samas kaustas
 
 ./run
 
-Windowsi all käivitada fail main.py kaustas src
+Windowsi all käivitada fail main.pyw kaustas src (NB! Faililaiendi muutus võrreldes varasemate versioonidega!)
 
 ---
 Kasutusel on neli režiimi:
@@ -62,14 +60,17 @@ Vaata ka demovideot, kus näidatakse töö käiku: http://youtu.be/RZOYDvJv434
 * numpy
 
 Soovitatavalt vähemalt 1 GB RAM'i.
+
+Windowsi kasutajatel peaks olema ilmselt kõige lihtsam paigaldada käsurealt Python Package Index repositooriumi kaudu paketid Pillow ja h5py, sealt peaksid automaatselt kaasa tulema ka muud nõutavad moodulid.
 -----
 ** TOETATUD FORMAADID
 
 * Nexrad Level III - produktid 94, 99, 157, 161, 162, 163, 165
 * Nexrad Level II - kõik produktid (alates versioonist EX1 nii MSG1 Kui MSG31)
     NB! NCDC'st saadavad failid on algselt GZipis kokku pakitud, need tuleb enne programmis vaatamist lahti pakkida!
-* HDF5 - Alates H5rad 1.2. PVOL objekt. Produktid DBZ(ka DBZH, DBZV), VRAD, KDP, PHIDP, RHOHV, WRAD, ZDR, TH, TV, HCLASS, SQI.
-* Varem kasutatud improviseeritud tekstiformaadist on nüüdseks loobutud. 
+* ODIM HDF5 - Alates H5rad 1.2. PVOL objekt. Produktid DBZ(ka DBZH, DBZV), VRAD, VRADD KDP, PHIDP, RHOHV, WRAD, ZDR, TH, TV, HCLASS, SQI.
+* DWD BUFR (nii nagu see väljastatakse nende avaandmetena)
+* KNMI HDF5 - samad produktid mis ODIM H5 variandi puhul, suunatud KNMI avaandmete väljundile.
 
 Olen avatud täiendavatele formaatidele toe lisamisele, kuid sellisel juhul vajan formaadi dokumentatsiooni, näidisfaile ning näidet nende väljundist.
 
@@ -87,10 +88,13 @@ Märkused:
 ning mälu. Edasistel käivitamistel läheb juba ladusamalt.
 * Produktivaliku menüüs kasutatakse nüüd allika tüübist hoolimata ODIM H5 lühendeid.
 * Vaadete täpsuses võib olla puudusi(nende avastamisel palun lahkesti teada anda).
-* Kuna kasutatakse ainult ühte protsessorilõime, näib näiteks Level 2 andmete, või internetist faili laadimisel programm tarduvat. See peabki nii olema.
+* Kuna osade tegevuste jaoks kasutatakse endiselt ainult ühte protsessorilõime, näib programm nende tegevuste ajal tarduvat. See peabki nii olema.
 * Alates EX1 versioonist (välja antud 26.01.2018) on muudetud pseudoRHI joonistamise metoodikat, seetõttu paistavad andmed senisest natuke kõrgemad.
+* ODIM H5 väljund on esialgne ning pigem eesmärgiga salvestada teistest vormingutest pärit andmeid programmile loetaval kujul. Eriti näiteks USA andmete puhul tuleb teha standardist kõrvalekaldeid. Saksa andmete eksportimisega probleemi ei tohiks olla.
+* Radiaalkiiruste algoritm on väga algeline ning sõltuvalt failist tuleb manuaalselt rakendada erinevate meetodite kombinatsioone.
 
 ---------
 Kontakt:
 
-e-mail: tarmotanilsoo@gmail.com
+E-mail: tarmotanilsoo@gmail.com
+Twitter: @es5nhc
