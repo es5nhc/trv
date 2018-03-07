@@ -383,88 +383,7 @@ class BatchExportWindow(Tkinter.Toplevel): #Window for batch export
         batchexportopen=0
         self.destroy()
         return 0
-class AddRMAXChooser(Tkinter.Toplevel):
-    def __init__(self, parent, title = None):
-        Tkinter.Toplevel.__init__(self,parent)
-        self.title(fraasid["add_rmax"])
-        self.protocol("WM_DELETE_WINDOW",self.onclose)
-        #Labels
-        az0title=Tkinter.Label(self,text=fraasid["az0"])
-        az0title.grid(column=0,row=0,sticky="e")
-        az1title=Tkinter.Label(self,text=fraasid["az1"])
-        az1title.grid(column=0,row=1,sticky="e")
-        r0title=Tkinter.Label(self,text=fraasid["r0"])
-        r0title.grid(column=0,row=2,sticky="e")
-        r1title=Tkinter.Label(self,text=fraasid["r1"])
-        r1title.grid(column=0,row=3,sticky="e")
-        prftitle=Tkinter.Label(self,text=fraasid["prf"])
-        prftitle.grid(column=0,row=4,sticky="e")
-        #Text variables
-        self.az0=Tkinter.StringVar()
-        self.az1=Tkinter.StringVar()
-        self.r0=Tkinter.StringVar()
-        self.r1=Tkinter.StringVar()
-        self.prf=Tkinter.StringVar()
-        self.prf.set("570")
-        #Text fields
-        az0field=Tkinter.Entry(self,textvariable=self.az0)
-        az0field.grid(column=1,row=0,sticky="w")
-        az1field=Tkinter.Entry(self,textvariable=self.az1)
-        az1field.grid(column=1,row=1,sticky="w")
-        r0field=Tkinter.Entry(self,textvariable=self.r0)
-        r0field.grid(column=1,row=2,sticky="w")
-        r1field=Tkinter.Entry(self,textvariable=self.r1)
-        r1field.grid(column=1,row=3,sticky="w")
-        prffield=Tkinter.Entry(self,textvariable=self.prf)
-        prffield.grid(column=1,row=4,sticky="w")
-        #Button
-        liidabutton=Tkinter.Button(self,command=self.addrmax,text=fraasid["add"])
-        liidabutton.grid(column=1,row=5,sticky="w")
-        #And now the main loop
-        self.mainloop()
-    def processgate(self,i,paddingamt,rmaxbins,slicestart,sliceend):
-        global currentDisplay
-        for j in range(paddingamt):
-            currentDisplay.data[i].append(None)
-        for k in range(slicestart,sliceend,1):
-            currentDisplay.data[i][k+rmaxbins]=currentDisplay.data[i][k]
-            currentDisplay.data[i][k]=None
-        return 0
-    def addrmax(self):
-        global currentlyOpenData
-        global currentDisplay
-        az0=round(float(self.az0.get()),7)
-        az1=round(float(self.az1.get()),7)
-        r0=float(self.r0.get())
-        r1=float(self.r1.get())
-        prf=float(self.prf.get())
-        rmax=299792.458/prf/2
-        if currentlyOpenData.type == "NEXRAD3": rmax*=cos(d2r(float(paised[17])))
-        r0new=r0+rmax
-        r1new=r1+rmax
-        asimuudid=currentDisplay.azimuths
-        for i in range(len(currentDisplay.data)):
-            r=currentDisplay.data[i]
-            curaz=asimuudid[i]
-            firstBinOffset=int((currentDisplay.rstart/currentDisplay.rscale)) #Correct range to a particular bin!
-            slicestart=int(r0/currentDisplay.rscale)-firstBinOffset
-            sliceend=int(r1/currentDisplay.rscale)-firstBinOffset
-            if slicestart < 0: slicestart=0
-            if sliceend < 0: sliceend=0 #Seems like overkill but these days always pays to check everything that is related to user input
-            rmaxbins=int(round(rmax/currentDisplay.rscale)) #Amount of bins that coorespond to Rmax
-            paddingamt=int(round(r1new/currentDisplay.rscale)-firstBinOffset)-len(r)
-            if az0 < az1:
-                if curaz >= az0 and curaz < az1:
-                    self.processgate(i,paddingamt,rmaxbins,slicestart,sliceend)
-            else:
-                if curaz >= az0 or curaz < az1:
-                    self.processgate(i,paddingamt,rmaxbins,slicestart,sliceend)
-        self.onclose()
-        renderRadarData()
-    def onclose(self):
-        global rmaxaddopen
-        rmaxaddopen=0
-        self.destroy()
+    
 class NEXRADChooser(Tkinter.Toplevel): #Choice of NEXRAD station
     def __init__(self, parent, title = None):
         global conf
@@ -670,7 +589,7 @@ currenturl=None
 nexradstn=conf["nexradstn"] #Chosen NEXRAD station
 urlwindowopen=0 #1 if dialog to open an URL is open
 nexradchooseopen=0 #1 if dialog to choose a nexrad station is open
-rmaxaddopen=0 #1 if configuration window to add Rmax to chunk of data is open.
+addingRmax=0 #1 if configuration window to add Rmax to chunk of data is open.
 dynlabelsopen=0 #same rule as above for selection of dynamic labels
 batchexportopen=0 #same as when batch export window is open.
 dwdDownloadOpen=0 #same as when dwd volume download window is open.
@@ -760,12 +679,17 @@ def save_config_file(): #Saves config.json according to current config
     configfile=open("config.json","w")
     json.dump(conf,configfile)
     configfile.close()
-def configrmaxadd():
-    global rmaxaddopen
-    if rmaxaddopen == 0:
-        rmaxaddopen=1
-        AddRMAXChooser(output)
-    return 0
+def toAddingRmax():
+    global addingRmax
+    global pan
+    global zoom
+    global rhi
+    addingRmax = 1
+    pan = 0
+    zoom = 0
+    rhi = 0
+    clearclicktext()
+    setcursor()
 def batch_export(): #Batch export
     global batchexportopen
     if batchexportopen == 0:
@@ -832,7 +756,7 @@ def saveHDF5(path=None):
         filed=tkFileDialog.SaveAs(None,initialdir="../data")
         path=filed.show()
     if path != "":
-        if currentlyOpenData.type != "HDF5" or (currentlyOpenData.type == "HDF5" and currentlyOpenData.isODIM == False):
+        if currentlyOpenData.type != "HDF5" or (currentlyOpenData.type == "HDF5" and currentlyOpenData.isODIM == False) or (currentlyOpenData.type == "HDF5" and currentlyOpenData.isModified == True):
             try:
                 msgtostatus("Exporting...")
                 w.update()
@@ -1574,7 +1498,7 @@ def loadData(quantity,elevation=None): #Processes and insert data into cache in 
     currentDisplay.rscale=currentlyOpenData.data[elevation][quantity]["rscale"]
     currentDisplay.fileType = currentlyOpenData.type
     if currentDisplay.fileType == "HDF5":
-        variableType=type(currentlyOpenData.data[elevation][quantity]["data"][0][0])
+        variableType=currentlyOpenData.data[elevation][quantity]["dataType"]
         isDataRowTypeAlreadyList=isinstance(currentlyOpenData.data[elevation][quantity]["data"][0],list)
         
         if not isDataRowTypeAlreadyList:
@@ -1617,11 +1541,6 @@ def load(path=None,defaultElevation=0):
         path=filed.show()
         currenturl=None
     if len(path) > 0: #If a file was given
-        toolsmenyy.entryconfig(fraasid["linear_interp"], state = Tkinter.NORMAL)
-        if arabicOnLinux:
-            toolsmenyy.entryconfig(fraasid["add_rmax_ar"], state = Tkinter.NORMAL)
-        else:
-            toolsmenyy.entryconfig(fraasid["add_rmax"], state = Tkinter.NORMAL)
         toolsmenyy.entryconfig(fraasid["color_table"], state = Tkinter.NORMAL) #Enable ability to override colormaps since we now have something to show
         stream=file_read(path)
         currentfilepath=path
@@ -1644,6 +1563,10 @@ def load(path=None,defaultElevation=0):
             currentlyOpenData=NEXRADLevel3(path)
         ## PROCESSING (former decode_file_function)
         defaultProduct=currentlyOpenData.quantities[0][0]
+        if "highprf" in currentlyOpenData.data[0][defaultProduct]:
+            taskbarbtn6.config(state = Tkinter.NORMAL)
+        else:
+            taskbarbtn6.config(state = Tkinter.DISABLED)
 
         #TODO: currentDisplay populeerimine viia eraldi funktsiooni. Siis vähem dubleerimist
         loadData(defaultProduct,defaultElevation)
@@ -1745,10 +1668,7 @@ def changeProduct(newProduct):
         mkrhi()
     return 0
 def setcursor():
-    global zoom
-    global info
-    global rhi
-    if zoom or info or rhi:
+    if zoom or info or rhi or addingRmax:
         w.config(cursor="crosshair")
     else:
         if not info:
@@ -1764,8 +1684,10 @@ def tozoom(event=None):
     global zoom
     global info
     global rhi
+    global addingRmax
     zoom=1
     info=0
+    addingRmax=0
     rhi=0
     clearclicktext()
     setcursor()
@@ -1773,12 +1695,16 @@ def tozoom(event=None):
 def topan(event=None):
     global zoom
     global info
+    global rhi
+    global addingRmax
     global panimg
     global currentDisplay
     global arabicOnLinux
     zoom=0
     info=0
     rhi=0
+    addingRmax=0
+    
     clearclicktext()
     setcursor()
     if currentDisplay.isRHI:
@@ -1788,10 +1714,7 @@ def topan(event=None):
         elevationChoice.config(state=Tkinter.NORMAL)
         currentDisplay.isRHI = False
         toolsmenyy.entryconfig(fraasid["linear_interp"], state = Tkinter.NORMAL)
-        if arabicOnLinux:
-            toolsmenyy.entryconfig(fraasid["add_rmax_ar"], state = Tkinter.NORMAL)
-        else:
-            toolsmenyy.entryconfig(fraasid["add_rmax"], state = Tkinter.NORMAL)
+        taskbarbtn6.config(state = Tkinter.NORMAL)
         listProducts(currentDisplay.softElIndex)
         drawInfo()
         if currentDisplay.renderAgain:
@@ -1803,9 +1726,11 @@ def toinfo(event=None):
     global zoom
     global info
     global rhi
-    zoom=0
-    info=1
-    rhi=0
+    global addingRmax
+    zoom = 0
+    info = 1
+    rhi = 0
+    addingRmax = 0
     setcursor()
     return 0
 def resetzoom(event=None):
@@ -1853,7 +1778,9 @@ def onmotion(event):
     global zoom
     global canvasdimensions
     global rhi
+    global addingRmax
     global currentDisplay
+    global rMaxAddSelectorShape
     x=canvasdimensions[0]
     y=canvasdimensions[1]
     if currentDisplay.isCanvasBusy == False and currentDisplay.quantity != None:
@@ -1866,6 +1793,32 @@ def onmotion(event):
                 dx=event.x-clickcoords[0]
                 w.itemconfig(zoomrect, state=Tkinter.NORMAL)
                 w.coords(zoomrect,(clickcoords[0]-dx,-1,clickcoords[0]+dx,canvasdimensions[1]))
+        elif addingRmax:
+            cx, cy = clickcoords
+            ax, ay = canvasToImageCoords(cx,cy) #Initial coordinates
+            bx, by = canvasToImageCoords(event.x, event.y) # Final coordinates
+
+            initialAz,initialRange = az_range(ax, ay, 1)
+            currentAz,currentRange = az_range(bx, by, 1)
+                    
+            arcExtent =  (((initialAz - currentAz) + 180) % 360) - 180
+
+            ctrx,ctry = imageToCanvasCoords(0, 0)
+
+            x1,y1=getcoords((initialRange, d2r(initialAz)), 1, [ctrx,ctry])
+            x2,y2=getcoords((currentRange, d2r(initialAz)), 1, [ctrx,ctry])
+            x3,y3=getcoords((initialRange, d2r(currentAz)), 1, [ctrx,ctry])
+            x4,y4=getcoords((currentRange, d2r(currentAz)), 1, [ctrx,ctry])
+            
+            w.coords(rMaxAddSelectorShape[0], (ctrx-initialRange,ctry-initialRange,ctrx+initialRange,ctry+initialRange))
+            w.itemconfig(rMaxAddSelectorShape[0], state = Tkinter.NORMAL, start=450-initialAz, extent=arcExtent)
+            w.coords(rMaxAddSelectorShape[1], (x1,y1,x2,y2))
+            w.itemconfig(rMaxAddSelectorShape[1], state = Tkinter.NORMAL)
+            w.coords(rMaxAddSelectorShape[2], (x3,y3,x4,y4))
+            w.itemconfig(rMaxAddSelectorShape[2], state = Tkinter.NORMAL)
+            w.coords(rMaxAddSelectorShape[3], (ctrx-currentRange,ctry-currentRange,ctrx+currentRange,ctry+currentRange))
+            w.itemconfig(rMaxAddSelectorShape[3], state = Tkinter.NORMAL, start=450-initialAz, extent=arcExtent)
+
         else: #Not zooming
             if info: #If gathering pixel value
                 drawInfobox(event.x,event.y)
@@ -1885,6 +1838,7 @@ def onrelease(event):
     global sweeps
     global rendered
     global info
+    global addingRmax
     if currentDisplay.isCanvasBusy == False and currentDisplay.quantity != None:
         if zoom: #If was zooming
             if not currentDisplay.isRHI:
@@ -1916,6 +1870,22 @@ def onrelease(event):
                 if currentDisplay.rhiStart < 0: currentDisplay.rhiStart=0
                 w.itemconfig(zoomrect, state=Tkinter.HIDDEN)
                 mkrhi()
+        elif addingRmax:
+            for i in range(len(rMaxAddSelectorShape)): w.itemconfig(rMaxAddSelectorShape[i], state=Tkinter.HIDDEN) #Hide the selector shape            
+            ax,ay=canvasToImageCoords(clickcoords[0],clickcoords[1])
+            bx,by=canvasToImageCoords(event.x,event.y)
+            az1,r1=az_range(ax,ay,currentDisplay.zoomLevel)
+            az2,r2=az_range(bx,by,currentDisplay.zoomLevel)
+            minrange = r1 if r1 < r2 else r2
+            maxrange = r1 if r1 > r2 else r2
+            minaz = az1 if az1 < az2 else az2
+            maxaz = az1 if az1 > az2 else az2
+            cx,cy=imageToCanvasCoords(ax,ay)
+            addRmax(currentlyOpenData,currentDisplay.softElIndex,minaz,maxaz,minrange,maxrange)
+            currentlyOpenData.isModified = True
+            loadData(currentDisplay.quantity, currentDisplay.softElIndex)
+            renderRadarData()
+            
         elif rhi and not currentDisplay.isRHI: ##If was choosing an azimuth for PseudoRHI
             rhiaz=round(getinfo(event.x,event.y)[1][0],1)
             getrhi(rhiaz)
@@ -1967,13 +1937,24 @@ def on_window_reconf(event):
             if not currentDisplay.isCanvasBusy:
                 mkrhi()
     return 0
-def getinfo(x,y):
-    global canvasdimensions
-    global currentDisplay
+
+def canvasToImageCoords(x,y):
+    ''' Converts canvas coordinates to image coordinates '''
+    dimx = canvasdimensions[0]
+    dimy = canvasdimensions[1]
+    pointx = x - dimx/2 - (currentDisplay.renderCentre[0] - 1000)
+    pointy = y - dimy/2 - (currentDisplay.renderCentre[1] - 1000)
+    return (pointx,pointy)
+def imageToCanvasCoords(pointx,pointy):
+    ''' Converts image coordinates to canvas coordinates '''
     dimx=canvasdimensions[0]
     dimy=canvasdimensions[1]
-    pointx=x-dimx/2-(currentDisplay.renderCentre[0]-1000)
-    pointy=y-dimy/2-(currentDisplay.renderCentre[1]-1000)
+    x = pointx + (currentDisplay.renderCentre[0] - 1000) + dimx/2
+    y = pointy + (currentDisplay.renderCentre[1] - 1000) + dimy/2
+    return (int(x),int(y))
+    
+def getinfo(x,y):
+    pointx,pointy = canvasToImageCoords(x,y)
     rlat=currentlyOpenData.headers["latitude"]
     rlon=currentlyOpenData.headers["longitude"]
     if not currentDisplay.isRHI:
@@ -2026,6 +2007,7 @@ def chooserhi(): #Choose RHI
     global currentDisplay
     global currentlyOpenData
     global zoom
+    global addingRmax
     global info
     global rhi
     global sweeps
@@ -2037,6 +2019,7 @@ def chooserhi(): #Choose RHI
             zoom=0
             info=0
             rhi=1
+            addingRmax=0
             setcursor()
             msgtostatus(fraasid["choose_pseudorhi_status"])
         else:
@@ -2062,11 +2045,7 @@ def getrhi(az):
     currentDisplay.rhiData = []
     currentDisplay.rhiBinProperties=[]
     currentDisplay.isRHI = True
-    toolsmenyy.entryconfig(fraasid["linear_interp"], state = Tkinter.DISABLED)
-    if arabicOnLinux:
-        toolsmenyy.entryconfig(fraasid["add_rmax_ar"], state = Tkinter.DISABLED)
-    else:
-        toolsmenyy.entryconfig(fraasid["add_rmax"], state = Tkinter.DISABLED)
+    taskbarbtn6.config(state = Tkinter.DISABLED)
     currentDisplay.rhiAzimuth = az
 
 
@@ -2497,9 +2476,10 @@ def dealiasVelocitiesStart(onePass = False):
     global currenturl
     if "VRAD" in currentDisplay.quantity:
         currentlyOpenData,currentDisplay.quantity=dealiasVelocities(currentlyOpenData,currentDisplay.quantity,currentDisplay.softElIndex, onePass)
-        if "opendata.dwd.de" not in currenturl:
+        if not (currenturl and "opendata.dwd.de" not in currenturl):
             listProducts(currentDisplay.softElIndex)
         changeProduct(currentDisplay.quantity)
+        currentlyOpenData.isModified = True
 def clearCache():
     directories=["../cache/nexradcache","../cache/dwdcache","../cache/knmicache"]
     for directory in directories:
@@ -2586,10 +2566,6 @@ dealiasingMenu.add_command(label = fraasid["dealias4"], command = lambda: dealia
 
 toolsmenyy.add_command(label = fraasid["linear_interp"], command = interpolateData, state = Tkinter.DISABLED)
 toolsmenyy.add_cascade(label = fraasid["dealiasing"], menu=dealiasingMenu, state = Tkinter.DISABLED)
-if arabicOnLinux:
-    toolsmenyy.add_command(label = fraasid["add_rmax_ar"], command = configrmaxadd, state = Tkinter.DISABLED)
-else:
-    toolsmenyy.add_command(label = fraasid["add_rmax"], command = configrmaxadd, state = Tkinter.DISABLED)
 colortablemenu=Tkinter.Menu(toolsmenyy, tearoff = 0) #Custom color tables menu
 listcolortables() #Adds all available color tables to the menu
 colortablemenu.add_separator()
@@ -2622,6 +2598,10 @@ clicktext = w.create_image((300, 300))
 legend = w.create_image((582, 300))
 radardetails = w.create_image((300, 580))
 zoomrect = w.create_rectangle((0, 0, 200, 200), outline = "white", state = Tkinter.HIDDEN) #Ristkülik, mis joonistatakse ekraanile suurendamise ajal.
+rMaxAddSelectorShape = [w.create_arc((0,0,0,0), outline = "white", style = Tkinter.ARC, state = Tkinter.HIDDEN),
+                        w.create_line((0,0,0,0), fill = "white", state = Tkinter.HIDDEN),
+                        w.create_line((0,0,0,0), fill = "white", state = Tkinter.HIDDEN),
+                        w.create_arc((0,0,0,0), outline = "white", style = Tkinter.ARC, state = Tkinter.HIDDEN)]
 progress = w.create_rectangle((0, 590, 400, 600), fill = "#0044ff", state = Tkinter.HIDDEN)
 #Key bindings
 output.bind("r", resetzoom)
@@ -2638,6 +2618,7 @@ resetzoomimg = PhotoImage(file = "../images/resetzoom.png")
 infoimg = PhotoImage(file = "../images/info.png")
 rhiimg = PhotoImage(file = "../images/rhi.png")
 ppiimg = PhotoImage(file = "../images/ppi.png")
+rmaximg = PhotoImage(file = "../images/rmax.png")
 reloadimg = PhotoImage(file = "../images/reload.png")
 taskbarbtn1 = Tkinter.Button(moderaam, bg = "#0099ff", activebackground = "#0044ff", highlightbackground = "#0044ff", image = panimg, command = topan)
 taskbarbtn1.grid(row = 0, column = 0)
@@ -2649,16 +2630,18 @@ taskbarbtn4 = Tkinter.Button(moderaam, bg = "#0099ff", activebackground = "#0044
 taskbarbtn4.grid(row = 0, column = 3)
 taskbarbtn5 = Tkinter.Button(moderaam, bg = "#0099ff", activebackground = "#0044ff", highlightbackground = "#0044ff", image = rhiimg, command = chooserhi)
 taskbarbtn5.grid(row = 0, column = 4)
-taskbarbtn6 = Tkinter.Button(moderaam, bg = "#0099ff", activebackground = "#0044ff", highlightbackground = "#0044ff", image = reloadimg, command = reloadfile)
+taskbarbtn6 = Tkinter.Button(moderaam, bg = "#0099ff", activebackground = "#0044ff", highlightbackground = "#0044ff", image = rmaximg, command = toAddingRmax, state = Tkinter.DISABLED) #add rmax button
 taskbarbtn6.grid(row = 0, column = 5)
+taskbarbtn7 = Tkinter.Button(moderaam, bg = "#0099ff", activebackground = "#0044ff", highlightbackground = "#0044ff", image = reloadimg, command = reloadfile)
+taskbarbtn7.grid(row = 0, column = 6)
 chosenElevation = Tkinter.StringVar(moderaam)
 elevationChoice = Tkinter.OptionMenu(moderaam, chosenElevation, None)
 elevationChoice.config(bg = "#44bbff", activebackground = "#55ccff", highlightbackground = "#55ccff", state = Tkinter.DISABLED)
-elevationChoice.grid(row = 0, column = 6)
+elevationChoice.grid(row = 0, column = 7)
 chosenProduct = Tkinter.StringVar(moderaam)
 productChoice = Tkinter.OptionMenu(moderaam, chosenProduct, None)
 productChoice.config(bg = "#44bbff", activebackground = "#55ccff", highlightbackground = "#55ccff", state = Tkinter.DISABLED)
-productChoice.grid(row = 0, column = 7)
+productChoice.grid(row = 0, column = 8)
 if fraasid["LANG_ID"] != "AR":
     status = Tkinter.Label(output, text = None, justify = Tkinter.LEFT, anchor = "w")
     status.grid(row = 2, column = 0, sticky = "w")

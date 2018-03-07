@@ -137,7 +137,7 @@ import sys
 phrases={"estonian":
          {
              "LANG_ID":"ET",
-             "name":"TRV 2018.3.6",
+             "name":"TRV 2018.3.7",
              "loading_states":"Laen andmeid... osariigid",
              "coastlines":"Rannajooned",
              "countries":"Maismaapiirid",
@@ -298,7 +298,7 @@ phrases={"estonian":
          "english":
          {
              "LANG_ID":"EN",
-             "name":"TRV 2018.3.6",
+             "name":"TRV 2018.3.7",
              "loading_states":"Loading data... states",
              "coastlines":"Coastlines",
              "countries":"Countries",
@@ -459,7 +459,7 @@ phrases={"estonian":
          "arabic":  #NOTE: I am not a native speaker. Corrections are more than welcome as pull requests, especially from radar meteorologists(even from PME!)
          {
              "LANG_ID":"AR",
-             "name":u"TRV 2018.3.6",
+             "name":u"TRV 2018.3.7",
              "loading_states":u"فتح البيانات غيوغرافي... ولايات",
              "coastlines":u"خطوط الساحل",
              "countries":u"دول",

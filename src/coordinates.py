@@ -106,18 +106,21 @@ def geog2polar(placecoords,radarcoords,radians=True):
     R = 6371.0
     dLat = plat-rlat
     dLon = plong-rlong
+    #Pre-calculating reused trig functions
+    cosPlat = cos(plat)
+    cosRlat = cos(rlat)
     #Intermediate_calcs
     #Instead of sin(0.5*dLat)**2
     shd=sin(0.5*dLat)
     #Instead of sin(0.5*dLon)**2
     shd2=sin(0.5*dLon)
     ##
-    a = shd*shd+cos(rlat)*cos(plat)*shd2*shd2
+    a = shd*shd+cosRlat*cosPlat*shd2*shd2
     c = 2.0*atan2(a**0.5,(1.0-a)**0.5) ##
     d = R*c
     #Bearing
-    y = sin(dLon)*cos(plat)
-    x = cos(rlat)*sin(plat)-sin(rlat)*cos(plat)*cos(dLon)
+    y = sin(dLon)*cosPlat
+    x = cosRlat*sin(plat)-sin(rlat)*cosPlat*cos(dLon)
     suund = atan2(y,x)
     return d, suund
 

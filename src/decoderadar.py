@@ -71,6 +71,7 @@ class BUFR(): #BUFR radar data issued by Deutscher Wetterdienst through their op
         else:
             self.messageLength = (ord(andmed[4]) << 16) + (ord(andmed[5]) << 8) + (ord(andmed[6]))
         self.bufrVersion = andmed[7]
+        self.isModified = False #Here and further - means the dataset has been processed at runtime.
         #IDENT SECTION (index 8-...)
         self.identSection={}
         self.vMax=[]
@@ -304,6 +305,7 @@ class NEXRADLevel3():
         self.type = "NEXRAD3"
         self.headers = {}
         self.data = [{}]
+        self.isModified = False
         self.azimuths = []
         self.headers["rstart"] = 0
         self.headers["icao"] = None
@@ -392,6 +394,7 @@ class NEXRADLevel2():
     def __init__(self,path):
         python2 = True if sys.version_info[0] == 2 else False #Check whether we are on Python 2
         sisu=file_read(path)
+        self.isModified = False
         if sisu[0:4] == b"AR2V" and sisu[0:8] != b"AR2V0001":
             self.type="NEXRAD2"
             self.headers={}
@@ -632,6 +635,7 @@ class HDF5():
         self.times=[]
         self.elevations=[]
         self.quantities=[]
+        self.isModified = False
 
         andmed=HDF5Fail(path,"r") #Load the data file
 
@@ -645,6 +649,7 @@ class HDF5():
                 ajastring=mainwhatattrs.get("date")[0]+mainwhatattrs.get("time")[0]
             else:
                 ajastring=mainwhatattrs.get("date")+mainwhatattrs.get("time")
+            self.source = mainwhatattrs.get("source")
             self.headers["timestamp"]=datetime.datetime.strptime(ajastring.decode("utf-8"),"%Y%m%d%H%M%S")
             self.headers["latitude"]=float(mainwhereattrs.get(u"lat"))
             self.headers["longitude"]=float(mainwhereattrs.get(u"lon"))
@@ -692,6 +697,7 @@ class HDF5():
                         
                     self.data[elIndex][quantity]={
                         "data": np.array(andmed[name+str(i)+"/data"]),
+                        "dataType": type(andmed[name+str(i)+"/data"][0]),
                         "rscale":float(mainwhereattrs.get("xscale"))/1000,
                         "rstart":0,
                         "highprf":highprf,
@@ -772,6 +778,7 @@ class HDF5():
                             
                         self.data[-1][quantity]={
                             "data":np.array(andmed[datasetpath+"/"+d+"/data"]),
+                            "dataType": type(andmed[datasetpath+"/"+d+"/data"][0][0]),
                             "rscale":float(rscale)/1000.0,
                             "rstart":float(rstart),
                             "highprf":highprf,
@@ -797,15 +804,15 @@ class HDF5():
                     if radarSiteName == b"Herwijnen":
                         self.wavelength = 0.05322074525
                         self.headers["height"] = 27.7
-                        self.id= b"nlhrw"
+                        self.source = b"NOD:nlhrw"
                     elif radarSiteName == b"DenHelder":
                         self.wavelength = 0.05329643697
                         self.headers["height"] = 51
-                        self.id = b"nldhl"
+                        self.source = b"NOD:nldhl"
                     elif radarSiteName == b"DeBilt":
                         self.wavelength = 0.05308880077
                         self.headers["height"] = 44
-                        self.id = b"ndlbl"
+                        self.source = b"NOD:ndlbl"
                     
                     scanGroupsAmount=andmed["overview"].attrs.get("number_scan_groups")[0]
                     for i in range(scanGroupsAmount): #Radar sweeps seem to be in opposite order
@@ -864,6 +871,53 @@ def padData(data,fillValue=0):
                 for k in range(highestAmount-len(data[j])):
                     data[j].append(fillValue)
     return data
+
+def addRmax(dataObject,elIndex,az0,az1,r0,r1):
+    for quantity in dataObject.quantities[elIndex]:
+        prf=dataObject.data[elIndex][quantity]["highprf"]
+
+        rstart = dataObject.data[elIndex][quantity]["rstart"]
+        rscale = dataObject.data[elIndex][quantity]["rscale"]
+        nodata = dataObject.data[elIndex][quantity]["nodata"]
+        
+        rmax=299792.458/prf/2
+        r0new=r0+rmax
+        r1new=r1+rmax
+
+        data = dataObject.data[elIndex][quantity]["data"]
+        dataisndarray = False #We'll make it back to an array later since 8 bit products generated with IRIS are not necessarily linear and checks for that require type check
+        if type(data) is np.ndarray and dataObject.type == "HDF5":
+            data=data.tolist()
+            dataisndarray = True
+        azimuths = dataObject.azimuths[elIndex]
+        
+        for i in range(len(data)):
+            r=data[i]
+            if type(r) is not list:
+                r = r.tolist()
+            curaz=azimuths[i]
+            firstBinOffset=int((rstart/rscale)) #Correct range to a particular bin!
+            slicestart=int(r0/rscale)-firstBinOffset
+            sliceend=int(r1/rscale)-firstBinOffset
+            if slicestart < 0: slicestart=0
+            if sliceend < 0: sliceend=0 #Seems like overkill but these days always pays to check everything that is related to user input
+            rmaxbins=int(round(rmax/rscale)) #Amount of bins that coorespond to Rmax
+            paddingamt=int(round(r1new/rscale)-firstBinOffset)-len(r)
+            
+            if az1-az0 <= 180:
+                processingCondition = curaz >= az0 and curaz < az1
+            else:
+                processingCondition = curaz < az0 or curaz >= az1
+            if processingCondition:
+                for j in range(paddingamt):
+                    data[i].append(nodata)
+                for k in range(slicestart,sliceend,1):
+                    if data[i][k+rmaxbins] == nodata: #Let's not copy empty areas to Rmax
+                        data[i][k+rmaxbins]=data[i][k]
+                        data[i][k]=nodata
+        dataObject.data[elIndex][quantity]["data"] = padData(data, nodata)
+        
+    return dataObject
 
 def dealiasVelocities(dataObject,quantity,index, passesList=[1,2,3,2,1]):
     wavelength = dataObject.wavelength
@@ -1003,8 +1057,8 @@ def dumpVolume(dataObject=None,outputFile=None):
             file["what"].attrs.create("source",b"NOD:us"+dataObject.headers["icao"][1:].lower())
         elif dataObject.type == "BUFR":
             file["what"].attrs.create("source",b"WMO:"+str(dataObject.dataDescriptionSection["wmoBlockNumber"]).zfill(2).encode("utf-8")+str(dataObject.dataDescriptionSection["wmoStationNumber"]).zfill(3).encode("utf-8"))
-        elif dataObject.type == "HDF5" and dataObject.isODIM == False: #The Dutch
-            file["what"].attrs.create("source",b"NOD:"+dataObject.id)
+        elif dataObject.type == "HDF5":
+            file["what"].attrs.create("source",dataObject.source)
         #Top level where
         file.create_group("where")
         file["where"].attrs.create("lat",dataObject.headers["latitude"])
@@ -1074,7 +1128,7 @@ def dumpVolume(dataObject=None,outputFile=None):
                 file[datasetName][dataName]["what"].attrs.create("undetect",dataObject.data[i][j]["undetect"])
                 file[datasetName][dataName]["what"].attrs.create("nodata",dataObject.data[i][j]["nodata"])
                 file[datasetName][dataName]["what"].attrs.create("quantity",j.encode("utf-8"))
-                file[datasetName][dataName]["how"].attrs.create("rangefolding",dataObject.data[i][j]["rangefolding"])
+                if "rangefolding" in dataObject.data[i][j]: file[datasetName][dataName]["how"].attrs.create("rangefolding",dataObject.data[i][j]["rangefolding"])
                 file[datasetName][dataName].create_dataset("data", (nrays,nbins), data=padData(dataObject.data[i][j]["data"]), compression="gzip")
                 
                 dataCounter+=1
