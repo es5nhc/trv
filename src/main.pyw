@@ -2476,7 +2476,7 @@ def dealiasVelocitiesStart(onePass = False):
     global currenturl
     if "VRAD" in currentDisplay.quantity:
         currentlyOpenData,currentDisplay.quantity=dealiasVelocities(currentlyOpenData,currentDisplay.quantity,currentDisplay.softElIndex, onePass)
-        if not (currenturl and "opendata.dwd.de" not in currenturl):
+        if not (currenturl and "opendata.dwd.de" in currenturl):
             listProducts(currentDisplay.softElIndex)
         changeProduct(currentDisplay.quantity)
         currentlyOpenData.isModified = True

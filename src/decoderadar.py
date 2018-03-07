@@ -838,6 +838,7 @@ class HDF5():
                             gainoffset=andmed[scanname]["calibration"].attrs.get("calibration_"+KNMIQtys[j]+"_formulas")
                             gain=float(gainoffset[gainoffset.find(b"GEO")+4:gainoffset.find(b"*PV")])
                             offset=float(gainoffset[gainoffset.find(b"+")+1:])
+                            dataarray=np.array(andmed[scanname]["scan_"+KNMIQtys[j]+"_data"])
                             scandata[ODIMQtys[j]]={"undetect":0,
                                                    "nodata":0,
                                                    "rstart":0,
@@ -847,7 +848,8 @@ class HDF5():
                                                    "rangefolding": -999999,
                                                    "gain":gain,
                                                    "offset":offset,
-                                                   "data":np.array(andmed[scanname]["scan_"+KNMIQtys[j]+"_data"])}
+                                                   "data":dataarray,
+                                                   "dataType":type(dataarray[0][0])}
                         self.data.append(scandata)
                         self.azimuths.append(azimuthslist)
                         self.quantities.append(ODIMQtys)
