@@ -2494,9 +2494,11 @@ def loadDWDSite(site):
 def dealiasVelocitiesStart(onePass = False):
     global currentlyOpenData
     global currentDisplay
+    global currenturl
     if "VRAD" in currentDisplay.quantity:
         currentlyOpenData,currentDisplay.quantity=dealiasVelocities(currentlyOpenData,currentDisplay.quantity,currentDisplay.softElIndex, onePass)
-        listProducts(currentDisplay.softElIndex)
+        if "opendata.dwd.de" not in currenturl:
+            listProducts(currentDisplay.softElIndex)
         changeProduct(currentDisplay.quantity)
 def clearCache():
     directories=["../cache/nexradcache","../cache/dwdcache","../cache/knmicache"]
