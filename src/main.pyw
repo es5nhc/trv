@@ -138,11 +138,14 @@ class DownloadThread (threading.Thread):
         threading.Thread.__init__(self)
         self.url = url
         self.dst = dst
-        self.downloading=False
+        self.downloading = True #Initializing as true to make sure download isn't being treated as finished
+        self.error = False
     def run(self):
         threadLock.acquire()
-        self.downloading=True
-        download_file(self.url,self.dst)
+        try:
+            download_file(self.url,self.dst)
+        except:
+            self.error = sys.exc_info()
         self.downloading=False
         threadLock.release()
 class Display(): #Class for storing properties of current display
@@ -556,9 +559,10 @@ class URLAken(Tkinter.Toplevel): ##Dialog to open a web URL
         currenturl=self.url.get()
         try:
             self.onclose()
-            multithreadedDownload(currenturl)
-            currentfilepath="../cache/urlcache"
-            load(currentfilepath)
+            downloadResult=multithreadedDownload(currenturl)
+            if downloadResult:
+                currentfilepath="../cache/urlcache"
+                load(currentfilepath)
         except:
             print(sys.exc_info())
             tkMessageBox.showerror(fraasid["name"],fraasid["download_failed"])
@@ -2397,10 +2401,14 @@ def multithreadedDownload(src,dst="../cache/urlcache"):
             time.sleep(0.5)
 
         currentDisplay.isCanvasBusy = False
+        if dl.error:
+            raise Exception(dl.error[1].reason)
+        return True
             
     except:
         print(sys.exc_info())
         tkMessageBox.showerror(fraasid["name"],fraasid["download_failed"])
+        return False
 def loadKNMI(index,downloadOnly=False,scanTime=False):
     global currentlyOpenData
     global currentDisplay
@@ -2438,16 +2446,17 @@ def loadKNMI(index,downloadOnly=False,scanTime=False):
     if download:
         if not downloadOnly:
             currenturl = downloadurl
-            multithreadedDownload(downloadurl,cachePath)
+            downloadSuccess=multithreadedDownload(downloadurl,cachePath)
         else:
             download_file(downloadurl,cachePath)
+            downloadSuccess = True
     else:
         if not downloadOnly:
             msgtostatus(fraasid["loading_from_cache"]+"...")
             w.update()
         else:
             print("No need for downloading!")
-    if not downloadOnly: load(cachePath,-1)
+    if (not downloadOnly) and downloadSuccess: load(cachePath,-1)
     
 def populateDWDMenus():
     global currentDisplay
