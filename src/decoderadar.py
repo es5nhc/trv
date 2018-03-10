@@ -939,7 +939,7 @@ def dealiasVelocities(dataObject,quantity,index, passesList=[1,2,3,2,1]):
     if not isinstance(dataObject.data[index][quantity]["data"][0],list):
         newData = [x.tolist() for x in dataObject.data[index][quantity]["data"]]
     else:
-        newData = [x for x in dataObject.data[index][quantity]["data"]]
+        newData = deepcopy(dataObject.data[index][quantity]["data"])
     numberOfRays = len(dataObject.data[index][quantity]["data"])
     numberOfBins = len(dataObject.data[index][quantity]["data"][0])
     iRanges = [range(numberOfRays), range(numberOfBins), range(numberOfRays), range(numberOfBins)]
