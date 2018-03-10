@@ -1545,6 +1545,7 @@ def load(path=None,defaultElevation=0):
         path=filed.show()
         currenturl=None
     if len(path) > 0: #If a file was given
+        toolsmenyy.entryconfig(fraasid["linear_interp"], state = Tkinter.NORMAL)
         toolsmenyy.entryconfig(fraasid["color_table"], state = Tkinter.NORMAL) #Enable ability to override colormaps since we now have something to show
         stream=file_read(path)
         currentfilepath=path
