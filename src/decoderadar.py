@@ -271,7 +271,7 @@ class BUFR(): #BUFR radar data issued by Deutscher Wetterdienst through their op
                 self.vMax.append(NI)
 
                     
-                self.data=[{quantityInFile:{"data":[],"highprf":highprf,"lowprf":lowprf,"gain":0.1,"offset":-32.0 if quantityInFile == "DBZH" else -409.6, "undetect":8191, "nodata":0, "rangefolding":1,"rscale":self.dataDescriptionSection["rscale"],"rstart":self.dataDescriptionSection["rstart"]}}]
+                self.data=[{quantityInFile:{"data":[],"highprf":highprf,"lowprf":lowprf,"gain":0.1,"offset":-32.0 if quantityInFile == "DBZH" else -409.6, "nodata":2047 if quantityInFile == "DBZH" else 8191, "undetect":0, "rangefolding":1,"rscale":self.dataDescriptionSection["rscale"],"rstart":self.dataDescriptionSection["rstart"]}}]
                 for i in range(azimuthsInData):
                     timePeriodOrDisplacement = dataStream.getBits(16)*0.001
                     self.times[-1].append(startTime+datetime.timedelta(seconds=timePeriodOrDisplacement))
