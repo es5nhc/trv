@@ -71,7 +71,7 @@ Windowsi kasutajatel peaks olema ilmselt kõige lihtsam paigaldada käsurealt Py
 * ODIM HDF5 - Alates H5rad 1.2. PVOL objekt. Produktid DBZ(ka DBZH, DBZV), VRAD, VRADD KDP, PHIDP, RHOHV, WRAD, ZDR, TH, TV, HCLASS, SQI.
 * DWD BUFR (nii nagu see väljastatakse nende avaandmetena)
 * KNMI HDF5 - samad produktid mis ODIM H5 variandi puhul, suunatud KNMI avaandmete väljundile.
-* IRIS RAW - samad produktid, mis ODIM H5 puhul.
+* IRIS RAW - samad produktid, mis ODIM H5 puhul. (fail peab lõppema .raw laiendiga!)
 * DORADE - väga toores tugi.
 
 Olen avatud täiendavatele formaatidele toe lisamisele, kuid sellisel juhul vajan formaadi dokumentatsiooni, näidisfaile ning näidet nende väljundist.
