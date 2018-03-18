@@ -1232,7 +1232,7 @@ def showrendered(pilt):
     w.itemconfig(radaripilt,image=rendered)
 def init_drawlegend(product,tabel):
     global currentDisplay
-    if product in [99, "VRAD", "VRADH", "VRADV", "VRADDH", "VRADDV"]:
+    if product in [99, "VRAD", "VRADH", "VRADV", "VRADDH", "VRADDV", "VE", "VC", "VF"]:
         drawlegend(99,-80,80,tabel)
     elif product in [159, "ZDR", "LZDR"]:
         drawlegend(159,-6,6,tabel)
@@ -1246,7 +1246,7 @@ def init_drawlegend(product,tabel):
         drawlegend("HCLASS",1,7,tabel)
     elif product in ["DBZ", "TH", "TV", "DBZH", "DBZV"]:
         drawlegend(94,-25,75,tabel)
-    elif product == ["WRAD","WRADH","WRADV","SW","VW"]:
+    elif product in ["WRAD","WRADH","WRADV","SW","VW"]:
         drawlegend("SW",0,30,tabel)
     elif product == "PHIDP":
         drawlegend("PHIDP",0,180,tabel)
