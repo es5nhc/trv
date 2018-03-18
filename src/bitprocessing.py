@@ -69,23 +69,28 @@ def convertToSigned(value,bitLength=8):
     else:
         return value
     
-def halfw(halfw,signed=True):
+def halfw(halfw,signed=True,bigEndian=True):
     '''Read half word'''
     if len(halfw) != 2: return 0
-    if signed: return unpack(">h",halfw)[0]
-    else: return unpack(">H",halfw)[0]
-def floating(f,signed=True):
+    if bigEndian:
+        if signed: return unpack(">h",halfw)[0]
+        else: return unpack(">H",halfw)[0]
+    else:
+        if signed: return unpack("<h",halfw)[0]
+        else: return unpack("<H",halfw)[0]
+def floating(f,bigEndian=True):
     ''' Read a float '''
     if len(f) != 4: return 0
-    if signed: return unpack(">f",f)[0]
-    else: return unpack(">F",f)[0]
-def word(sona,signed=True):
+    if bigEndian:
+        return unpack(">f",f)[0]
+    else:
+        return unpack("<f",f)[0]
+def word(sona,signed=True,bigEndian=True):
     '''Read a word'''
     if len(sona) != 4: return 0
-    if signed: return unpack(">i",sona)[0]
-    else: return unpack(">I", sona)[0]
-def beword(sona,signed=True):
-    '''Read a word in Big Endian bit order'''
-    if len(sona) != 4: return 0
-    if signed: return unpack("<i",sona)[0]
-    else: return unpack("<I", sona)[0]
+    if bigEndian:
+        if signed: return unpack(">i",sona)[0]
+        else: return unpack(">I", sona)[0]
+    else:
+        if signed: return unpack("<i",sona)[0]
+        else: return unpack("<I", sona)[0]

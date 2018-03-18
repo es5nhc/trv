@@ -137,7 +137,7 @@ import sys
 phrases={"estonian":
          {
              "LANG_ID":"ET",
-             "name":"TRV 2018.3.12",
+             "name":"TRV 2018.3.18",
              "loading_states":"Laen andmeid... osariigid",
              "coastlines":"Rannajooned",
              "countries":"Maismaapiirid",
@@ -298,7 +298,7 @@ phrases={"estonian":
          "english":
          {
              "LANG_ID":"EN",
-             "name":"TRV 2018.3.12",
+             "name":"TRV 2018.3.18",
              "loading_states":"Loading data... states",
              "coastlines":"Coastlines",
              "countries":"Countries",

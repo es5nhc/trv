@@ -6,7 +6,7 @@
 
 --------------------------------------------------
 
-Versioon 2018.3.12
+Versioon 2018.3.18
 
 Tarmo Tanilsoo, 2018
 
@@ -27,23 +27,23 @@ Linuxi(ja teiste Bashi shelli kasutavate opsüsteemide all) all selles samas kau
 Windowsi all käivitada fail main.pyw kaustas src (NB! Faililaiendi muutus võrreldes varasemate versioonidega!)
 
 ---
-Kasutusel on neli režiimi:
+Kasutusel on viis režiimi:
 * Liikumine
 * Suurendamine
 * Informatsioon
 * PseudoRHI
+* Second trip-kajade liigutamine
 
 Liikumisrežiimis saab ainult kaarti hiirega ringi lohistada.
 
 Suurendamisrežiimis saab kaardile hiirega klikkides või lohistades sisse/välja suurendada.
 Vasaku hiireklahviga suurendatakse, parema hiireklikiga vähendatakse.
 Informatsioonirežiimis saab pildile klikkides infot konkreetse piksli kohta.
+Second trip-kajade liigutamise režiimis on võimalik valida manuaalselt andmetes mingi regioon, mis siis maksimaalse selge kauguse(c/2PRF) jagu edasi liigutada. Vajalik on PRF-i defineerimine faili metaandmetes.
 
-Failimenüüst on võimalik parasjagu lahtiolevat pildivaadet eksportida PIL poolt
-toetavatesse vormingutesse.
+Failimenüüst on võimalik parasjagu lahtiolevat pildivaadet eksportida PIL poolt toetavatesse vormingutesse.
 
-Samuti on võimalik luua pseudoRHI'sid(ainult NEXRAD Level 2 ja HDF5) kasutaja 
-soovitud asimuutidest.
+Samuti on võimalik luua pseudoRHI'sid(ainult andmed, mis sisaldavad rohkem kui ühe kõrgustaseme andmeid) kasutaja soovitud asimuutidest.
 
 Alates versioonist 2016.1.11 on võimalik JSON failide kaudu kirjeldada dünaamilisi andmepunkte mille väärtused võivad ajas muutuda. Näiteks on võimalik kirjeldada näiteks hetketemperatuure internetileheküljel JSON failina programmile sobival kujul. Detailsem formaadi kirjeldus on kaustas /doc (ingl. k). Samuti on võimalik vaates ära muuta värviskaala - vaikimisi väärtuste tagasi saamiseks tuleb see uuesti menüüst valida.
 
@@ -71,6 +71,8 @@ Windowsi kasutajatel peaks olema ilmselt kõige lihtsam paigaldada käsurealt Py
 * ODIM HDF5 - Alates H5rad 1.2. PVOL objekt. Produktid DBZ(ka DBZH, DBZV), VRAD, VRADD KDP, PHIDP, RHOHV, WRAD, ZDR, TH, TV, HCLASS, SQI.
 * DWD BUFR (nii nagu see väljastatakse nende avaandmetena)
 * KNMI HDF5 - samad produktid mis ODIM H5 variandi puhul, suunatud KNMI avaandmete väljundile.
+* IRIS RAW - samad produktid, mis ODIM H5 puhul.
+* DORADE - väga toores tugi.
 
 Olen avatud täiendavatele formaatidele toe lisamisele, kuid sellisel juhul vajan formaadi dokumentatsiooni, näidisfaile ning näidet nende väljundist.
 
@@ -91,7 +93,7 @@ ning mälu. Edasistel käivitamistel läheb juba ladusamalt.
 * Kuna osade tegevuste jaoks kasutatakse endiselt ainult ühte protsessorilõime, näib programm nende tegevuste ajal tarduvat. See peabki nii olema.
 * Alates EX1 versioonist (välja antud 26.01.2018) on muudetud pseudoRHI joonistamise metoodikat, seetõttu paistavad andmed senisest natuke kõrgemad.
 * ODIM H5 väljund on esialgne ning pigem eesmärgiga salvestada teistest vormingutest pärit andmeid programmile loetaval kujul. Eriti näiteks USA andmete puhul tuleb teha standardist kõrvalekaldeid. Saksa andmete eksportimisega probleemi ei tohiks olla.
-* Radiaalkiiruste algoritm on väga algeline ning sõltuvalt failist tuleb manuaalselt rakendada erinevate meetodite kombinatsioone.
+* Radiaalkiiruste dealiasingu algoritm on väga algeline ning sõltuvalt failist tuleb manuaalselt rakendada erinevate meetodite kombinatsioone.
 
 ---------
 Kontakt:

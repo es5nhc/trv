@@ -413,7 +413,6 @@ class NEXRADChooser(Tkinter.Toplevel): #Choice of NEXRAD station
         global conf
         selection=self.jaamaentry.curselection()
         if selection != ():
-            print(selection)
             jaam=self.jaamaentry.get(selection)[:4]
             conf["nexradstn"]=jaam.lower()
             save_config_file()
@@ -661,6 +660,7 @@ colortablenames={"DBZ":"dbz",
                  "RHO":"rhohv",
                  "KDP":"kdp",
                  "HCLASS": "hclass", #hca kui level 3!"
+                 "CLASS": "hclass",
                  "PHIDP": "phi",
                  "WRAD": "sw",
                  "WRADH": "sw",
@@ -1115,7 +1115,7 @@ def drawlegend(product,minimum,maximum,colortable):
     tabel=colortable
     unit=units[product]
     tosmooth=1
-    if product == 165 or product == "HCLASS":
+    if product == 165 or product == "HCLASS" or product == "CLASS":
         tosmooth=0
     increment=(maximum-minimum)/430.0
     legendimg=uuspilt("RGB",(35,455),"#0033ee")
@@ -1128,7 +1128,7 @@ def drawlegend(product,minimum,maximum,colortable):
     if customcolortable == "hurricane.txt": majorstep=20
     if product == "PHIDP":
         majorstep=45
-    if product in [159, 163, 165, "HCLASS"]:
+    if product in [159, 163, 165, "HCLASS", "CLASS"]:
         majorstep=1
     if product in [161, "SQI"]: #RHOHV aka CC
         majorstep=0.1
@@ -1142,10 +1142,10 @@ def drawlegend(product,minimum,maximum,colortable):
     legenddraw.text((5,0),text=unit, font=pildifont)
     for j in range(hulk+1):
         y=ystart-majorstep*step*j
-        if product == "HCLASS" and currentDisplay.fileType=="NEXRAD3": #Other products have a numeric value
+        if product in ["CLASS", "HCLASS"] and currentDisplay.fileType=="NEXRAD3": #Other products have a numeric value
             legendlist=["BI","AP","IC","DS","WS","RA","+RA","BDR","GR","HA","UNK","RF"]; #List of classifications
             legendtext=legendlist[int(firstten+j*majorstep)]
-        elif product == "HCLASS" and currentDisplay.fileType=="HDF5":
+        elif product in ["CLASS", "HCLASS"] and currentDisplay.fileType in ["HDF5", "IRIS"]:
             legendlist=["NM","RA","WS","SN","GR","HA"]
             legendtext=legendlist[int(firstten+j*majorstep)-1]
         else:
@@ -1204,9 +1204,9 @@ def init_drawlegend(product,tabel):
         drawlegend(161,0.2,1.05,tabel)
     elif product in [163, "KDP"]:
         drawlegend(163,-2,7,tabel)
-    elif product == "HCLASS" and currentDisplay.fileType=="NEXRAD3":
+    elif product in ["CLASS", "HCLASS"] and currentDisplay.fileType=="NEXRAD3":
         drawlegend("HCLASS",0,12,tabel)
-    elif product == "HCLASS" and currentDisplay.fileType=="HDF5":
+    elif product in ["CLASS", "HCLASS"] and currentDisplay.fileType in ["HDF5", "IRIS"]:
         drawlegend("HCLASS",1,7,tabel)
     elif product in ["DBZ", "TH", "TV", "DBZH", "DBZV"]:
         drawlegend(94,-25,75,tabel)
@@ -1485,7 +1485,7 @@ def loadData(quantity,elevation=None): #Processes and insert data into cache in 
     
     currentDisplay.quantity = quantity
     currentDisplay.productTime = currentlyOpenData.headers["timestamp"]
-    currentDisplay.scanTime = currentlyOpenData.times[elevation][0]
+    currentDisplay.scanTime = min(currentlyOpenData.times[elevation])
     currentDisplay.azimuths = currentlyOpenData.azimuths[elevation]
     currentDisplay.gain = currentlyOpenData.data[elevation][quantity]["gain"]
     currentDisplay.offset = currentlyOpenData.data[elevation][quantity]["offset"]
@@ -1501,14 +1501,14 @@ def loadData(quantity,elevation=None): #Processes and insert data into cache in 
     currentDisplay.rstart=currentlyOpenData.data[elevation][quantity]["rstart"]
     currentDisplay.rscale=currentlyOpenData.data[elevation][quantity]["rscale"]
     currentDisplay.fileType = currentlyOpenData.type
-    if currentDisplay.fileType == "HDF5":
+    if currentDisplay.fileType == "HDF5" or currentDisplay.fileType == "IRIS":
         variableType=currentlyOpenData.data[elevation][quantity]["dataType"]
         isDataRowTypeAlreadyList=isinstance(currentlyOpenData.data[elevation][quantity]["data"][0],list)
         
         if not isDataRowTypeAlreadyList:
-            currentDisplay.data=[[HDF5scaleValue(y, currentDisplay.gain, currentDisplay.offset, currentDisplay.nodata, currentDisplay.undetect, currentDisplay.rangefolding, currentDisplay.quantity, variableType) for y in x.tolist()] for x in currentlyOpenData.data[elevation][quantity]["data"]]   #Load default data
+            currentDisplay.data=[[HDF5scaleValue(y, currentDisplay.gain, currentDisplay.offset, currentDisplay.nodata, currentDisplay.undetect, currentDisplay.rangefolding, currentDisplay.quantity, variableType, currentlyOpenData.wavelength) for y in x.tolist()] for x in currentlyOpenData.data[elevation][quantity]["data"]]   #Load default data
         else:
-            currentDisplay.data=[[HDF5scaleValue(y, currentDisplay.gain, currentDisplay.offset, currentDisplay.nodata, currentDisplay.undetect, currentDisplay.rangefolding, currentDisplay.quantity, variableType) for y in x] for x in currentlyOpenData.data[elevation][quantity]["data"]]   #Load default data
+            currentDisplay.data=[[HDF5scaleValue(y, currentDisplay.gain, currentDisplay.offset, currentDisplay.nodata, currentDisplay.undetect, currentDisplay.rangefolding, currentDisplay.quantity, variableType, currentlyOpenData.wavelength) for y in x] for x in currentlyOpenData.data[elevation][quantity]["data"]]   #Load default data
     else:
         currentDisplay.data=[[scaleValue(y, currentDisplay.gain, currentDisplay.offset, currentDisplay.nodata, currentDisplay.undetect, currentDisplay.rangefolding) for y in x] for x in currentlyOpenData.data[elevation][quantity]["data"]]   #Load default data
     if "VRAD" in quantity:
@@ -1557,12 +1557,19 @@ def load(path=None,defaultElevation=0):
             elevationChoice.config(state=Tkinter.NORMAL)
             hcanames=fraasid["iris_hca"]
             currentlyOpenData=HDF5(path)
+        elif path[-4:].lower() == ".raw":
+            productChoice.config(state=Tkinter.NORMAL)
+            elevationChoice.config(state=Tkinter.NORMAL)
+            hcanames=fraasid["iris_hca"]
+            currentlyOpenData=IRIS(path)
         elif stream[0:4] == b"AR2V" or stream[0:8] == b"ARCHIVE2":
             productChoice.config(state=Tkinter.NORMAL)
             elevationChoice.config(state=Tkinter.NORMAL)
             currentlyOpenData=NEXRADLevel2(path)
         elif b"BUFR" in stream:
             currentlyOpenData=BUFR(path)
+        elif b"SSWB" in stream and b"VOLD" in stream: #Probably DORADE
+            currentlyOpenData=DORADE(path)
         else:
             hcanames=fraasid["hca_names"]
             currentlyOpenData=NEXRADLevel3(path)
@@ -2050,6 +2057,7 @@ def getrhi(az):
     currentDisplay.rhiData = []
     currentDisplay.rhiBinProperties=[]
     currentDisplay.isRHI = True
+    toolsmenyy.entryconfig(fraasid["linear_interp"], state = Tkinter.DISABLED)
     taskbarbtn6.config(state = Tkinter.DISABLED)
     currentDisplay.rhiAzimuth = az
 
@@ -2085,7 +2093,10 @@ def getrhi(az):
                     if not (currentDisplay.quantity == "DBZH" and "VRAD" in currentlyOpenData.data[i] and currentlyOpenData.type == "NEXRAD2") or currentElev-lastElev > 0.2 or (currentElev not in currentDisplay.rhiElevations and currentlyOpenData.type != "NEXRAD2"):
                         if i == 0 or currentElev-lastElev > -1.0: #Check to filter out SAILS extra lower scans if present
                             try:
-                                currentDisplay.rhiData.append([scaleValue(k, currentDisplay.gain, currentDisplay.offset, currentDisplay.nodata, currentDisplay.undetect, currentDisplay.rangefolding) for k in currentlyOpenData.data[i][currentDisplay.quantity]["data"][j]])
+                                if currentDisplay.fileType in ["HDF5", "IRIS"]:
+                                    currentDisplay.rhiData.append([HDF5scaleValue(k, currentDisplay.gain, currentDisplay.offset, currentDisplay.nodata, currentDisplay.undetect, currentDisplay.rangefolding, currentDisplay.quantity, currentlyOpenData.data[i][currentDisplay.quantity]["dataType"], currentlyOpenData.wavelength) for k in currentlyOpenData.data[i][currentDisplay.quantity]["data"][j]])
+                                else:
+                                    currentDisplay.rhiData.append([scaleValue(k, currentDisplay.gain, currentDisplay.offset, currentDisplay.nodata, currentDisplay.undetect, currentDisplay.rangefolding) for k in currentlyOpenData.data[i][currentDisplay.quantity]["data"][j]])
                                 currentDisplay.rhiBinProperties.append({"rscale": currentlyOpenData.data[i][currentDisplay.quantity]["rscale"],"rstart": currentlyOpenData.data[i][currentDisplay.quantity]["rstart"]})
                                 if currentlyOpenData.type == "NEXRAD2": currentDisplay.rhiElevations.append(currentlyOpenData.elevations[i][j])
                                 else: currentDisplay.rhiElevations.append(currentlyOpenData.nominalElevations[i])

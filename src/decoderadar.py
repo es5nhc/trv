@@ -51,12 +51,790 @@ import nexradtable
 
 NP_UINT8 = np.uint8
 NP_UINT16 = np.uint16
+NP_INT8 = np.int8
 NP_INT16 = np.int16
+NP_INT32 = np.int32
 NP_FLOAT = np.float32
 
 
 class FileFormatError(Exception): ##Exception to throw if decoding classes fed wrong type of content
     pass
+
+class IRIS(): #IRIS RAW
+    def __init__(self,path):
+        self.type = "IRIS"
+        self.elevationNumbers = []
+        self.elevations = []
+        self.times = []
+        self.azimuths = []
+        self.nominalElevations = []
+        self.quantities = []
+        self.data=[]
+        self.headers={}
+        oneByteProducts=[1,2,3,4,5,7,14,16,17,18,19,25,27,32,35,38,39,46,48,50,52,55,57,75,77,79,81,83,85,87]
+        signedProducts=[36, 40, 41, 42, 43, 44]
+        
+        python2 = True if sys.version_info[0] == 2 else False #Check for Python 2 in use
+        productTypes={1: "PPI",
+                      2: "RHI",
+                      3: "CAPPI",
+                      4: "CROSS",
+                      5: "TOPS",
+                      6: "TRACK",
+                      7: "RAIN1",
+                      8: "RAINN",
+                      9: "VVP",
+                      10: "VIL",
+                      11: "SHEAR",
+                      12: "WARN",
+                      13: "CATCH",
+                      14: "RTI",
+                      15: "RAW",
+                      16: "MAX",
+                      17: "USER",
+                      18: "USERV",
+                      19: "OTHER",
+                      20: "STATUS",
+                      21: "SLINE",
+                      22: "WIND",
+                      23: "BEAM",
+                      24: "TEXT",
+                      25: "FCAST",
+                      26: "NDOP",
+                      27: "IMAGE",
+                      28: "COMP",
+                      29: "TWDR",
+                      30: "GAGE",
+                      31: "DWELL",
+                      32: "SRI",
+                      33: "BASE",
+                      34: "HMAX",
+                      35: "VAD",
+                      36: "THICK",
+                      37: "SATELLITE",
+                      38: "LAYER",
+                      39: "SWS",
+                      40: "MLGHT"}
+        ##
+        rawdata = file_read(path)
+        self.rawdata = rawdata
+        #product_hdr
+        #structure_header
+        ptr = 0
+        self.product_hdr={}
+        self.product_hdr["structure_header"] = {"structureIdentifier": halfw(rawdata[ptr:ptr+2], True, False),
+                                                "formatVersionNumber": halfw(rawdata[ptr+2:ptr+4], True, False),
+                                                "numberOfBytes": word(rawdata[ptr+4:ptr+8], True, False),
+                                                "reserved": halfw(rawdata[ptr+8:ptr+10], True, False),
+                                                "flags": halfw(rawdata[ptr+10:ptr+12], True, False)}
+        ptr+=12
+        self.product_hdr["product_configuration"] = {"productType": productTypes[halfw(rawdata[ptr+12:ptr+14], False, False)],
+                                                     "schedulingCode": halfw(rawdata[ptr+14:ptr+16], False, False),
+                                                     "secondsToSkipBetweenRuns": word(rawdata[ptr+16:ptr+20], True, False),
+                                                     "timeProductGenerated": ymds_time(rawdata[ptr+20:ptr+32], False),
+                                                     "timeOfInputIngestSweep": ymds_time(rawdata[ptr+32:ptr+44], False),
+                                                     "timeOfInputIngestFile": ymds_time(rawdata[ptr+44:ptr+56], False),
+                                                     "nameOfConfigFile": rawdata[ptr+62:ptr+74].rstrip(b"\x00").rstrip(),
+                                                     "taskName": rawdata[ptr+74:ptr+86].rstrip(b"\x00").rstrip(),
+                                                     "flagWord": rawdata[ptr+86:ptr+88],
+                                                     "xScale": word(rawdata[ptr+88:ptr+92], True, False), #cm/pixel
+                                                     "yScale": word(rawdata[ptr+92:ptr+96], True, False),
+                                                     "zScale": word(rawdata[ptr+96:ptr+100], True, False),
+                                                     "xDirection": word(rawdata[ptr+100:ptr+104], True, False),
+                                                     "yDirection": word(rawdata[ptr+104:ptr+108], True, False),
+                                                     "zDirection": word(rawdata[ptr+108:ptr+112], True, False),
+                                                     "xLocation": word(rawdata[ptr+112:ptr+116], True, False)/1000,
+                                                     "yLocation": word(rawdata[ptr+116:ptr+120], True, False)/1000,
+                                                     "zLocation": word(rawdata[ptr+120:ptr+124], True, False)/1000,
+                                                     "maximumRange": word(rawdata[ptr+124:ptr+128], True, False),
+                                                     "dataTypeGenerated": halfw(rawdata[ptr+130:ptr+13], False, False),
+                                                     "projectionName": rawdata[132:144].rstrip(b"\x00").rstrip(),
+                                                     "dataTypeUsedAsInput": halfw(rawdata[ptr+144:ptr+146], False, False),
+                                                     "projectionType": ord(rawdata[ptr+147]) if python2 else rawdata[ptr+147],
+                                                     "radialSmoother": halfw(rawdata[ptr+148:ptr+150], True, False)/100, #km
+                                                     "numberOfTimesConfigHasRun": halfw(rawdata[ptr+150:ptr+152]),
+                                                     "ZRRelationshipConstant": word(rawdata[ptr+152:ptr+156], True, False)/1000,
+                                                     "ZRRelationshipExponent": word(rawdata[ptr+156:ptr+160], True, False)/1000,
+                                                     "XdirectionSmoother": halfw(rawdata[ptr+160:ptr+162], True, False)/100,
+                                                     "YdirectionSmoother": halfw(rawdata[ptr+162:ptr+164], True, False)/100
+                                                     }
+        ptr+=320
+        self.product_hdr["product_end"] = {"siteName": rawdata[ptr:ptr+16].rstrip(),
+                                           "IRISVersion": rawdata[ptr+16:ptr+24].rstrip(b"\x00").rstrip(),
+                                           "IRISVersionIngestData": rawdata[ptr+24:ptr+32].rstrip(b"\x00").rstrip(),
+                                           "timeOfOldestInputIngestFile": ymds_time(rawdata[ptr+32:ptr+44], False),
+                                           "LTMinutesWestOfUTC": halfw(rawdata[ptr+72:ptr+74], True, False),
+                                           "hardWareNameOfIngestDataSrc": rawdata[ptr+74:ptr+90].rstrip(),
+                                           "siteNameOfIngestDataSrc": rawdata[ptr+90:ptr+106].rstrip(),
+                                           "recordedLTMinsWestOfUTC": halfw(rawdata[ptr+106:ptr+108], True, False),
+                                           "latitudeOfCentre": binaryAngle(word(rawdata[ptr+108:ptr+112], False, False), 32),
+                                           "longitudeOfCentre": binaryAngle(word(rawdata[ptr+112:ptr+116], False, False), 32),
+                                           "groundHeightMSL": halfw(rawdata[ptr+116:ptr+118], True, False),
+                                           "radarHeightAGL": halfw(rawdata[ptr+118:ptr+120], True, False),
+                                           "PRF": word(rawdata[ptr+120:ptr+124], True, False),
+                                           "pulseWidth": word(rawdata[ptr+124:ptr+128], True, False)/100, #microseconds
+                                           "typeOfSignalProcessor": halfw(rawdata[ptr+128:ptr+130], False, False),
+                                           "triggerRateScheme": halfw(rawdata[ptr+130:ptr+132], False, False),
+                                           "nrSamplesUsed": halfw(rawdata[ptr+132:ptr+134], True, False),
+                                           "clutterFileName": rawdata[ptr+134:ptr+146].rstrip(b"\x00").rstrip(),
+                                           "numberOfLinearBasedFilterFOrFirstBin": halfw(rawdata[ptr+146:ptr+148], False, False),
+                                           "wavelength": word(rawdata[ptr+148:ptr+152], True, False) / 10000, #converted to meters
+                                           "truncationHeight": word(rawdata[ptr+152:ptr+156], True, False), # in cm
+                                           "firstBinRange": word(rawdata[ptr+156:ptr+160], True, False) / 100000, #converted to km
+                                           "lastbinRange": word(rawdata[ptr+160:ptr+164], True, False) / 100000, #Same as above
+                                           "numberOfOutputBins": word(rawdata[ptr+164:ptr+168], True, False),
+                                           "flagWord": halfw(rawdata[ptr+168:ptr+170], False, False),
+                                           "NumberOfIngestOrProductFilesUsed": halfw(rawdata[ptr+170:ptr+172], False, False),
+                                           "typeOfPolarisationUsed": halfw(rawdata[ptr+172:ptr+174], False, False),
+                                           "IOCalValueH": halfw(rawdata[ptr+174:ptr+176], True, False) / 100, #in dBm
+                                           "NoiseAtCalibrationH": halfw(rawdata[ptr+176:ptr+178], True, False) / 100, #dBm
+                                           "RadarConstant": halfw(rawdata[ptr+178:ptr+180], True, False) / 100, #dBm
+                                           "RXBandwidth": halfw(rawdata[ptr+180:ptr+182], False, False), #kHz
+                                           "currentNoiseLevelH": halfw(rawdata[ptr+182:ptr+184], True, False) / 100, #dBm
+                                           "currentNoiseLevelV": halfw(rawdata[ptr+184:ptr+186], True, False) / 100, #dBm
+                                           "LDROffset": halfw(rawdata[ptr+186:ptr+188], True, False) / 100, #dBz
+                                           "ZDROffset": halfw(rawdata[ptr+188:ptr+190], True, False) / 100, #dBz
+                                           "TCFCal1": task_calib_flags(halfw(rawdata[ptr+190:ptr+192], False, False)),
+                                           "TCFCal2": task_calib_flags(halfw(rawdata[ptr+190:ptr+192], False, False)),
+                                           }
+        if self.product_hdr["product_configuration"]["productType"] == "RAW":
+            ptr=6156
+            self.ingest_header={}
+            self.ingest_header["ingest_configuration"] = {"fileName": rawdata[ptr:ptr+80].rstrip(b"\x00").rstrip(),
+                                                          "numberOfAssociatedDataFiles": halfw(rawdata[ptr+80:ptr+82], True, False),
+                                                          "numberOfSweepsCompletedSoFar": halfw(rawdata[ptr+82:ptr+84], True, False),
+                                                          "totalSizeOfAllFiles": word(rawdata[ptr+84:ptr+88], True, False),
+                                                          "volumeScanStartTime": ymds_time(rawdata[ptr+88:ptr+100], False),
+                                                          "bytesInRayHeaders": halfw(rawdata[ptr+112:ptr+114], True, False),
+                                                          "bytesInExtendedRayHeaders": halfw(rawdata[ptr+114:ptr+116], True, False),
+                                                          "playbackVersionNumber": halfw(rawdata[ptr+116:ptr+118], True, False),
+                                                          "IRISversion": rawdata[ptr+124:ptr+132].rstrip(b"\x00").rstrip(),
+                                                          "siteHWName": rawdata[ptr+132:ptr+148].rstrip(b"\x00").rstrip(),
+                                                          "timeZone": halfw(rawdata[ptr+148:ptr+150], True, False),
+                                                          "siteNameFromSetup": rawdata[ptr+150:ptr+166].rstrip(b"\x00").rstrip(),
+                                                          "timeZoneReceived": halfw(rawdata[ptr+166:ptr+168], True, False),
+                                                          "radarLatitude": binaryAngle(word(rawdata[ptr+168:ptr+172], False, False),32),
+                                                          "radarLongitude": binaryAngle(word(rawdata[ptr+172:ptr+176], False, False), 32),
+                                                          "groundHeightMSL": halfw(rawdata[ptr+176:ptr+178], True, False),
+                                                          "radarHeightAGL": halfw(rawdata[ptr+178:ptr+180], True, False),
+                                                          "nrays": halfw(rawdata[ptr+180:ptr+182], False, False),
+                                                          "firstRayIndex": halfw(rawdata[ptr+182:ptr+184], False, False),
+                                                          "nrays": halfw(rawdata[ptr+184:ptr+186], False, False),
+                                                          "nBytesInEachGparam": halfw(rawdata[ptr+186:ptr+188], True, False),
+                                                          "radarHeightMSL": word(rawdata[ptr+188:ptr+192], True, False) / 100, #Converted to meters
+                                                          "radarPlatvormVelocity": [word(rawdata[ptr+192:ptr+196], True, False) / 100, word(rawdata[ptr+196:ptr+200], True, False) / 100, word(rawdata[ptr+200:ptr+204], True, False) / 100], #converted to m/s
+                                                          "antennaOffsetFromINU": [word(rawdata[ptr+204:ptr+208], True, False) / 100, word(rawdata[ptr+208:ptr+2012], True, False) / 100, word(rawdata[ptr+212:ptr+216], True, False) / 100], #converted to m
+                                                          "faultStatus": word(rawdata[ptr+216:ptr+220], False, False), #RAW VALUE, bits needs to be individually processed
+                                                          "meltingLayerHeight": halfw(rawdata[ptr+220:ptr+222], True, True), #???? MSB complemented. (TRUMP SAYS WRONG!)
+                                                          "tzString": rawdata[ptr+224:ptr+228].rstrip(b"\x00").rstrip(),
+                                                          "flags": word(rawdata[ptr+232:ptr+236], False, False),
+                                                          "confName": rawdata[ptr+236:ptr+252].rstrip(b"\00").rstrip()
+                                                          }
+            ptr+=492+120 #Skipping over to task_dsp_info
+            
+            self.ingest_header["task_configuration"]= {}
+            self.ingest_header["task_configuration"]["task_dsp_info"] = {"majorMode": halfw(rawdata[ptr:ptr+2], False, False),
+                                                                         "dspType": halfw(rawdata[ptr+2:ptr+4], False, False),
+                                                                         "quantities": dataTypesFromMask(word(rawdata[ptr+4:ptr+8], False, False),0) + dataTypesFromMask(word(rawdata[ptr+12:ptr+16], False, False),32) + dataTypesFromMask(word(rawdata[ptr+16:ptr+20], False, True), 64) + dataTypesFromMask(word(rawdata[ptr+20:ptr+24], False, True), 96),
+                                                                         "extendedHeaderType": rawdata[ptr+8:ptr+12],
+                                                                         "PRF": word(rawdata[ptr+136:ptr+140], True, False),
+                                                                         "pulseWidth": word(rawdata[ptr+140:ptr+144], True, False),
+                                                                         "multiPRFflag": halfw(rawdata[ptr+144:ptr+146], False, False),
+                                                                         "dualPRFDelay": halfw(rawdata[ptr+146:ptr+148], True, False),
+                                                                         "AGCFeedbackCode": halfw(rawdata[ptr+148:ptr+150], False, False),
+                                                                         "sampleSize": halfw(rawdata[ptr+150:ptr+152], True, False),
+                                                                         "gainControlFlag": halfw(rawdata[ptr+152:ptr+154], False, False),
+                                                                         "clutterFilterFileName": rawdata[ptr+154:ptr+166].rstrip(b"\x00").rstrip(),
+                                                                         "customRayHeaderName": rawdata[ptr+184:ptr+200].rstrip(b"\x00").rstrip()}
+            ptr+= 320+320 #Skipping over to task_range_info
+            self.ingest_header["task_configuration"]["task_range_info"]={"firstBinRange": word(rawdata[ptr:ptr+4], True, False) / 100000, #Converted to km
+                                                                                                 "lastBinRange": word(rawdata[ptr+4:ptr+8], True, False) / 100000,
+                                                                                                 "numberOfInputBins": halfw(rawdata[ptr+8:ptr+10], True, False),
+                                                                                                 "numberOfOutputBins": halfw(rawdata[ptr+10:ptr+12], True, False),
+                                                                                                 "stepBetweenInputBins": word(rawdata[ptr+12:ptr+16], True, False) / 100000, #converted to km
+                                                                                                 "stepBetweenOutputBins": word(rawdata[ptr+16:ptr+20], True, False) / 100000, #converted to km
+                                                                                                 "variableBinSpacing": halfw(rawdata[ptr+20:ptr+22], False, False),
+                                                                                                 "rangeBinAveraging": halfw(rawdata[ptr+22:ptr+24], False, True)
+                }
+            ptr+=160 #And onwards to task_scan_info
+            scanMode=halfw(rawdata[ptr+0:ptr+2], False, False)
+            self.ingest_header["task_configuration"]["task_scan_info"]={"scanMode": scanMode,
+                                                                        "angResolution": halfw(rawdata[ptr+2:ptr+4], True, False) / 1000, #Converted to °
+                                                                        "numberOfSweeps": halfw(rawdata[ptr+4:ptr+6], True, False)}
+            if scanMode == 2: #If RHI
+                self.ingest_header["task_configuration"]["task_scan_info"]["lowerElevationLimit"] = binaryAngle(halfw(rawdata[ptr+8:ptr+10], False, False) , 16)
+                self.ingest_header["task_configuration"]["task_scan_info"]["upperElevationLimit"] = binaryAngle(halfw(rawdata[ptr+10:ptr+12], False, False) , 16)
+                self.ingest_header["task_configuration"]["task_scan_info"]["azimuthsList"] = []
+                for i in range(12, 82, 2):
+                    az=binaryAngle(halfw(rawdata[ptr+i:ptr+i+2], False, False), 16)
+                    if i > 12 and az == 0: break #No more azimuths
+                    self.ingest_header["task_configuration"]["task_scan_info"]["azimuthsList"].append(az)
+                self.ingest_header["task_configuration"]["task_scan_info"]["startOfFirstSectorSweep"] = ord(rawdata[ptr+207]) if python2 else rawdata[ptr+207]
+            elif scanMode in [1, 4]:
+                self.ingest_header["task_configuration"]["task_scan_info"]["leftAzLimit"] = binaryAngle(halfw(rawdata[ptr+8:ptr+10], False, False), 16)
+                self.ingest_header["task_configuration"]["task_scan_info"]["rightAzLimit"] = binaryAngle(halfw(rawdata[ptr+10:ptr+10:12], False, False), 16)
+                self.ingest_header["task_configuration"]["task_scan_info"]["elevations"] = []
+                for i in range(12, 82, 2):
+                    el = binaryAngle(halfw(rawdata[ptr+i:ptr+i+2], False, False), 16)
+                    if i > 12 and el == 0: break #No more elevations
+                    self.ingest_header["task_configuration"]["task_scan_info"]["elevations"].append(el)
+                self.ingest_header["task_configuration"]["task_scan_info"]["startOfFirstSectorSweep"] = ord(rawdata[ptr+207]) if python2 else rawdata[ptr+207]
+            elif scanMode == 3:
+                self.ingest_header["task_configuration"]["task_scan_info"]["flags"] = halfw(rawdata[ptr+8:ptr+10], False, False)
+            elif scanMode == 5:
+                self.ingest_header["task_configuration"]["task_scan_info"]["firstAzimuth"] = binaryAngle(halfw(rawdata[ptr+8:ptr+10], False, False), 16)
+                self.ingest_header["task_configuration"]["task_scan_info"]["firstElevation"] = binaryAngle(halfw(rawdata[ptr+10:ptr+12], False, False), 16)
+                self.ingest_header["task_configuration"]["task_scan_info"]["antennaControlFileName"] = rawdata[ptr+12:ptr+24].rstrip(b"\x00").rstrip()
+            ptr+=320 #Off to task_misc_info
+            self.ingest_header["task_configuration"]["task_misc_info"]={"wavelength": word(rawdata[ptr:ptr+4], True, False) / 10000, #Converted to meters
+                                                                        "TRSerial": rawdata[ptr+4:ptr+20].rstrip(b"\x00").rstrip(),
+                                                                        "TXpower": word(rawdata[ptr+20:ptr+24], True, False),
+                                                                        "flags": halfw(rawdata[ptr+24:ptr+26], False, False),
+                                                                        "polarisation": halfw(rawdata[ptr+26:ptr+28], False, False),
+                                                                        "truncationHeight": word(rawdata[ptr+28:ptr+32], True, False) / 100000, #converted to km
+                                                                        "beamWidthH": binaryAngle(word(rawdata[ptr+64:ptr+68], False, False), 32),
+                                                                        "beamWidthV": binaryAngle(word(rawdata[ptr+68:ptr+72], False, False), 32)
+                                                                        }
+            ptr+=320 #And finally, task_end_info
+            self.ingest_header["task_configuration"]["task_end_info"]={"majorNumber": halfw(rawdata[ptr:ptr+2], True, False),
+                                                                       "minorNumber": halfw(rawdata[ptr+2:ptr+4], True, False),
+                                                                       "taskConfigFileName": rawdata[ptr+4:ptr+16].rstrip(b"\x00").rstrip(),
+                                                                       "taskDescription": rawdata[ptr+16:ptr+96].rstrip(b"\x00").rstrip(),
+                                                                       "numberOfTasks": word(rawdata[ptr+96:ptr+100], True, False),
+                                                                       "taskState": halfw(rawdata[ptr+100:ptr+102], False, False),
+                                                                       "timeOfTask": ymds_time(rawdata[ptr+104:ptr+116], False),
+                                                                       "echoClassifiers": map(ord,rawdata[ptr+116:ptr+122]) if python2 else [x for x in rawdata[ptr+116:ptr+122]]}
+            ptr+=320
+            self.ingest_header["task_configuration"]["comments"]=rawdata[ptr:ptr+720].rstrip(b"\x00").rstrip()
+            ptr+=720+732+128+920+1260 #onwards to raw_prod_bhdr
+            self.records=[]
+            sweepStartTimes=[]
+            rawSweep=[] ##Collecting the contents of all records here sweep by sweep
+            
+            highprf = self.ingest_header["task_configuration"]["task_dsp_info"]["PRF"]
+            lowprfmults = [1, 2/3, 3/4, 4/5] #Multipliers to get low PRF from high PRF.
+            prfMode = self.ingest_header["task_configuration"]["task_dsp_info"]["multiPRFflag"]
+            lowprf = highprf*lowprfmults[prfMode]
+            self.wavelength = self.ingest_header["task_configuration"]["task_misc_info"]["wavelength"]
+            vMax = highprf*self.wavelength/4
+            
+            eightBitDopplerOffset=vMax*128/127
+            eightBitDopplerGain=vMax/127
+            
+            variableTypes={}
+            #The table is here because we need to find the PRF and wavelength first
+            dataParameters={1: [-32.0, 0.5, 0, 255], #Order: Offset, Gain, Undetect, Nodata
+                            2: [-32.0, 0.5, 0, 255],
+                            3: [-eightBitDopplerOffset, eightBitDopplerGain, 0, 0],
+                            4: [0, 1/256.0, 0, 0],
+                            5: [-8, 1/16, 0, 0],
+                            7: [-32.0, 0.5, 0, 255], #Corrected reflectivity, assuming same characteristics as TH and DBZH"DBZH",
+                            8: [-327.68, 0.01, 0, 65535],
+                            9: [-327.68, 0.01, 0, 65535],
+                            10: [-327.68, 0.01, 0, 65535],
+                            11: [0, 0.01, 0, 65535],
+                            12: [-327.68, 0.01, 0, 65535],
+                            13: [0, 1, 0, 65535], #NOT LINEAR: NEED TO IMPLEMENT DECODING ON SOFTWARE SIDE. PASSING RAW DATA
+                            14: [0, 1, 0, 255], #NOT LIENAR: NEED TO IMPLEMENT DECODING ON SOFTWARE SIDE. PASSING RAW DATA
+                            15: [-327.68, 0.01, 0, 65535],
+                            16: [-180/254, 180/254, 0, 255],
+                            17: [-75+150/253.0, 150/253.0, 0, 255],
+                            18: [0, 1, 0, 255], #NOT LINEAR: SEE NOTE ABOVE
+                            19: [0, 1, 0, 255], #NOT LINEAR: SEE NOTE ABOVE
+                            20: [-1/65533, 1/65533, 0, 65535],
+                            21: [-327.68, 0.01, 0, 65535],
+                            22: [-327.68, 0.01, 0, 65535],
+                            23: [-1/65533, 1/65533, 0, 65535],
+                            24: [-360/65534, 360/65534.0, 0, 65535],
+                            25: [-45.5, 0.2, 0, 255],
+                            26: [-327.68, 0.01, 0, 65535],
+                            27: [-45.5, 0.2, 0, 255],
+                            28: [-327.68, 0.01, 0, 65535],
+                            32: [-0.1, 0.1, 0, 255],
+                            33: [-0.001, 0.001, 0, 65535],
+                            34: [0, 1, -999, -999], #raw
+                            35: [-25.6, 0.2, 0, 255],
+                            36: [0, 0.001, 32767, 32767],
+                            37: [0, 1, -999, -999], #NOT LINEAR.
+                            38: [0, 1, -999, -999], #Unspecified data. Keeping raw,
+                            39: [0, 1, -999, -999], #Unspecified data,
+                            40: [0, 0.001, 32767, 32767],
+                            41: [0, -0.01, 32767, 32767],
+                            42: [0, -0.01, 32767, 32767], #guessed - fixme
+                            43: [0, 0.1, -32767, 32767], #guessed
+                            44: [0, 0.1, -32767, 32767], #guessed
+                            45: [0, 1, -999, -999], #Keeping raw, "DB_TIME2",
+                            46: [0, 1, 0, 255],
+                            47: [-1/65533, 1/65533, 0, 65535],
+                            48: [0, 1, 0, 255],
+                            49: [-1/65533, 1/65533, 0, 65535],
+                            50: [-180/254, 180/254, 0, 255],
+                            51: [-360/65534, 360/65534, 0, 65535],
+                            52: [-180/254, 180/254, 0, 255],
+                            53: [-360/65534, 360/65534, 0, 65535],
+                            54: [0, 1, -999, -999], #raw
+                            55: [0, 1, 0, 255], #to be processed during decoding.
+                            56: [0, 1, 0, 65535], #ditto
+                            57: [-8, 1/16, 0, 0],
+                            58: [-327.68, 0.01, 0, 65535],
+                            75: [0, 1, -999, -999],
+                            76: [0, 1, -999, -999],
+                            77: [-32.0, 0.5, 0, 255],
+                            78: [-327.68, 0.01, 0, 65535], #Guessed- programmer's manual may have a mixup with 8 bit var,
+                            79: [-32.0, 0.5, 0, 255],
+                            80: [-327.68, 0.01, 0, 65535],
+                            81: [0, 1, 0, 255], #Same caveat as with 1 byte RhoHV
+                            82: [-1/65533, 1/65533, 0, 65535],
+                            83: [-32.0, 0.5, 0, 255],
+                            84: [-327.68, 0.01, 0, 65535],
+                            85: [-32.0, 0.5, 0, 255],
+                            86: [-327.68, 0.01, 0, 65535],
+                            87: [-32.0, 0.5, 0, 255],
+                            88: [-327.68, 0.01, 0, 65535]}
+            while ptr < len(rawdata):
+                recordBeginning = ptr
+                sweepNr = halfw(rawdata[ptr+2:ptr+4], True, False)
+                record={"recordNumber": halfw(rawdata[ptr:ptr+2], True, False),
+                        "sweepNr": sweepNr,
+                        "byteOffset": halfw(rawdata[ptr+4:ptr+6], True, False),
+                        "rayNumber": halfw(rawdata[ptr+6:ptr+8], True, False),
+                        "flags": halfw(rawdata[ptr+8:ptr+10], False, False)}
+                ptr+=12
+                record["headers"]=[]
+                if sweepNr not in self.elevationNumbers:
+                    self.nominalElevations.append(round(binaryAngle(halfw(rawdata[ptr+34:ptr+36], False, False), 16), 2))
+                    self.elevationNumbers.append(sweepNr)
+                    self.quantities.append([])
+                    rawSweep.append(b"")
+                    
+                    ingestDataHeader = {}
+                    starttime = ymds_time(rawdata[ptr+12:ptr+24], False)
+                    ingestDataHeader["sweepStartTime"] = starttime
+                    sweepStartTimes.append(starttime)
+                    ingestDataHeader["sweepNumber"] = halfw(rawdata[ptr+24:ptr+26], True, False)
+                    ingestDataHeader["resolution"] = halfw(rawdata[ptr+26:ptr+28], True, False) / 360.0 #angular resolution
+                    ingestDataHeader["indexOfFirstRay"] = halfw(rawdata[ptr+28:ptr+30], True, False)
+                    ingestDataHeader["nraysExpected"] = halfw(rawdata[ptr+30:ptr+32], True, False)
+                    ingestDataHeader["nraysActually"] = halfw(rawdata[ptr+32:ptr+34], True, False)
+                    for i in range(len(self.ingest_header["task_configuration"]["task_dsp_info"]["quantities"])):
+                        quantityCode = halfw(rawdata[ptr+38:ptr+40], False, False)
+
+                        ##POPULATING OPTIONS
+                        quantity = IRISTypes[quantityCode]
+                        if quantityCode in oneByteProducts:
+                            valType = np.int8 if quantityCode in signedProducts else np.uint8
+                        else:
+                            valType = np.int16 if quantityCode in signedProducts else np.uint16
+                        variableTypes[quantity] = {"type": valType,
+                                                   "params": dataParameters[quantityCode]
+                                                   }
+                        self.quantities[self.elevationNumbers.index(sweepNr)].append(quantity)
+                        record["headers"].append(ingestDataHeader)
+                        ptr+=76
+                bytesToNextRecord = 6144 - (ptr-recordBeginning)
+                rawSweep[sweepNr-1]+=rawdata[ptr:ptr+bytesToNextRecord]
+                ptr+= bytesToNextRecord
+                self.records.append(record)
+            #In the meantime here's some metadata for the data fields that we'll send to TRV
+            rscale = self.ingest_header["task_configuration"]["task_range_info"]["stepBetweenOutputBins"]
+            rstart = self.ingest_header["task_configuration"]["task_range_info"]["firstBinRange"]
+            
+            #And now let's process the record contents:
+            for swpnr in range(len(rawSweep)):
+                swp = rawSweep[swpnr]
+                swpptr = 0
+                blockLength = -1
+                self.data.append({})
+                self.elevations.append([])
+                self.azimuths.append([])
+                self.times.append([])
+                while blockLength != -6:
+                    for qty in self.quantities[swpnr]:
+                        dataType = variableTypes[qty]["type"]
+                        offset, gain, undetect, nodata = variableTypes[qty]["params"]
+                        blockLength = halfw(swp[swpptr:swpptr+2], False, False) & 32767 #Length of continuous data before a zero run
+                        startingAzimuth = binaryAngle(halfw(swp[swpptr+2:swpptr+4], False, False), 16)
+                        if startingAzimuth not in self.azimuths[swpnr] and blockLength != 0:
+                            startingElevation = binaryAngle(halfw(swp[swpptr+4:swpptr+6], False, False), 16)
+                            time = halfw(swp[swpptr+12:swpptr+14], False, False)
+                            timefull= sweepStartTimes[swpnr]["time"] + datetime.timedelta(seconds=time)
+                            prfFlag = halfw(swp[swpptr+12:swpptr+14], False, False) #According to pyART, not seeing it in IRIS programmers manual, but makes sense when watching actual data.
+                            self.times[swpnr].append(timefull) #Saving ray properties
+                            self.elevations[swpnr].append(startingElevation)
+                            self.azimuths[swpnr].append(startingAzimuth)
+                        if qty not in self.data[swpnr]:
+                            self.data[swpnr][qty] = {"data": [], "dataType": dataType, "rscale": rscale, "rstart": rstart, "highprf": highprf, "lowprf": lowprf, "gain": gain, "offset": offset, "undetect": undetect, "nodata": nodata} 
+                        #endingAzimuth = binaryAngle(halfw(swp[swpptr+6:swpptr+8], False, False), 16)
+                        #endingElevation = binaryAngle(halfw(swp[swpptr+8:swpptr+10], False, False), 16)
+                        nbins = halfw(swp[swpptr+10:swpptr+12], True, False)
+                        swpptr+=14
+                        blockLength -= 6 #subtracting first 6 data blocks as we now iterate for data bins
+                        val=None
+                        datarow=[]
+                        
+                        if dataType == np.uint8 or dataType == np.int8: #Multiplier for zeroes count in RLE
+                            zeroesCountMult = 2
+                        else:
+                            zeroesCountMult = 1
+                            
+                        while val != 1 and blockLength != -6:
+                            datarow+=np.fromstring(swp[swpptr:swpptr+blockLength*2], dataType).tolist()
+                            swpptr+=2*blockLength
+                            zeroesCount = halfw(swp[swpptr:swpptr+2], True, False)
+                            if blockLength < nbins and zeroesCount > 1:
+                                datarow+=[0]*(zeroesCount*zeroesCountMult) #Zeroes count is also in halfwords - therefore must multiply by 2 when having 8 bit values
+                                swpptr+=2
+                            val=halfw(swp[swpptr:swpptr+2], True, False)
+                            blockLength = val & 32767
+                            swpptr+=2
+                        rowSize = len(datarow)
+                        if rowSize > 0:
+                            if rowSize > nbins:
+                                datarow=datarow[0:nbins] #Strip excess entries at the end
+                            if rowSize < nbins: #If shorter than expected length
+                                datarow+=[nodata]*(nbins-rowSize) #pad with nodata values
+                            self.data[swpnr][qty]["data"].append(datarow)
+            #Final stuff:
+            self.headers["latitude"] = self.ingest_header["ingest_configuration"]["radarLatitude"]
+            self.headers["longitude"] = self.ingest_header["ingest_configuration"]["radarLongitude"]
+            if self.headers["longitude"] > 180: self.headers["longitude"]-=360
+            self.headers["height"] = self.ingest_header["ingest_configuration"]["radarHeightMSL"]
+            self.headers["timestamp"] = self.product_hdr["product_configuration"]["timeOfInputIngestSweep"]["time"]
+        else:
+            print("Unsupported product (RAW only!)")
+class DORADE(): #SUPPORT IS VERY PRELIMINARY WITH SHORTCUTS TAKEN - probably not universally compatible. Example files and fixes welcome!
+    def __init__(self,path):
+        ## HMM. Documentation says big endian integers but they appear to be little endian instead!
+        data = file_read(path)
+
+        doradeTypes={1:NP_INT8,
+                     2:NP_INT16,
+                     3:NP_INT32,
+                     4:NP_FLOAT}
+
+        ## Initializing TRV's DATA objects.
+        self.type = "DORADE"
+        self.data = []
+        self.azimuths = []
+        self.times = []
+        self.quantities = []
+        self.headers = {}
+        self.elevations = []
+        self.elevationNumbers = []
+        self.nominalElevations = []
+        rscale = 1
+        rstart = 0
+
+        ##ODIM QUANTITY MAPPING FOR TRV's DATA MODEL
+        odimQtys={b"VE": "VRAD",
+                  b"VC": "VRAD",
+                  b"SW": "WRAD",
+                  b"DZ": "DBZH",
+                  b"DCC": "DBZH"}
+        ##
+        self.rawdata = data
+        ptr = data.index(b"SSWB")
+
+        #SSWB
+        sswbSize = word(data[ptr+4:ptr+8], False, False)
+            
+        self.sswb = {"nbytes": sswbSize,
+                     "last_used": datetime.datetime.utcfromtimestamp(word(data[ptr+8:ptr+12], False, False)),
+                     "start_time": datetime.datetime.utcfromtimestamp(word(data[ptr+12:ptr+16], False, False)),
+                     "stop_time": datetime.datetime.utcfromtimestamp(word(data[ptr+16:ptr+20], False, False)),
+                     "sizeof_file": word(data[ptr+20:ptr+24], False, False),
+                     "compression_flag": word(data[ptr+24:ptr+28], False, False),
+                     "volume_time_stamp": datetime.datetime.utcfromtimestamp(word(data[ptr+28:ptr+32],False,False)),
+                     "num_params": word(data[ptr+32:ptr+36], False, False),
+                     "radar_name": data[ptr+36:ptr+44].rstrip(b"\x00").rstrip(),
+                     "num_keytables": word(data[ptr+64:ptr+68], False,False),
+                     "status": word(data[ptr+68:ptr+72], False,False),
+                     "key_table": []}
+        
+        self.headers["timestamp"]=self.sswb["volume_time_stamp"] #Converting some of the quantities to TRV data model
+        self.times=[[self.sswb["start_time"],self.sswb["stop_time"]]]
+        
+        ptr+=100
+        for i in range(0,12*self.sswb["num_keytables"], 12):
+            self.sswb["key_table"].append({"offset": word(data[ptr+i:ptr+i+4], False, False),
+                                           "size": word(data[ptr+i+4:ptr+i+8], False, False),
+                                           "type": word(data[ptr+i+8:ptr+i+12], False, False)})
+        ptr+=sswbSize-100
+
+        #VOLD
+
+        voldSize=word(data[ptr+4:ptr+8], False, False)
+        
+        self.vold = {"nbytes": voldSize,
+                     "format_version": halfw(data[ptr+8:ptr+10], False, False),
+                     "volume_num": halfw(data[ptr+10:ptr+12], False, False),
+                     "maximum_bytes": word(data[ptr+12:ptr+16], False, False),
+                     "proj_name": data[ptr+16:ptr+36].rstrip(b"\x00").rstrip(),
+                     "year": halfw(data[ptr+36:ptr+38], False, False),
+                     "month": halfw(data[ptr+38:ptr+40], False, False),
+                     "day": halfw(data[ptr+40:ptr+42], False, False),
+                     "data_set_hour": halfw(data[ptr+42:ptr+44], False, False),
+                     "data_set_minute": halfw(data[ptr+44:ptr+46], False, False),
+                     "data_set_second": halfw(data[ptr+46:ptr+48], False, False),
+                     "flight_number": data[ptr+48:ptr+56].rstrip(b"\x00").rstrip(),
+                     "gen_facility": data[ptr+56:ptr+64].rstrip(b"\x00").rstrip(),
+                     "gen_year": halfw(data[ptr+64:ptr+66], False, False),
+                     "gen_month": halfw(data[ptr+66:ptr+68], False, False),
+                     "gen_day": halfw(data[ptr+68:ptr+70], False, False),
+                     "number_sensor_des": halfw(data[ptr+70:ptr+72], False, False)}
+
+        ptr += voldSize 
+        self.sensors = []
+
+        for j in range(self.vold["number_sensor_des"]):
+            radd={"nbytes": word(data[ptr+4:ptr+8], False, False),
+                   "radar_name": data[ptr+8:ptr+16].rstrip(b"\x00").rstrip(),
+                   "radar_const": floating(data[ptr+16:ptr+20], False),
+                   "peak_power": floating(data[ptr+20:ptr+24], False),
+                   "noise_power": round(floating(data[ptr+24:ptr+28], False),5),
+                   "receiver_gain": floating(data[ptr+28:ptr+32], False),
+                   "antenna_gain": floating(data[ptr+32:ptr+36], False),
+                   "system_gain": floating(data[ptr+36:ptr+40], False),
+                   "horz_beam_width": floating(data[ptr+40:ptr+44], False),
+                   "vert_beam_width": floating(data[ptr+44:ptr+48], False),
+                   "radar_type": halfw(data[ptr+48:ptr+50], False, False),
+                   "scan_mode": halfw(data[ptr+50:ptr+52], False, False),
+                   "req_rotat_vel": floating(data[ptr+52:ptr+56], False),
+                   "scan_mode_pram0": floating(data[ptr+56:ptr+60], False),
+                   "scan_mode_pram1": floating(data[ptr+60:ptr+64], False),
+                   "num_parameters_des": halfw(data[ptr+64:ptr+66], False, False),
+                   "total_num_des": halfw(data[ptr+66:ptr+68], False, False),
+                   "data_compress": halfw(data[ptr+68:ptr+70], False, False),
+                   "data_reduction": halfw(data[ptr+70:ptr+72], False, False),
+                   "data_red_parm0": floating(data[ptr+72:ptr+76], False),
+                   "data_red_parm1": floating(data[ptr+76:ptr+80], False),
+                   "radar_longitude": floating(data[ptr+80:ptr+84], False),
+                   "radar_latitude": floating(data[ptr+84:ptr+88], False),
+                   "radar_altitude": floating(data[ptr+88:ptr+92], False),
+                   "eff_unamb_vel": floating(data[ptr+92:ptr+96], False),
+                   "eff_unamb_range": floating(data[ptr+96:ptr+100], False),
+                   "num_freq_trans": halfw(data[ptr+100:ptr+102], False, False),
+                   "num_ipps_trans": halfw(data[ptr+102:ptr+104], False, False),
+                   "freqs":[], #Frequencies clearly in GHz
+                   "ipps":[],
+                   "prfs":[]}  #IPPS period appears to be in milliseconds.
+            for j1 in range(104,104+4*radd["num_freq_trans"],4):
+                radd["freqs"].append(floating(data[ptr+j1:ptr+j1+4], False))
+            for j2 in range(124,124+4*radd["num_ipps_trans"],4):
+                ipp = floating(data[ptr+j2:ptr+j2+4], False)
+                radd["ipps"].append(ipp)
+                radd["prfs"].append(round(1000/ipp,2))
+            if radd["nbytes"] == 300: #Extended RADD
+                radd["extention_num"] = word(data[ptr+144:ptr+148], False, False)
+                radd["config_name"] = data[ptr+148:ptr+156].rstrip(b"\x00").rstrip()
+                radd["config_num"] = word(data[ptr+156:ptr+160], False, False)
+                radd["aperture_size"] = floating(data[ptr+160:ptr+164], False)
+                radd["field_of_view"] = floating(data[ptr+164:ptr+168], False)
+                radd["apperture_eff"] = floating(data[ptr+168:ptr+172], False)
+                for j3 in range(172, 216, 4):
+                    currentFreq = floating(data[ptr+j3:ptr+j3+4], False)
+                    if currentFreq > 0:
+                        radd["freqs"].append(currentFreq)
+                for j4 in range(216, 260, 4):
+                    currentIpps = floating(data[ptr+j4:ptr+j4+4], False)
+                    if currentIpps > 0:
+                        radd["ipps"].append(currentIpps)
+                radd["pulse_width"] = floating(data[ptr+260:ptr+264], False)
+                radd["primary_cop_baseln"] = floating(data[ptr+264:ptr+268], False)
+                radd["secondary_comp_baseln"] = floating(data[ptr+268:ptr+272], False)
+                radd["pc_xmtr_bandwidth"] = floating(data[ptr+272:ptr+276], False)
+                radd["pc_waveform_type"] = word(data[ptr+276:ptr+280], False)
+                radd["site_name"] = data[ptr+280:ptr+300].rstrip(b"\x00").rstrip()
+            ptr+=radd["nbytes"]
+            
+            parms=[]
+
+            #Parameters
+            for j5 in range(radd["num_parameters_des"]):
+                parm={"nbytes": word(data[ptr+4:ptr+8], False, False),
+                      "parameter_name": data[ptr+8:ptr+16].rstrip(b"\x00").rstrip(),
+                      "parameter_description": data[ptr+16:ptr+56].rstrip(b"\x00").rstrip(),
+                      "param_units": data[ptr+56:ptr+64].rstrip(b"\x00").rstrip(),
+                      "interpulse_time": halfw(data[ptr+64:ptr+66], False, False),
+                      "xmitted_freq":  halfw(data[ptr+66:ptr+68], False, False),
+                      "recvr_bandwidth": floating(data[ptr+68:ptr+72], False),
+                      "pulse_width": halfw(data[ptr+72:ptr+74], False, False),
+                      "polarization": halfw(data[ptr+74:ptr+76], False, False),
+                      "num_samples": halfw(data[ptr+76:ptr+78], False, False),
+                      "binary_format": doradeTypes[halfw(data[ptr+78:ptr+80], False, False)],
+                      "threshold_field": data[ptr+80:ptr+88].rstrip(b"\x00").rstrip(),
+                      "threshold_value": floating(data[ptr+88:ptr+92], False),
+                      "parameter_scale": floating(data[ptr+92:ptr+96], False),
+                      "parameter_bias": floating(data[ptr+96:ptr+100], False),
+                      "bad_data": word(data[ptr+100:ptr+104], True, False)}
+                if parm["nbytes"] == 216:
+                    parm["extension_num"] = word(data[ptr+104:ptr+108], False, False)
+                    parm["config_name"] = data[ptr+108:ptr+116].rstrip(b"\x00").rstrip()
+                    parm["config_num"] = word(data[ptr+116:ptr+120], False, False)
+                    parm["offset_to_data"] = word(data[ptr+120:ptr+124], False, False)
+                    parm["mks_conversion"] = floating(data[ptr+124:ptr+128], False)
+                    parm["num_qnames"] = word(data[ptr+128:ptr+132], False, False)
+                    parm["qdata_names"] = []
+                    for j6 in range(132,132+parm["num_qnames"]*8,8):
+                        parm["qdata_names"].append(data[ptr+j6:ptr+j6+8].rstrip(b"\x00").rstrip())
+                    parm["num_criteria"] = word(data[ptr+164:ptr+168], False, False)
+                    parm["criteria_names"] = []
+                    for j7 in range(168,168*parm["num_criteria"]*8,8):
+                        parm["criteria_names"].append(data[ptr+j7:ptr+j7+8].rstrip(b"\x00").rstrip())
+                    parm["number_cells"] = word(data[ptr+200:ptr+204], False, False)
+                    parm["meters_to_first_cell"] = floating(data[ptr+204:ptr+208], False)
+                    parm["meters_between_cells"] = floating(data[ptr+208:ptr+212], False)
+                    parm["eff_unamb_vel"] = floating(data[ptr+212:ptr+216], False)
+                ptr+=parm["nbytes"]
+                parms.append(parm)
+
+            nextItem = data[ptr:ptr+4] #Either CELV or CSFD
+            celv={}
+            csfd={}
+            if nextItem == b"CELV":
+                celv["nbytes"] = word(data[ptr+4:ptr+8], False, False)
+                celv["number_cells"] = word(data[ptr+8:ptr+12], False, False)
+                celv["dist_cells"] = []
+                for j8 in range(12,12+celv["number_cells"]*4,4):
+                    celv["dist_cells"].append(floating(data[ptr+j8:ptr+j8+4], False))
+                rstart=celv["dist_cells"][0]*0.001
+                rscale=(celv["dist_cells"][1]-celv["dist_cells"][0])*0.001
+                ptr+=celv["nbytes"]
+            elif nextItem == b"CSFD":
+                csfd["nbytes"] = word(data[ptr+4:ptr+8], False, False)
+                csfd["num_segments"] = word(data[ptr+8:ptr+12], False, False)
+                csfd["dist_to_first"] = floating(data[ptr+12:ptr+16], False)
+                csfd["spacing"] = []
+                for j8 in range(16,48,4):
+                    csfd["spacing"].append(floating(data[ptr+j8:ptr+j8+4], False))
+                csfd["num_cells"] = halfw(data[ptr+48:ptr+50], False, False)
+                ptr+=csfd["nbytes"]
+
+            #CFAC
+            cfac={"nbytes": word(data[ptr+4:ptr+8], False, False)}
+            ptr+=8
+            for key in ["azimuth_corr", "elevation_corr", "range_delay_corr", "longitude_corr", "latitude_corr", "pressure_alt_corr", "radar_alt_corr", "ew_gndspd_corr", "ns_gndspd_corr", "vert_vel_corr", "heading_corr", "roll_corr", "pitch_corr", "drift_corr", "rot_angle_corr", "tilt_corr"]:
+                cfac[key] = floating(data[ptr:ptr+4], False)
+                ptr+=4
+            self.sensors.append({"radd":radd,"parms":parms,"celv":celv,"csfd":csfd,"cfac":cfac})
+
+        #SWIB
+        #DANGER WILL ROBINSON - ASSUMING A FILE WHERE THERE IS ONLY ONE SENSOR AND ONE SWEEP.
+        sweepCount=0
+        while data[ptr:ptr+4] == b"SWIB":
+            prfs = self.sensors[sweepCount]["radd"]["prfs"]
+            highprf = max(prfs)
+            lowprf = min(prfs)
+            self.azimuths.append([])
+            self.data.append({})
+            self.quantities.append([])
+            self.elevations.append([])
+            self.swib={"nbytes":word(data[ptr+4:ptr+8], False, False),
+                       "radar_name": data[ptr+8:ptr+16].rstrip(b"\x00").rstrip(),
+                       "sweep_num": word(data[ptr+16:ptr+20], False, False),
+                       "num_rays": word(data[ptr+20:ptr+24], False, False),
+                       "start_angle": floating(data[ptr+24:ptr+28], False),
+                       "stop_angle": floating(data[ptr+28:ptr+32], False),
+                       "fixed_angle": floating(data[ptr+32:ptr+36], False),
+                       "filter_flag": word(data[ptr+36:ptr+40], False, False)}
+
+            ptr+=self.swib["nbytes"]
+
+            for k in range(self.swib["num_rays"]):
+
+                #RYIB
+
+                self.ryib={"nbytes":word(data[ptr+4:ptr+8], False, False),
+                           "sweep_num":word(data[ptr+8:ptr+12], False, False),
+                           "julian_day":word(data[ptr+12:ptr+16], False, False),
+                           "hour":halfw(data[ptr+16:ptr+18], False, False),
+                           "minute":halfw(data[ptr+18:ptr+20], False, False),
+                           "second":halfw(data[ptr+20:ptr+22], False, False),
+                           "millisecond":halfw(data[ptr+22:ptr+24], False, False),
+                           "azimuth":floating(data[ptr+24:ptr+28], False),
+                           "elevation":floating(data[ptr+28:ptr+32], False),
+                           "peak_power":floating(data[ptr+32:ptr+36], False),
+                           "true_scan_rate":floating(data[ptr+36:ptr+40], False),
+                           "ray_status": word(data[ptr+40:44], False, False)}
+                ptr+=self.ryib["nbytes"]
+
+                #print(self.ryib)
+                self.azimuths[-1].append(self.ryib["azimuth"])
+                self.elevations[-1].append(self.ryib["elevation"])
+
+                #ASIB
+                self.asib={"nbytes":word(data[ptr+4:ptr+8], False, False)}
+                ptr+=8
+                for key in ["longitude", "latitude", "altitude_msl", "altitude_agl", "ew_velocity", "ns_velocity", "vert_velocity", "heading", "roll", "pitch", "drift_angle", "rotation_angle", "tilt", "ew_horiz_wind", "ns_horiz_wind", "vert_wind", "heading_change", "pitch_change"]:
+                    self.asib[key] = floating(data[ptr:ptr+4], False)
+                    ptr+=4
+                if k == 0: #Populate headers with location
+                    self.headers["longitude"]=self.asib["longitude"]
+                    self.headers["latitude"]=self.asib["latitude"]
+                    self.headers["height"]=self.asib["altitude_msl"]
+
+                for l in range(len(self.sensors[sweepCount]["parms"])):
+                    nextItem = data[ptr:ptr+4] #RDAT or QDAT!
+                    params=self.sensors[sweepCount]["parms"][l]
+                    qty = params["parameter_name"].decode("utf-8")
+                    if qty == "VE": qty = "VRAD"
+                    if qty == "VC": qty = "VRADH"
+                    if qty == "SW": qty = "WRAD"
+                    if qty == "DZ": qty = "TH"
+                    if qty == "DCC": qty = "DBZH"
+                    if qty not in self.data[-1]:
+                        baddata=params["bad_data"]
+                        self.data[-1][qty]={"data":[],"highprf": highprf, "lowprf": lowprf, "gain":1/params["parameter_scale"],"offset":params["parameter_bias"],"undetect":params["bad_data"],"nodata":baddata,"rstart":rstart,"rscale":rscale}
+                        self.quantities[-1].append(qty)
+                    if nextItem == b"RDAT":
+                        rdat={"nbytes": word(data[ptr+4:ptr+8], False, False),
+                              "pdata_name": data[ptr+8:ptr+16].rstrip(b"\x00").rstrip()}
+                        datarow=np.fromstring(data[ptr+16:ptr+rdat["nbytes"]],params["binary_format"]).tolist()
+                        datarownew=[]
+                        datarowptr=0
+                        while datarowptr < len(datarow):
+                            val = datarow[datarowptr]
+                            if val < -30000 and val != baddata:
+                                amt = val & 32767
+                                datarowptr += 1
+                                datarownew += datarow[datarowptr:datarowptr+amt]
+                                datarowptr += amt-1
+                            else:
+                                if val != 1:
+                                    datarownew += [baddata]*val
+                                else: #1 = end of compression. Considering the ray ended
+                                    break
+                            datarowptr += 1
+                        datarow=datarownew
+                        self.data[-1][qty]["data"].append(datarow)
+                        ptr+=rdat["nbytes"]
+
+            if data[ptr:ptr+4] == b"NULL": #NULL block
+                ptr+=word(data[ptr+4:ptr+8], False, False)
+
+            if data[ptr:ptr+4] == b"RKTB": #NULL block
+                ptr+=word(data[ptr+4:ptr+8], False, False)
+
+            if data[ptr:ptr+4] == b"SEDS": #Editor History Block
+                blockLength = word(data[ptr+4:ptr+8], False, False)
+                self.seds=data[ptr+12:ptr+blockLength]
+
+            self.wavelength = 0.299792458/self.sensors[sweepCount]["radd"]["freqs"][0]
+
+            #Process azimuth data - in TRV data model they indicate the beginning of a ray not the centre
+            for i in range(len(self.azimuths)):
+                newazlist=[]
+                for j in range(len(self.azimuths[i])):
+                    oldaz = self.azimuths[i][j-1]
+                    newaz = self.azimuths[i][j]
+                    if oldaz > newaz and oldaz > 350:
+                        oldaz -= 360
+                    newazlist.append((oldaz+newaz)/2)
+                self.azimuths[i] = newazlist
+                
+            self.nominalElevations.append(round(sum(self.elevations[-1])/len(self.elevations[-1]),2))
+            self.elevationNumbers.append(len(self.nominalElevations)-1)
+            sweepCount += 1
 
 class BUFR(): #BUFR radar data issued by Deutscher Wetterdienst through their open data output
     def __init__(self,path):
@@ -858,6 +1636,70 @@ class HDF5():
                     
         andmed.close()
 
+
+IRISTypes={0: "DB_XHDR", 1: "TH", 2: "DBZH", 3: "VRADH", 4: "WRADH",
+           5: "ZDR", 7: "DBZH", 8: "TH", 9: "DBZH", 10: "VRADH", #7 - CORRECTED
+           11: "WRADH", 12: "ZDR", 13: "RATE", 14: "KDP",
+           15: "KDP", 16: "PHIDP", 17: "VRADDH", 18: "SQI",
+           19: "RHOHV", 20: "RHOHV", 21: "DBZH", 22: "VRADDH",
+           23: "SQI", 24: "PHIDP", 25: "LDR", 26: "LDRH",
+           27: "LDRV", 28: "LDRV", 32: "DB_HEIGHT", 33: "VIL",
+           34: "RAW", 35: "DB_SHEAR", 36: "DB_DIVERGE2", 37: "DB_FLIQUID2",
+           38: "DB_USER", 39: "DB_OTHER", 40: "DB_DEFORM2", 41: "DB_VVEL2",
+           42: "DB_HVEL2", 43: "DB_HDIR2", 44: "DB_AXDIL2", 45: "DB_TIME2",
+           46: "DB_RHOH", 47: "DB_RHOH2", 48: "DB_RHOV", 49: "DB_RHOV2",
+           50: "DB_PHIH", 51: "DB_PHIH2", 52: "DB_PHIV", 53: "DB_PHIV2",
+           54: "DB_USER2", 55: "HCLASS", 56: "HCLASS", 57: "ZDR",
+           58: "ZDR", 75: "DB_PMI8", 76: "DB_PMI16", 77: "DB_LOG8",
+           78: "DB_LOG16", 79: "DB_CSP8", 80: "DB_CSP16", 81: "CCORH",
+           82: "CCORV", 83: "DB_AH8", 84: "DB_AH16", 85: "DB_AV8",
+           86: "DB_AV16", 87: "DB_AZDR8", 88: "DB_AZDR16"}
+
+#Format [gain, offset]
+
+def dataTypesFromMask(dataWord,offset=0):
+    products=[]
+    for i in range(32):
+        bit = (dataWord & (1 << i)) >> i
+        if bit:
+            products.append(IRISTypes[i+offset])
+    return products
+    
+def task_calib_flags(i): #For IRIS data
+    result={"bit15": (i & 0b1000000000000000) >> 15, #Speckle remover for log channel
+            "bit14": (i & 0b0100000000000000) >> 14, #Unused?
+            "bit13": (i & 0b0010000000000000) >> 13, #Unused?
+            "bit12": (i & 0b0001000000000000) >> 12, #Speckle remover for linear channel
+            "bit11": (i & 0b0000100000000000) >> 11, #Data is range normalized
+            "bit10": (i & 0b0000010000000000) >> 10, #Pulse at beginning of ray
+            "bit09": (i & 0b0000001000000000) >> 9, #Pulse at the end of ray
+            "bit08": (i & 0b0000000100000000) >> 8, #Vary number of pulses in DualPRF
+            "bit07": (i & 0b0000000010000000) >> 7, #Use 3 lag processing in PPO 2
+            "bit06": (i & 0b0000000001000000) >> 6, #Apply vel correction for ship mtn
+            "bit05": (i & 0b0000000000100000) >> 5, #Vc is unfolded
+            "bit04": (i & 0b0000000000010000) >> 4, #Vc has fallspeed correction
+            "bit03": (i & 0b0000000000001000) >> 3, #Zc has beam blockage correction
+            "bit02": (i & 0b0000000000000100) >> 2, #Zc has Z-based attenuation correction
+            "bit01": (i & 0b0000000000000010) >> 1, #Zc has target detection
+            "bit00": (i & 1) #Vc has storm relative velocity correction
+        }
+    return result
+def binaryAngle(angle, bits): #For IRIS data
+    return 360*angle/2**(bits)
+def ymds_time(b, bigEndian=True): #For IRIS data
+    secondsSinceMidnight=word(b[0:4], True, bigEndian)
+    millisecondsFull=halfw(b[4:6], False, bigEndian)
+    milliseconds = millisecondsFull >> 6
+    timeIsDST = millisecondsFull & 0b0000010000000000 >> 10
+    timeIsUTC = millisecondsFull & 0b0000100000000000 >> 11
+    localTimeIsDST = millisecondsFull & 0b0001000000001000 >> 12
+    year = halfw(b[6:8], True, bigEndian)
+    month = halfw(b[8:10], True, bigEndian)
+    day = halfw(b[10:12], True, bigEndian)
+    outdateTime=datetime.datetime(year, month, day) + datetime.timedelta(seconds = secondsSinceMidnight, milliseconds = milliseconds)
+    return {"time":outdateTime, "timeisDST": timeIsDST, "timeisUTC": timeIsUTC, "localTimeIsDST": localTimeIsDST}
+
+
 def padData(data,fillValue=0):
     highestAmount=0
     needFilling=False
@@ -1061,6 +1903,11 @@ def dumpVolume(dataObject=None,outputFile=None):
             file["what"].attrs.create("source",b"WMO:"+str(dataObject.dataDescriptionSection["wmoBlockNumber"]).zfill(2).encode("utf-8")+str(dataObject.dataDescriptionSection["wmoStationNumber"]).zfill(3).encode("utf-8"))
         elif dataObject.type == "HDF5":
             file["what"].attrs.create("source",dataObject.source)
+        elif dataObject.type == "IRIS":
+            file["what"].attrs.create("source",b"PLC:" + dataObject.product_hdr["product_end"]["siteName"].title())
+        elif dataObject.type == "DORADE":
+            file["what"].attrs.create("source",b"CMT:" + dataObject.sensors[0]["radd"]["radar_name"])
+            
         #Top level where
         file.create_group("where")
         file["where"].attrs.create("lat",dataObject.headers["latitude"])
@@ -1081,10 +1928,10 @@ def dumpVolume(dataObject=None,outputFile=None):
             file[datasetName].create_group("how")
 
             file[datasetName]["what"].attrs.create("product",b"SCAN")
-            file[datasetName]["what"].attrs.create("startdate",dataObject.times[i][0].strftime("%Y%m%d").encode("utf-8"))
-            file[datasetName]["what"].attrs.create("starttime",dataObject.times[i][0].strftime("%H%M%S").encode("utf-8"))
-            file[datasetName]["what"].attrs.create("enddate",dataObject.times[i][-1].strftime("%Y%m%d").encode("utf-8"))
-            file[datasetName]["what"].attrs.create("endtime",dataObject.times[i][-1].strftime("%H%M%S").encode("utf-8"))
+            file[datasetName]["what"].attrs.create("startdate",min(dataObject.times[i]).strftime("%Y%m%d").encode("utf-8"))
+            file[datasetName]["what"].attrs.create("starttime",min(dataObject.times[i]).strftime("%H%M%S").encode("utf-8"))
+            file[datasetName]["what"].attrs.create("enddate",max(dataObject.times[i]).strftime("%Y%m%d").encode("utf-8"))
+            file[datasetName]["what"].attrs.create("endtime",max(dataObject.times[i]).strftime("%H%M%S").encode("utf-8"))
             
             file[datasetName]["where"].attrs.create("elangle", dataObject.nominalElevations[i])
             firstMomentInElevation=dataObject.quantities[i][0] #First moment in this elevation, we'll use this for grabbing some metadata
@@ -1131,7 +1978,10 @@ def dumpVolume(dataObject=None,outputFile=None):
                 file[datasetName][dataName]["what"].attrs.create("nodata",dataObject.data[i][j]["nodata"])
                 file[datasetName][dataName]["what"].attrs.create("quantity",j.encode("utf-8"))
                 if "rangefolding" in dataObject.data[i][j]: file[datasetName][dataName]["how"].attrs.create("rangefolding",dataObject.data[i][j]["rangefolding"])
-                file[datasetName][dataName].create_dataset("data", (nrays,nbins), data=padData(dataObject.data[i][j]["data"]), compression="gzip")
+                if "dataType" in dataObject.data[i][j]:
+                    file[datasetName][dataName].create_dataset("data", (nrays,nbins), data=padData(dataObject.data[i][j]["data"]), dtype=dataObject.data[i][j]["dataType"], compression="gzip")
+                else:
+                    file[datasetName][dataName].create_dataset("data", (nrays,nbins), data=padData(dataObject.data[i][j]["data"]), compression="gzip")
                 
                 dataCounter+=1
 
@@ -1222,7 +2072,7 @@ def convertNEXRAD3Code(productCode):
         159:"ZDR",
         161:"RHOHV",
         163:"KDP",
-        165:"HCLASS"
+        165:"CLASS"
     }
     return convertDict[productCode]
 def productname(quantity,fraasid):
@@ -1244,6 +2094,7 @@ def productname(quantity,fraasid):
               "RHO":fraasid["product_rhohv"],
               "KDP":fraasid["product_kdp"],
               "HCLASS":fraasid["product_hclass"],
+              "CLASS":fraasid["product_hclass"],
               "V":fraasid["product_radialvelocity"],
               "VEL":fraasid["product_radialvelocity"],
               "VRAD":fraasid["product_radialvelocity"],
@@ -1313,17 +2164,26 @@ def scaleValue(value,gain,offset,nodata,undetect,rangefolding):
         else:
             return None
 
-def HDF5scaleValue(value,gain,offset,nodata,undetect,rangefolding,quantity,variabletype):
+def HDF5scaleValue(value,gain,offset,nodata,undetect,rangefolding,quantity,variabletype,wavelength):
     if value != nodata and value != undetect and value != rangefolding:
         if variabletype is NP_INT16:
             value=NP_UINT16(value)
         if quantity == "ZDR" and offset == 8.0: offset = -8 #A fix to bad offsets in some HDF5 files
-        if (quantity == "RHOHV" or quantity == "QIDX") and variabletype is NP_UINT8: #To get around IRIS's non-linear 8 bit variables for these quantities.
+        elif (quantity == "RHOHV" or quantity == "QIDX" or quantity == "SQI") and variabletype is NP_UINT8: #To get around IRIS's non-linear 8 bit variables for these quantities.
             if value > 0:
                 return sqrt((value-1)/253)
             else:
                 return None
-        if quantity == "HCLASS":
+        elif quantity == "KDP" and variabletype is NP_UINT8: #Once again work-around for IRIS's non-linear variables
+            if value < 128:
+                return (-0.25*600**((127-value)/126))/(wavelength*100)
+            elif value > 128:
+                return (0.25*600**((value-129)/126))/(wavelength*100)
+            elif value == 128:
+                return 0
+            else:
+                return None
+        elif quantity == "HCLASS":
             return IrisMETEO(value)
         else:
             return value*gain+offset
