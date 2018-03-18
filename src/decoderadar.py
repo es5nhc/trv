@@ -524,13 +524,7 @@ class DORADE(): #SUPPORT IS VERY PRELIMINARY WITH SHORTCUTS TAKEN - probably not
         self.nominalElevations = []
         rscale = 1
         rstart = 0
-
-        ##ODIM QUANTITY MAPPING FOR TRV's DATA MODEL
-        odimQtys={b"VE": "VRAD",
-                  b"VC": "VRAD",
-                  b"SW": "WRAD",
-                  b"DZ": "DBZH",
-                  b"DCC": "DBZH"}
+        
         ##
         self.rawdata = data
         ptr = data.index(b"SSWB")
@@ -777,11 +771,7 @@ class DORADE(): #SUPPORT IS VERY PRELIMINARY WITH SHORTCUTS TAKEN - probably not
                     nextItem = data[ptr:ptr+4] #RDAT or QDAT!
                     params=self.sensors[sweepCount]["parms"][l]
                     qty = params["parameter_name"].decode("utf-8")
-                    if qty == "VE": qty = "VRAD"
-                    if qty == "VC": qty = "VRADH"
-                    if qty == "SW": qty = "WRAD"
-                    if qty == "DZ": qty = "TH"
-                    if qty == "DCC": qty = "DBZH"
+
                     if qty not in self.data[-1]:
                         baddata=params["bad_data"]
                         self.data[-1][qty]={"data":[],"highprf": highprf, "lowprf": lowprf, "gain":1/params["parameter_scale"],"offset":params["parameter_bias"],"undetect":params["bad_data"],"nodata":baddata,"rstart":rstart,"rscale":rscale}
@@ -2111,6 +2101,23 @@ def productname(quantity,fraasid):
               "WRAD":fraasid["product_sw"],
               "WRADH":fraasid["wradh"],
               "WRADV":fraasid["wradv"],
+              "ZH":fraasid["product_reflectivity"],
+              "DZ":fraasid["product_reflectivity"],
+              "DCC":fraasid["product_reflectivity"],
+              "VE":fraasid["product_radialvelocity"],
+              "VC":fraasid["product_radialvelocity"],
+              "VF":fraasid["product_radialvelocity"],
+              "VW":fraasid["product_sw"],
+              "ZD":fraasid["product_zdr"],
+              "RH":fraasid["product_rhohv"],
+              "PH":fraasid["product_phi"],
+              "SH":fraasid["dorade_sh"],
+              "SV":fraasid["dorade_sv"],
+              "AH":fraasid["dorade_ah"],
+              "AD":fraasid["dorade_ad"],
+              "DM":fraasid["dorade_dm"],
+              "NCP":fraasid["dorade_ncp"],
+              "DCZ":fraasid["dorade_dcz"],
               }
     return products[quantity]
 

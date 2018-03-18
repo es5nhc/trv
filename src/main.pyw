@@ -634,7 +634,24 @@ units={94:"dBZ", #Defining units for particular products
        "WRAD": "m/s",
        "WRADH": "m/s",
        "WRADV": "m/s",
-       "PHIDP": u"°"}
+       "PHIDP": u"°",
+       "VE": "m/s",
+       "VF": "m/s",
+       "VC": "m/s",
+       "DM": "dB",
+       "DZ": "dBZ",
+       "ZD": "dBZ",
+       "RH": "",
+       "PH": u"°",
+       "SH": "dB",
+       "SV": "dB",
+       "AH": "dB",
+       "AD": "dB",
+       "WV": "m/s",
+       "SW": "m/s",
+       "DCC": "dBZ",
+       "DCZ": "dBZ",
+       "ZH": "dBZ"}
 hcanames=fraasid["hca_names"] #Hydrometeor classifications
 colortablenames={"DBZ":"dbz",
                  "TH":"dbz",
@@ -665,7 +682,25 @@ colortablenames={"DBZ":"dbz",
                  "WRAD": "sw",
                  "WRADH": "sw",
                  "WRADV": "sw",
-                 "SW": "sw"} #Names for color tables according to product
+                 "SW": "sw",
+                 "WV": "sw",
+                 "ZH": "dbz",
+                 "VE": "v",
+                 "VC": "v",
+                 "VF": "v",
+                 "ZD": "zdr",
+                 "RH": "rhohv",
+                 "PH": "phidp",
+                 "DZ": "dbz", 
+                 "SH": "dbz", #fixme
+                 "SV": "dbz", #fixme
+                 "AH": "dbz", #fixme
+                 "AD": "dbz", #fixme
+                 "DM": "dm", #fixme
+                 "NCP": "sqi",
+                 "DCC": "dbz",
+                 "DCZ": "dbz",
+                 } #Names for color tables according to product
 customcolortable=None
 def download_file(url,dst="../cache/urlcache"):
     req=urllibRequest.Request(url)
@@ -1130,8 +1165,9 @@ def drawlegend(product,minimum,maximum,colortable):
         majorstep=45
     if product in [159, 163, 165, "HCLASS", "CLASS"]:
         majorstep=1
-    if product in [161, "SQI"]: #RHOHV aka CC
+    if product in [161, "SQI"]:
         majorstep=0.1
+    print(tosmooth)
     firstten=majorstep+minimum-minimum%majorstep
     if firstten == majorstep+minimum: firstten = minimum
     ystart=454-(firstten-minimum)*step
@@ -1214,7 +1250,9 @@ def init_drawlegend(product,tabel):
         drawlegend("SW",0,30,tabel)
     elif product == "PHIDP":
         drawlegend("PHIDP",0,180,tabel)
-    elif product in ["SQI","QIDX","SQIH","SQIV"]:
+    elif product == "DM":
+        drawlegend("DM",-115,-30,tabel)
+    elif product in ["SQI","QIDX","SQIH","SQIV","NCP"]:
         drawlegend("SQI",0,1,tabel)
     else:
         drawlegend(94,-25,75,tabel)
@@ -2062,7 +2100,6 @@ def getrhi(az):
     currentDisplay.rhiAzimuth = az
 
 
-    #FIXME: Avoid duplicate elevations e.g from Dutch data.
     if not currentlyOpenData.type == "NEXRAD2":    
         finalElevIndexes=[]
         finalElevations=[]
