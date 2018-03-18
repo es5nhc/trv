@@ -1246,7 +1246,7 @@ def init_drawlegend(product,tabel):
         drawlegend("HCLASS",1,7,tabel)
     elif product in ["DBZ", "TH", "TV", "DBZH", "DBZV"]:
         drawlegend(94,-25,75,tabel)
-    elif product == ["WRAD","WRADH","WRADV"]:
+    elif product == ["WRAD","WRADH","WRADV","SW","VW"]:
         drawlegend("SW",0,30,tabel)
     elif product == "PHIDP":
         drawlegend("PHIDP",0,180,tabel)
