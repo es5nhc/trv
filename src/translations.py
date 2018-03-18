@@ -35,7 +35,9 @@
 
 ## Attempt to fix Arabic rendering problems
 import os
+import sys
 
+python2 = True if sys.version_info[0] == 2 else False
 def fixArabic(nas="مرحبا"):
     punctuationLatin = [u".", u",", u":", u";", u"?", u"(", u")"]
     punctuationArabic = [u".", u"،", u":", u"؛", u"؟", u")", u"("]
@@ -65,7 +67,10 @@ def fixArabic(nas="مرحبا"):
 
             #Creating LaamAlifs, initially laam and alif are separated.
             for x in range(len(alifs)):
-                i=i.replace(u"ل"+alifs[x],laamAlifs[x])
+                try:
+                    i=i.replace(u"ل"+alifs[x],laamAlifs[x])
+                except:
+                    print(i,u"ل"+alifs[x],laamAlifs[x])
             wordlength = len(i) #Length of the word
 
             while ptr < wordlength:
@@ -248,7 +253,7 @@ phrases={"estonian":
              "current_language":"Keel",
              "language_estonian":"Eesti keel",
              "language_english":"English",
-             "language_arabic":"عربي" if os.name == "nt" else fixArabic(u"عربي"),
+             "language_arabic":"عربي" if os.name != "posix" else fixArabic(u"عربي"),
              "conf_restart_required":u"Muutus aktiveerub programmi taaskäivitamisel.",
              "dyn_labels":u"Dünaamilised andmepunktid",
              "color_table":u"Värvitabeli vahetus",
@@ -416,7 +421,7 @@ phrases={"estonian":
              "current_language":"Language",
              "language_estonian":"Eesti keel",
              "language_english":"English",
-             "language_arabic":"عربي" if os.name == "nt" else fixArabic(u"عربي"),
+             "language_arabic":"عربي" if os.name != "posix" else fixArabic(u"عربي"),
              "conf_restart_required":"Change will take effect upon next startup.",
              "dyn_labels":"Dynamic data points",
              "color_table":"Color table override",
@@ -473,7 +478,7 @@ phrases={"estonian":
          "arabic":  #NOTE: I am not a native speaker. Corrections are more than welcome as pull requests, especially from radar meteorologists(even from PME!)
          {
              "LANG_ID":"AR",
-             "name":u"TRV 2018.3.12",
+             "name":u"TRV 2018.3.18",
              "loading_states":u"فتح البيانات غيوغرافي... ولايات",
              "coastlines":u"خطوط الساحل",
              "countries":u"دول",
@@ -485,10 +490,10 @@ phrases={"estonian":
              "NA_roads":u"الطرق رئيسي في الامريكا شمالية",
              "add_rmax":u"Rmax اضاقة",
              "add_rmax_ar":u"اضاقة Rmax", #For non-Windows systems using Arabic
-             "az0":u"(°) السمت اولي:" if os.name == "nt" else u":السمت اولي )°( ",
-             "az1":u"(°) السمت الأخير:" if os.name == "nt" else u":السمت الأخير )°(",
-             "r0":u"(km) المسافة اولي:" if os.name == "nt" else u":المسافة اولي )km(",
-             "r1":u"(km) المسافة الأخير:" if os.name == "nt" else u":المسافة الأخير )km(",
+             "az0":u"(°) السمت اولي:" if os.name != "posix" else u":السمت اولي )°( ",
+             "az1":u"(°) السمت الأخير:" if os.name != "posix" else u":السمت الأخير )°(",
+             "r0":u"(km) المسافة اولي:" if os.name != "posix" else u":المسافة اولي )km(",
+             "r1":u"(km) المسافة الأخير:" if os.name != "posix" else u":المسافة الأخير )km(",
              "prf":u"(Hz) PRF:",
              "add":u"إضافة",
              "nexrad_choice":u"اختيار المحطة NEXRAD",
@@ -521,7 +526,7 @@ phrases={"estonian":
              "export_success":u"التصدير ناجح",
              "export_format_fail":u"لا استطيع حفظ الملف في هذا تنسيق او لا عندي إذان لخلق ملفات في هذا عنوان.",
              "no_data":u"غير بيانات",
-             "about_text":u"تارمو تانيلسُو، 2018\ntarmotanilsoo@gmail.com\n\n:الإصادر بايثون\n"+sys.version+u"" if os.name == "nt" else u"تارمو تانيلسو، 2018\ntarmotanilsoo@gmail.com\n\nالإصادر بايثون:\n"+fixArabic(sys.version)+u"",
+             "about_text":u"تارمو تانيلسُو، 2018\ntarmotanilsoo@gmail.com\n\n:الإصادر بايثون\n"+sys.version+u"" if os.name != "posix" else u"تارمو تانيلسو، 2018\ntarmotanilsoo@gmail.com\n\nالإصادر بايثون:\n"+fixArabic(sys.version)+u"",
              "key_shortcuts_dialog_text":u"اختصارات لوحة المفاتيح:\n\nوضع التكبير - z\nوصع التحرك الخريطة - p\nوضع فحص البيانات - i\nعاد إلى التكبير اصلي - r",
              "azimuth":u"السمت",
              "range":u"المسافة",
@@ -529,10 +534,10 @@ phrases={"estonian":
              "beam_height":u"ارتفاع الشعاع",
              "g2g_shear":u"القص G2G",
              "height":u"ارتفاع",
-             "drawing":u"...ارسم" if os.name == "nt" else u"ارسم...",
+             "drawing":u"...ارسم" if os.name != "posix" else u"ارسم...",
              "radar_image":u"صورة الرادار",
              "ready":u"جاهز",
-             "decoding":u"...اقرأ" if os.name == "nt" else u"اقرأ...",
+             "decoding":u"...اقرأ" if os.name != "posix" else u"اقرأ...",
              "incorrect_format":u"خطأ: الملف ليس في تنسيق معتمد", #Apparently none of supported formats
              "not_found_at_this_level":u"هذا منتج لا يوجد في هذه زاوية الارتفاع",
              "error_during_loading":u"خطا خلال فتح",
@@ -574,13 +579,13 @@ phrases={"estonian":
              "wradh":u"العرض الطيف السرعة الدوبلير (افقية)",
              "wradv":u"العرض الطيف السرعة الدوبلير (رأسية)",
              "product_phi":u"الطور التفاضلي",
-             "dorade_sh": "raw power (افقية)", #Najda! Kaifa tasmauun...?
-             "dorade_sv": "raw power (رأسية)", #fixme
-             "dorade_ah": "تخفيف",
-             "dorade_ad": "تحفيف التفاضلية",
-             "dorade_dm": "received power", #fixme
-             "dorade_ncp": "normalized coherent power", #fixme
-             "dorade_dcz": "الانعكاسية متساوقة",
+             "dorade_sh": u"raw power (افقية)", #Najda! Kaifa tasmauun...?
+             "dorade_sv": u"raw power (رأسية)", #fixme
+             "dorade_ah": u"تخفيف",
+             "dorade_ad": u"تحفيف التفاضلية",
+             "dorade_dm": u"received power", #fixme
+             "dorade_ncp": u"normalized coherent power", #fixme
+             "dorade_dcz": u"الانعكاسية متساوقة",
              "no_data_loaded":u"ملف البيانات غير مفتوح!",
              "current_language":u"اللغة",
              "language_estonian":u"Eesti keel",
@@ -610,38 +615,38 @@ phrases={"estonian":
              "batch_notfound2":u"تصدير ستوقف",
              "batch_notfilled":u"تاكد من فضلك ان اختر كل دليلين",
              "ddp_error":u"خطأ في الملف النقطات البيانات ديناميكي.: ",
-             "dwd_credit":u"Deutscher Wetterdienst :مصدر البيانات" if os.name =="nt" else u"مصدر البيانات: Wetterdienst Deutscher",
-             "download_entire_volume":u"تحميل كل ارتفاعات..." if os.name != "nt" else u"...تحميل كل ارتفاعات",
+             "dwd_credit":u"Deutscher Wetterdienst :مصدر البيانات" if os.name != "posix" else u"مصدر البيانات: Wetterdienst Deutscher",
+             "download_entire_volume":u"تحميل كل ارتفاعات..." if os.name == "posix" else u"...تحميل كل ارتفاعات",
              "linear_interp":u"الاستيفاء الخطي",
              "dwd_volume_download":u"تحميل كل ارتفاعات في الدورة المسح من المانيا",
              "radar_site":u"محطة الرادار: ",
              "output_file":u"الملف الهدف: ",
              "start_download":u"اطلاق تحميل",
-             "loading_in_progress":u"فتح..." if os.name != "nt" else "...فتح",
+             "loading_in_progress":u"فتح..." if os.name == "posix" else "...فتح",
              "invalid_date":u"التاريخ او الوقت غير صالحة",
              "volume_incomplete":u"المسح ليس مكتمل - ربما يحدثها حتى الآن.",
              "volume_not_found":u"لا يوجد المسح",
-             "saving_as_HDF5":u"...HDF5 تصدير إلى" if os.name == "nt" else u"HDF5 تصدير إلى...",
-             "downloading_file":u":تحميل الملف" if os.name == "nt" else u"تحميل الملف:",
-             "loading_from_cache":u":افتح من الذاكرة" if os.name == "nt" else u"افتح من الذاكرة:",
-             "downloading...":u"تحميل..." if os.name != "nt" else u"...تحميل",
+             "saving_as_HDF5":u"...HDF5 تصدير إلى" if os.name != "posix" else u"HDF5 تصدير إلى...",
+             "downloading_file":u":تحميل الملف" if os.name != "posix" else u"تحميل الملف:",
+             "loading_from_cache":u":افتح من الذاكرة" if os.name != "posix" else u"افتح من الذاكرة:",
+             "downloading...":u"تحميل..." if os.name == "posix" else u"...تحميل",
              "checkingKNMI":u"تحقق لو تحميل الملف بحاجة.",
-             "export_odim_h5":u"HDF5 تصدير إلى" if os.name == "nt" else u"تصدير إلى HDF5",
+             "export_odim_h5":u"HDF5 تصدير إلى" if os.name != "posix" else u"تصدير إلى HDF5",
              "delete_cache":u"حذف ذاكرة مخبئة",
              "delete_cache_complete":u".حذفت ذاكرة مخبئة",
              "date":u"تاريخ",
              "time":u"وقت",
-             "dealiassequence1": u"تعاقب: 1، 2، 3، 2، 1" if os.name == "nt" else u"تعاقب: ،1 ،2 ،3 ،2 1",
-             "dealiassequence2": u"تعاقب: 2، 1، 4، 3، 1" if os.name == "nt" else u"تعاقب: ،2 ،1 ،4 ،3 1",
-             "dealias1":u" - 1 على طول شعاع - بعيدا عن الرادار" if os.name != "nt" else u"على طول شعاع - بعيدا عن الرادار - 1",
-             "dealias2":u" - 2 متعامد للشعاع - عقارب الساعة" if os.name != "nt" else u"متعامد للشعاع - عقارب الساعة - 2",
-             "dealias3":u" - 3 على طول شعاع - نحو الرادار" if os.name != "nt" else u"على طول شعاع - نحو الرادار - 3",
-             "dealias4":u" - 4 متعامد للشعاع - عكس عقارب الساعة" if os.name != "nt" else u"متعامد للشعاع - عكس عقارب الساعة - 4",
+             "dealiassequence1": u"تعاقب: 1، 2، 3، 2، 1" if os.name != "posix" else u"تعاقب: ،1 ،2 ،3 ،2 1",
+             "dealiassequence2": u"تعاقب: 2، 1، 4، 3، 1" if os.name != "posix" else u"تعاقب: ،2 ،1 ،4 ،3 1",
+             "dealias1":u" - 1 على طول شعاع - بعيدا عن الرادار" if os.name == "posix" else u"على طول شعاع - بعيدا عن الرادار - 1",
+             "dealias2":u" - 2 متعامد للشعاع - عقارب الساعة" if os.name == "posix" else u"متعامد للشعاع - عقارب الساعة - 2",
+             "dealias3":u" - 3 على طول شعاع - نحو الرادار" if os.name == "posix" else u"على طول شعاع - نحو الرادار - 3",
+             "dealias4":u" - 4 متعامد للشعاع - عكس عقارب الساعة" if os.name == "posix" else u"متعامد للشعاع - عكس عقارب الساعة - 4",
              "nodependencies":u"كل وحدات مطلوب غير مثبت. الخروج بعد 5 ثانيات"
              }
     }
 
-if os.name != "nt": #On Windows Arabic seems to be OK. Assume every one else have it like Linux:
+if os.name == "posix": #Fixes for Arabic rendering in Linux:
     strings = phrases["arabic"].keys()
     doNotFix = ["LANG_ID", "dwd_volume_download", "batch_export", "add_rmax", "nexrad_choice", "dyn_labels", "name", "prf", "language_estonian", "language_english"] #Stuff that is shown on title bar on Linux
     for i in strings:

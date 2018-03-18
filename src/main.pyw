@@ -64,7 +64,7 @@ conf=json.load(configfile)
 configfile.close()
 
 fraasid=translations.phrases[conf["lang"]]
-arabicOnLinux = fraasid["LANG_ID"] == "AR" and os.name != "nt"
+arabicOnLinux = fraasid["LANG_ID"] == "AR" and os.name == "posix"
 
 #Show a splash and import necessary geodata.
 splash = Tkinter.Tk()
@@ -948,7 +948,7 @@ def drawInfobox(x,y):
     if vaartus == "RF":
         row0="RF"
     elif vaartus == fraasid["no_data"]:
-        if fraasid["LANG_ID"] != "AR" or os.name != "nt":
+        if fraasid["LANG_ID"] != "AR" or arabicOnLinux:
             row0=fraasid["no_data"]
         else:
             row0=fixArabic(fraasid["no_data"])
@@ -956,7 +956,7 @@ def drawInfobox(x,y):
         if fraasid["LANG_ID"] != "AR":
             row0=u"%s %s" % (vaartus, units[currentDisplay.quantity])
         else:
-            if os.name != "nt":
+            if arabicOnLinux:
                 row0=u"%s %s" % (units[currentDisplay.quantity], vaartus)
             else:
                 row0=fixArabic(u"%s %s" % (units[currentDisplay.quantity], vaartus))
@@ -971,7 +971,7 @@ def drawInfobox(x,y):
             row4=u"%s: ~%.1f km" % (fraasid["beam_height"],data[2])
             row5=None if (data[1] == None or data[1] == "RF") else fraasid["g2g_shear"]+": %.1f m/s" % (data[1])
         else:
-            if os.name == "nt":
+            if not arabicOnLinux:
                 row1=u"%.5f°%s %.5f°%s" % (abs(coords[1]),lonletter,abs(coords[0]),latletter)
                 row2=u"°%.1f :%s" % (azrange[0],fixArabic(fraasid["azimuth"]))
                 row3=u"km %.3f :%s" % (azrange[1], fixArabic(fraasid["range"]))
@@ -988,7 +988,7 @@ def drawInfobox(x,y):
             row1=u"%s: %.3f km" % (fraasid["range"],andmed[0])
             row2=u"%s: %.3f km" % (fraasid["height"],andmed[1])
         else:
-            if os.name == "nt":
+            if not arabicOnLinux:
                 row1=u"km %.3f :%s" % (andmed[0], fixArabic(fraasid["range"]))
                 row2=u"km %.3f :%s" % (andmed[1], fixArabic(fraasid["height"]))
             else:
@@ -2042,7 +2042,7 @@ def onmousemove(event):
             lonl="E" if lon >= 0 else "W"
             val=info[2][0]
             if fraasid["LANG_ID"] == "AR":
-                if os.name != "nt":
+                if arabicOnLinux:
                     infostring=u"%.3f°%s %.3f°%s ؛°%.2f :%s ؛km %.3f :%s ؛%s :%s" % (abs(lon),lonl,abs(lat),latl,floor(info[1][0]*100)/100.0,fraasid["azimuth"],floor(info[1][1]*1000)/1000.0,fraasid["range"],val,fraasid["value"])
                 else:
                     infostring=u"%.3f°%s %.3f°%s %s: °%.2f؛ %s: %.3f ؛%s: %s؛ " % (abs(lon),lonl,abs(lat),latl,fraasid["azimuth"],floor(info[1][0]*100)/100.0,fraasid["range"],floor(info[1][1]*1000)/1000.0,fraasid["value"],moveMinus(val))
@@ -2695,11 +2695,11 @@ taskbarbtn7.grid(row = 0, column = 6)
 chosenElevation = Tkinter.StringVar(moderaam)
 elevationChoice = Tkinter.OptionMenu(moderaam, chosenElevation, None)
 elevationChoice.config(bg = "#44bbff", activebackground = "#55ccff", highlightbackground = "#55ccff", state = Tkinter.DISABLED)
-elevationChoice.grid(row = 0, column = 7)
+elevationChoice.grid(row = 0, column = 7, ipadx = 10, sticky="ew")
 chosenProduct = Tkinter.StringVar(moderaam)
 productChoice = Tkinter.OptionMenu(moderaam, chosenProduct, None)
 productChoice.config(bg = "#44bbff", activebackground = "#55ccff", highlightbackground = "#55ccff", state = Tkinter.DISABLED)
-productChoice.grid(row = 0, column = 8)
+productChoice.grid(row = 0, column = 8, ipadx = 10, sticky="ew")
 if fraasid["LANG_ID"] != "AR":
     status = Tkinter.Label(output, text = None, justify = Tkinter.LEFT, anchor = "w")
     status.grid(row = 2, column = 0, sticky = "w")
