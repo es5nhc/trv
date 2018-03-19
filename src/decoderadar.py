@@ -2062,7 +2062,7 @@ def convertNEXRAD3Code(productCode):
         159:"ZDR",
         161:"RHOHV",
         163:"KDP",
-        165:"CLASS"
+        165:"HCLASS"
     }
     return convertDict[productCode]
 def productname(quantity,fraasid):
