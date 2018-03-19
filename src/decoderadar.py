@@ -42,6 +42,7 @@ from h5py import File as HDF5Fail
 import string
 import os
 import sys
+import platform
 from copy import deepcopy
 
 from array import array
@@ -2125,7 +2126,7 @@ def rhiheadersdecoded(display,fraasid):
     if fraasid["LANG_ID"] != "AR":
         msg=productname(display.quantity,fraasid).capitalize()+" | "+fraasid["azimuth"]+": "+str(display.rhiAzimuth)+u"° | "+str(display.productTime)+" UTC"
     else:
-        if os.name == "nt":
+        if platform.system() != "Linux":
             msg=fixArabic(productname(display.quantity,fraasid).capitalize())+u" | °"+str(display.rhiAzimuth)+u" :"+fixArabic(fraasid["azimuth"])+" | UTC "+str(display.productTime)
         else:
             msg=productname(display.quantity,fraasid).capitalize()+u" | °"+str(display.rhiAzimuth)+u" :"+fraasid["azimuth"]+" | UTC "+str(display.productTime)
@@ -2134,7 +2135,7 @@ def headersdecoded(display,fraasid):
     if fraasid["LANG_ID"] != "AR":
         msg=str(round(float(display.elevation),3))+u"° "+productname(display.quantity,fraasid)+" | "+str(display.productTime)+" UTC"
     else:
-        if os.name == "nt":
+        if platform.system() != "Linux":
             msg=fixArabic(productname(display.quantity,fraasid))+" "+u"°"+str(round(float(display.elevation),3))+" |  UTC "+str(display.productTime)
         else:
             msg=productname(display.quantity,fraasid)+" "+u"°"+str(round(float(display.elevation),3))+" |  UTC "+str(display.productTime)
