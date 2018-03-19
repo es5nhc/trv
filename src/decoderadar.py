@@ -1212,7 +1212,10 @@ class NEXRADLevel2():
                         #azimuthResolutionSpacing=msg[36]*0.5
                         #radialStatus=msg[37]
                         elevationNumber=ord(msg[38]) if python2 else msg[38]
-                        elIndex=elevationNumber-1
+                        if elevationNumber == 255:
+                            break #Okay, looks like empty data. Skipping.
+                        else:
+                            elIndex=elevationNumber-1
                         elevationAngle=floating(msg[40:44])
                         if elevationNumber not in self.elevationNumbers:
                             self.elevationNumbers.append(elevationNumber)
