@@ -57,6 +57,7 @@ import json
 import os
 import threading
 import time
+import platform
 threadLock=threading.Lock()
 
 configfile=open("config.json","r")
@@ -64,7 +65,7 @@ conf=json.load(configfile)
 configfile.close()
 
 fraasid=translations.phrases[conf["lang"]]
-arabicOnLinux = fraasid["LANG_ID"] == "AR" and os.name == "posix"
+arabicOnLinux = fraasid["LANG_ID"] == "AR" and platform.system() == "Linux"
 
 #Show a splash and import necessary geodata.
 splash = Tkinter.Tk()
@@ -2555,7 +2556,10 @@ def change_language(lang):
 clickcoords=[]
 output=Tkinter.Tk()
 output.title(fraasid["name"])
-output.geometry("600x656")
+if os.name in ["posix", "nt"]:
+    output.geometry("600x656")
+else:
+    output.geometry("600x660")
 output.bind("<Configure>",on_window_reconf)
 ##Drawing the menu
 menyy = Tkinter.Menu(output)
