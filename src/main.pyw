@@ -1523,7 +1523,10 @@ def loadData(quantity,elevation=None): #Processes and insert data into cache in 
     
     currentDisplay.quantity = quantity
     currentDisplay.productTime = currentlyOpenData.headers["timestamp"]
-    currentDisplay.scanTime = min(currentlyOpenData.times[elevation])
+    if currentlyOpenData.times[elevation][0] != None:
+        currentDisplay.scanTime = min(currentlyOpenData.times[elevation])
+    else:
+        currentDisplay.scanTime = None
     currentDisplay.azimuths = currentlyOpenData.azimuths[elevation]
     currentDisplay.gain = currentlyOpenData.data[elevation][quantity]["gain"]
     currentDisplay.offset = currentlyOpenData.data[elevation][quantity]["offset"]
