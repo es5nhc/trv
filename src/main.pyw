@@ -2050,7 +2050,7 @@ def onmousemove(event):
                 else:
                     infostring=u"%.3f°%s %.3f°%s %s: °%.2f؛ %s: %.3f ؛%s: %s؛ " % (abs(lon),lonl,abs(lat),latl,fraasid["azimuth"],floor(info[1][0]*100)/100.0,fraasid["range"],floor(info[1][1]*1000)/1000.0,fraasid["value"],moveMinus(val))
             else:
-                infostring=u"%.3f°%s %.3f°%s; %s: %.2f°; %s: %.3fkm; %s: %s" % (abs(lat),latl,abs(lon),lonl,fraasid["azimuth"],floor(info[1][0]*100)/100.0,fraasid["range"],floor(info[1][1]*1000)/1000.0,fraasid["value"],val)
+                infostring=u"%.3f°%s %.3f°%s; %s: %.2f°; %s: %.3f km; %s: %s" % (abs(lat),latl,abs(lon),lonl,fraasid["azimuth"],floor(info[1][0]*100)/100.0,fraasid["range"],floor(info[1][1]*1000)/1000.0,fraasid["value"],val)
             msgtostatus(infostring)
         else:
             gr,h,val=info
