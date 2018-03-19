@@ -1168,7 +1168,6 @@ def drawlegend(product,minimum,maximum,colortable):
         majorstep=1
     if product in [161, "SQI"]:
         majorstep=0.1
-    print(tosmooth)
     firstten=majorstep+minimum-minimum%majorstep
     if firstten == majorstep+minimum: firstten = minimum
     ystart=454-(firstten-minimum)*step

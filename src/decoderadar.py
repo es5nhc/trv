@@ -327,7 +327,7 @@ class IRIS(): #IRIS RAW
             dataParameters={1: [-32.0, 0.5, 0, 255], #Order: Offset, Gain, Undetect, Nodata
                             2: [-32.0, 0.5, 0, 255],
                             3: [-eightBitDopplerOffset, eightBitDopplerGain, 0, 0],
-                            4: [0, 1/256.0, 0, 0],
+                            4: [0, 1/256.0, 0, 0], #[sic!]
                             5: [-8, 1/16, 0, 0],
                             7: [-32.0, 0.5, 0, 255], #Corrected reflectivity, assuming same characteristics as TH and DBZH"DBZH",
                             8: [-327.68, 0.01, 0, 65535],
@@ -1262,7 +1262,7 @@ class NEXRADLevel2():
                                 dataOffset=-floating(msg[x+24:x+28])*dataGain
                                 if quantityName not in self.data[-1]:
                                     rscale=halfw(msg[x+12:x+14])/1000
-                                    self.data[elIndex][quantityName]={"data":[],"gain":dataGain,"offset":dataOffset,"undetect":0,"rangefolding":1,"nodata":2**dataWordSize,"rscale":rscale,"rstart":halfw(msg[x+10:x+12])/1000-rscale/2,"highprf":PRF,"lowprf":PRF}
+                                    self.data[elIndex][quantityName]={"data":[],"gain":dataGain,"offset":dataOffset,"undetect":0,"rangefolding":1,"nodata":2**dataWordSize-1,"rscale":rscale,"rstart":halfw(msg[x+10:x+12])/1000-rscale/2,"highprf":PRF,"lowprf":PRF}
                                     self.quantities[elIndex].append(quantityName)
 
                                 if dataWordSize == 8:
@@ -1373,7 +1373,6 @@ class NEXRADLevel2():
                             dataRow=array("B",fullmsg[quantityStart:quantityStart+gatesNumber])
                             self.data[elIndex][quantity]["data"].append(dataRow)
                 ptr+=2432
-            #print("Vara veel")
             #Final processing: Trying to guess nominal elevation angle
             for e in self.elevations:
                 self.nominalElevations.append(round(sum(e)/len(e),2))
