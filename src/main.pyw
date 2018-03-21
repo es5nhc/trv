@@ -47,17 +47,20 @@ if sys.version_info[0] > 2:
     import tkinter as Tkinter
     from tkinter import filedialog as tkFileDialog
     from tkinter import messagebox as tkMessageBox
+    from tkinter import font as tkFont
     import urllib.request as urllibRequest
 else:
     import Tkinter
     import tkFileDialog
     import tkMessageBox
+    import tkFont
     import urllib2 as urllibRequest
 import json
 import os
 import threading
 import time
 import platform
+
 threadLock=threading.Lock()
 
 configfile=open("config.json","r")
@@ -67,8 +70,14 @@ configfile.close()
 fraasid=translations.phrases[conf["lang"]]
 arabicOnLinux = fraasid["LANG_ID"] == "AR" and platform.system() == "Linux"
 
+#UIFont for Linux
+
 #Show a splash and import necessary geodata.
 splash = Tkinter.Tk()
+if platform.system() == "Linux":
+    uiFont = tkFont.Font(family = "DejaVu Sans Condensed", size = 9) #Let's theme the Linux display
+else:
+    uiFont = None #Handled by OS
 splash.overrideredirect(1)
 splash.resizable(False, False)
 splash.title("")
@@ -78,10 +87,10 @@ splash.geometry("640x360+"+str(w)+"+"+str(h))
 splashCanvas = Tkinter.Canvas(splash, width = 640, height = 360)
 splashCanvas.create_rectangle((0,0,640,360), fill="#000022")
 if fraasid["LANG_ID"] != "AR":
-    text=splashCanvas.create_text((5,348), text="", fill="white", anchor="w")
+    text=splashCanvas.create_text((5,348), text="", fill="white", anchor="w", font=uiFont)
 else:
-    text=splashCanvas.create_text((635,348), text="", fill="white", anchor="e")
-versionText=splashCanvas.create_text((475,30), text=fraasid["name"][4:], fill="white")
+    text=splashCanvas.create_text((635,348), text="", fill="white", anchor="e", font=uiFont)
+versionText=splashCanvas.create_text((475,30), text=fraasid["name"][4:], fill="white", font=uiFont)
 try:
     from decoderadar import *
     splashCanvas.tag_raise(text)
@@ -180,16 +189,18 @@ class Display(): #Class for storing properties of current display
         self.isSameMap=False #If True, don't render the map again on a new render - Condition: if the resultant map is expected to be identical to previous renders
         self.renderAgain=False #If true, product, colour table etc as been changed while in PseudoRHI view. Need to render again upon returning to PPI
         self.isCanvasBusy=False
+        
 class DWDDownloadWindow(Tkinter.Toplevel):
     def __init__(self, parent, title = None):
         Tkinter.Toplevel.__init__(self,parent)
         self.title(fraasid["dwd_volume_download"])
         self.protocol("WM_DELETE_WINDOW",self.onclose)
-        label1 = Tkinter.Label(self, text = fraasid["radar_site"])
+        label1 = Tkinter.Label(self, text = fraasid["radar_site"], font=uiFont)
         label1.grid(column = 0, row = 0, sticky = "e")
         self.selectedSite = Tkinter.StringVar()
         self.selectedSite.set("Borkum")
         siteMenu=Tkinter.OptionMenu(self, self.selectedSite, "Borkum","Boostedt","Dresden","Eisberg","Emden","Essen","Feldberg","Flechtdorf","Hannover","Isen","Memmingen","Neuhaus","Neuheilenbach","Offenthal","Prötzel","Rostock","Türkheim","Ummendorf")
+        siteMenu.config(font = uiFont)
         siteMenu.grid(column = 1, row = 0, sticky = "w")
 
         self.scanDay = Tkinter.StringVar()
@@ -213,30 +224,30 @@ class DWDDownloadWindow(Tkinter.Toplevel):
 
         dateFrame = Tkinter.Frame(self)
         dateFrame.grid(column = 2, row = 0, sticky = "e", padx = 3, pady = 3)
-        Tkinter.Label(dateFrame, text = fraasid["date"]+": ").grid(column = 0, row = 0)
+        Tkinter.Label(dateFrame, text = fraasid["date"]+": ", font=uiFont).grid(column = 0, row = 0)
         scanDayEntry = Tkinter.Entry(dateFrame, textvariable = self.scanDay, width = 2)
         scanDayEntry.grid(column = 1, row = 0)
-        Tkinter.Label(dateFrame, text = ".").grid(column = 2, row = 0)
-        scanMonthEntry = Tkinter.Entry(dateFrame, textvariable = self.scanMonth, width = 2)
+        Tkinter.Label(dateFrame, text = ".", font=uiFont).grid(column = 2, row = 0)
+        scanMonthEntry = Tkinter.Entry(dateFrame, textvariable = self.scanMonth, width = 2, font=uiFont)
         scanMonthEntry.grid(column = 3, row = 0)
-        Tkinter.Label(dateFrame, text = ".").grid(column = 4, row = 0)
-        scanYearEntry = Tkinter.Entry(dateFrame, textvariable = self.scanYear, width = 4)
+        Tkinter.Label(dateFrame, text = ".", font=uiFont).grid(column = 4, row = 0)
+        scanYearEntry = Tkinter.Entry(dateFrame, textvariable = self.scanYear, width = 4, font=uiFont)
         scanYearEntry.grid(column = 5, row = 0)
         
         timeFrame = Tkinter.Frame(self)
         timeFrame.grid(column = 3, row = 0, sticky = "w", padx = 3, pady = 3)
-        Tkinter.Label(timeFrame, text = fraasid["time"]+": ").grid(column = 6, row = 0)
-        scanHourEntry = Tkinter.Entry(timeFrame, textvariable = self.scanHour, width = 2)
+        Tkinter.Label(timeFrame, text = fraasid["time"]+": ", font=uiFont).grid(column = 6, row = 0)
+        scanHourEntry = Tkinter.Entry(timeFrame, textvariable = self.scanHour, width = 2, font=uiFont)
         scanHourEntry.grid(column = 7, row = 0)
-        Tkinter.Label(timeFrame, text = ":").grid(column = 8, row = 0)
-        scanMinuteEntry = Tkinter.Entry(timeFrame, textvariable = self.scanMinute, width = 2)
+        Tkinter.Label(timeFrame, text = ":", font=uiFont).grid(column = 8, row = 0)
+        scanMinuteEntry = Tkinter.Entry(timeFrame, textvariable = self.scanMinute, width = 2, font=uiFont)
         scanMinuteEntry.grid(column = 9, row = 0)
-        Tkinter.Label(timeFrame, text = " UTC").grid(column = 10, row = 0)
+        Tkinter.Label(timeFrame, text = " UTC", font=uiFont).grid(column = 10, row = 0)
         
-        Tkinter.Label(self, text= fraasid["output_file"]).grid(column = 0, row = 1, sticky = "e")
-        outputFileEntry = Tkinter.Button(self, textvariable=self.outputFile, command=self.pickDestination, width=45)
+        Tkinter.Label(self, text= fraasid["output_file"], font=uiFont).grid(column = 0, row = 1, sticky = "e")
+        outputFileEntry = Tkinter.Button(self, textvariable=self.outputFile, command=self.pickDestination, width=45, font=uiFont)
         outputFileEntry.grid(column = 1, row = 1, columnspan = 3)
-        Tkinter.Button(self, text = fraasid["start_download"], command=self.initDownload).grid(column = 1, row = 2)
+        Tkinter.Button(self, text = fraasid["start_download"], command=self.initDownload, font=uiFont).grid(column = 1, row = 2)
         self.mainloop()
     def pickDestination(self):
         filed=tkFileDialog.SaveAs(None,initialdir="../data")
@@ -295,37 +306,37 @@ class BatchExportWindow(Tkinter.Toplevel): #Window for batch export
         self.outel.set("0.5")
         #Input and output directories
         frame1=Tkinter.Frame(self)
-        label1=Tkinter.Label(frame1,text=fraasid["batch_input"])
+        label1=Tkinter.Label(frame1,text=fraasid["batch_input"], font=uiFont)
         label1.grid(column=0,row=0)
-        self.btn1=Tkinter.Button(frame1,text=fraasid["batch_pick"],width=30,command=lambda: self.pickdir(0))
+        self.btn1=Tkinter.Button(frame1,text=fraasid["batch_pick"],width=30, font=uiFont, command=lambda: self.pickdir(0))
         self.btn1.grid(column=1,row=0)
-        label2=Tkinter.Label(frame1,text=fraasid["batch_output"])
+        label2=Tkinter.Label(frame1,text=fraasid["batch_output"], font=uiFont)
         label2.grid(column=0,row=1)
-        self.btn2=Tkinter.Button(frame1,text=fraasid["batch_pick"],width=30,command=lambda: self.pickdir(1))
+        self.btn2=Tkinter.Button(frame1,text=fraasid["batch_pick"],width=30, font=uiFont, command=lambda: self.pickdir(1))
         self.btn2.grid(column=1,row=1)
         frame1.grid(column=0,row=0)
         #Output format
         frame2=Tkinter.Frame(self,relief=Tkinter.SUNKEN,borderwidth=1)
-        label3=Tkinter.Label(frame2,text=fraasid["batch_fmt"])
+        label3=Tkinter.Label(frame2,text=fraasid["batch_fmt"], font=uiFont)
         label3.grid(column=0,row=0,columnspan=2)
-        radio1=Tkinter.Radiobutton(frame2,text="GIF",variable=self.outfmt,value="gif")
+        radio1=Tkinter.Radiobutton(frame2,text="GIF",variable=self.outfmt,value="gif", font=uiFont)
         radio1.grid(column=0,row=1)
-        radio2=Tkinter.Radiobutton(frame2,text="PNG",variable=self.outfmt,value="png")
+        radio2=Tkinter.Radiobutton(frame2,text="PNG",variable=self.outfmt,value="png", font=uiFont)
         radio2.grid(column=1,row=1)
         frame2.grid(column=1,row=0)
         #Product and sweep selection.
         frame3=Tkinter.Frame(self)
-        label4=Tkinter.Label(frame3,text=fraasid["batch_quantity"])
+        label4=Tkinter.Label(frame3,text=fraasid["batch_quantity"], font=uiFont)
         label4.grid(column=0,row=0)
-        list1=Tkinter.Entry(frame3,textvariable=self.outprod,width=7)
+        list1=Tkinter.Entry(frame3,textvariable=self.outprod,width=7, font=uiFont)
         list1.grid(column=1,row=0)
-        label5=Tkinter.Label(frame3,text=fraasid["batch_el"])
+        label5=Tkinter.Label(frame3,text=fraasid["batch_el"], font=uiFont)
         label5.grid(column=2,row=0)
-        list2=Tkinter.Entry(frame3,textvariable=self.outel,width=7)
+        list2=Tkinter.Entry(frame3,textvariable=self.outel,width=7, font=uiFont)
         list2.grid(column=3,row=0)
         frame3.grid(column=0,row=1)
         #OK button
-        okbutton=Tkinter.Button(self,text=fraasid["okbutton"],command=self.exportdir)
+        okbutton=Tkinter.Button(self,text=fraasid["okbutton"],command=self.exportdir, font=uiFont)
         okbutton.grid(column=1,row=1)
         self.mainloop()
     def pickdir(self,value):
@@ -394,12 +405,12 @@ class NEXRADChooser(Tkinter.Toplevel): #Choice of NEXRAD station
         Tkinter.Toplevel.__init__(self,parent)
         self.title(fraasid["nexrad_choice"])
         self.protocol("WM_DELETE_WINDOW",self.onclose)
-        jaamatiitel=Tkinter.Label(self,text=fraasid["choose_station"])
+        jaamatiitel=Tkinter.Label(self,text=fraasid["choose_station"], font=uiFont)
         jaamatiitel.pack()
         jaamavalik=Tkinter.Frame(self)
         kerimisriba=Tkinter.Scrollbar(jaamavalik)
         kerimisriba.pack(side=Tkinter.RIGHT, fill=Tkinter.Y)
-        self.jaamaentry=Tkinter.Listbox(jaamavalik,width=30,yscrollcommand=kerimisriba.set)
+        self.jaamaentry=Tkinter.Listbox(jaamavalik,width=30,yscrollcommand=kerimisriba.set, font=uiFont)
         self.jaamaentry.pack(side=Tkinter.LEFT, fill=Tkinter.BOTH)
         kerimisriba.config(command=self.jaamaentry.yview)
         jaamavalik.pack()
@@ -407,7 +418,7 @@ class NEXRADChooser(Tkinter.Toplevel): #Choice of NEXRAD station
         for i in jaamad:
             rida=i.split("|")
             self.jaamaentry.insert(Tkinter.END, rida[0]+" - "+rida[1]+", "+rida[2])
-        okbutton=Tkinter.Button(self,text=fraasid["okbutton"],command=self.newstn)
+        okbutton=Tkinter.Button(self,text=fraasid["okbutton"],command=self.newstn, font=uiFont)
         okbutton.pack()
         self.mainloop()
     def newstn(self):
@@ -777,17 +788,17 @@ def populatenexradmenus(product="p94r0"):
     elevationChoice["menu"].delete(0, 'end')
     for i in range(4):
         productcode=product[:-1]+str(i)
-        elevationChoice["menu"].add_command(label=fraasid["level3_slice"].replace("/NR/",str(i+1)),command=lambda x=productcode: fetchnexrad(x))
+        elevationChoice["menu"].add_command(label=fraasid["level3_slice"].replace("/NR/",str(i+1)),command=lambda x=productcode: fetchnexrad(x), font = uiFont)
     index=product[-1]
     #chosenElevation.set(fraasid["level3_slice"].replace("/NR/",str(int(product[-1])+1)))
     chosenProduct.set(ids[product[0:3]])
     productChoice["menu"].delete(0, 'end')
-    productChoice["menu"].add_command(label="DBZH",command=lambda x=index: fetchnexrad("p94r"+index))
-    productChoice["menu"].add_command(label="VRADDH",command=lambda x=index: fetchnexrad("p99v"+index))
-    productChoice["menu"].add_command(label="ZDR",command=lambda x=index: fetchnexrad("159x"+index))
-    productChoice["menu"].add_command(label="RHOHV",command=lambda x=index: fetchnexrad("161c"+index))
-    productChoice["menu"].add_command(label="KDP",command=lambda x=index: fetchnexrad("163k"+index))
-    productChoice["menu"].add_command(label="HCLASS",command=lambda x=index: fetchnexrad("165h"+index))
+    productChoice["menu"].add_command(label="DBZH",command=lambda x=index: fetchnexrad("p94r"+index), font = uiFont)
+    productChoice["menu"].add_command(label="VRADDH",command=lambda x=index: fetchnexrad("p99v"+index), font = uiFont)
+    productChoice["menu"].add_command(label="ZDR",command=lambda x=index: fetchnexrad("159x"+index), font = uiFont)
+    productChoice["menu"].add_command(label="RHOHV",command=lambda x=index: fetchnexrad("161c"+index), font = uiFont)
+    productChoice["menu"].add_command(label="KDP",command=lambda x=index: fetchnexrad("163k"+index), font = uiFont)
+    productChoice["menu"].add_command(label="HCLASS",command=lambda x=index: fetchnexrad("165h"+index), font = uiFont)
     return 0
 def saveHDF5(path=None):
     global currentlyOpenData
@@ -1139,7 +1150,7 @@ def listcolortables():
     global colortablemenu
     failid=os.listdir("../colortables")
     for i in failid:
-        colortablemenu.add_command(label=i, command=lambda x=i:changeColourTable(x))
+        colortablemenu.add_command(label=i, command=lambda x=i:changeColourTable(x), font = uiFont)
     return 0
 def drawlegend(product,minimum,maximum,colortable):
     global rlegend
@@ -1563,14 +1574,14 @@ def listProducts(elIndex=None): #Populates products selection menu
     productChoice['menu'].delete(0, 'end')
     if elIndex != None:
         for i in currentlyOpenData.quantities[elIndex]:
-            productChoice['menu'].add_command(label = i, command = lambda produkt = i: changeProduct(produkt))
+            productChoice['menu'].add_command(label = i, command = lambda produkt = i: changeProduct(produkt), font = uiFont)
     else:
         allProducts=[]
         for i in range(len(currentlyOpenData.quantities)):
             for j in currentlyOpenData.quantities[i]:
                 if not j in allProducts:
                     allProducts.append(j)
-                    productChoice['menu'].add_command(label = j, command = lambda produkt = j: changeProduct(produkt))
+                    productChoice['menu'].add_command(label = j, command = lambda produkt = j: changeProduct(produkt), font = uiFont)
         
 def load(path=None,defaultElevation=0):
     global clickbox
@@ -1631,7 +1642,7 @@ def load(path=None,defaultElevation=0):
             elevationChoice['menu'].delete(0, 'end')
             for j in currentlyOpenData.elevationNumbers:
                 elevationIndex=currentlyOpenData.elevationNumbers.index(j)
-                elevationChoice['menu'].add_command(label = str(currentlyOpenData.nominalElevations[elevationIndex]), command=lambda index = elevationIndex: changeElevation(index))
+                elevationChoice['menu'].add_command(label = str(currentlyOpenData.nominalElevations[elevationIndex]), command=lambda index = elevationIndex: changeElevation(index), font = uiFont)
             productChoice.config(state=Tkinter.ACTIVE)
             elevationChoice.config(state=Tkinter.ACTIVE)
         ## Set default values for product and menu selectors
@@ -2519,10 +2530,10 @@ def populateDWDMenus():
         elevations=[0.8, 1.3, 1.5, 2.5, 3.5, 4.5, 5.5, 8.0, 12.0, 17.0, 25.0]
     elevationNumbers=[0, -1, 1, 2, 3, 4, 5, 6, 7, 8, 9] #-1: sweep_pcp 0. Others sweep_vols
     for i in range(len(elevations)):
-        elevationChoice["menu"].add_command(label=str(elevations[i]), command=lambda x=elevationNumbers[i],y=currentDisplay.DWDSite,z=currentDisplay.quantity:loadDWDFile(y,x,z))
+        elevationChoice["menu"].add_command(label=str(elevations[i]), command=lambda x=elevationNumbers[i],y=currentDisplay.DWDSite,z=currentDisplay.quantity:loadDWDFile(y,x,z), font = uiFont)
     productChoice["menu"].delete(0, 'end')
-    productChoice["menu"].add_command(label="DBZH",command=lambda x=currentDisplay.elIndex, y=currentDisplay.DWDSite: loadDWDFile(y,x,"DBZH"))
-    productChoice["menu"].add_command(label="VRADH",command=lambda x=currentDisplay.elIndex, y=currentDisplay.DWDSite: loadDWDFile(y,x,"VRADH"))
+    productChoice["menu"].add_command(label="DBZH",command=lambda x=currentDisplay.elIndex, y=currentDisplay.DWDSite: loadDWDFile(y,x,"DBZH"), font = uiFont)
+    productChoice["menu"].add_command(label="VRADH",command=lambda x=currentDisplay.elIndex, y=currentDisplay.DWDSite: loadDWDFile(y,x,"VRADH"), font = uiFont)
 def loadDWDSite(site):
     global currentDisplay
     productChoice.config(state=Tkinter.NORMAL)
@@ -2557,6 +2568,13 @@ def change_language(lang):
     tkMessageBox.showinfo(fraasid["name"],translations.phrases[lang]["conf_restart_required"])
 clickcoords=[]
 output=Tkinter.Tk()
+
+if platform.system() == "Linux":
+    uiFont = tkFont.Font(family = "DejaVu Sans Condensed", size = 9) #Let's theme the Linux display
+    output.option_add("*Dialog.msg.font", "DejaVuSansCondensed 9")
+else:
+    uiFont = None #Handled by OS
+    
 output.title(fraasid["name"])
 if os.name in ["posix", "nt"]:
     output.geometry("600x656")
@@ -2574,77 +2592,77 @@ knmimenyy = Tkinter.Menu(menyy, tearoff = 0)
 toolsmenyy = Tkinter.Menu(menyy,tearoff = 0)
 abimenyy = Tkinter.Menu(menyy, tearoff = 0)
 languagemenyy=Tkinter.Menu(menyy,tearoff=0)
-menyy.add_cascade(label = fraasid["file"], menu = failimenyy)
-menyy.add_cascade(label = fraasid["nexrad"], menu = radarmenyy)
-menyy.add_cascade(label = "DWD", menu = dwdmenyy)
-menyy.add_cascade(label = "KNMI", menu = knmimenyy)
-menyy.add_cascade(label = fraasid["tools"], menu = toolsmenyy)
-menyy.add_cascade(label = fraasid["current_language"], menu = languagemenyy)
-menyy.add_cascade(label = fraasid["help"], menu = abimenyy)
-failimenyy.add_command(label = fraasid["open_datafile"], command = load)
-failimenyy.add_command(label = fraasid["open_url"], command = loadurl)
+menyy.add_cascade(label = fraasid["file"], menu = failimenyy, font = uiFont)
+menyy.add_cascade(label = fraasid["nexrad"], menu = radarmenyy, font = uiFont)
+menyy.add_cascade(label = "DWD", menu = dwdmenyy, font = uiFont)
+menyy.add_cascade(label = "KNMI", menu = knmimenyy, font = uiFont)
+menyy.add_cascade(label = fraasid["tools"], menu = toolsmenyy, font = uiFont)
+menyy.add_cascade(label = fraasid["current_language"], menu = languagemenyy, font = uiFont)
+menyy.add_cascade(label = fraasid["help"], menu = abimenyy, font = uiFont)
+failimenyy.add_command(label = fraasid["open_datafile"], command = load, font = uiFont)
+failimenyy.add_command(label = fraasid["open_url"], command = loadurl, font = uiFont)
 failimenyy.add_separator()
-failimenyy.add_command(label = fraasid["export_odim_h5"], command = saveHDF5)
-failimenyy.add_command(label = fraasid["export_img"], command = exportimg)
-failimenyy.add_command(label = fraasid["batch_export"], command = batch_export)
+failimenyy.add_command(label = fraasid["export_odim_h5"], command = saveHDF5, font = uiFont)
+failimenyy.add_command(label = fraasid["export_img"], command = exportimg, font = uiFont)
+failimenyy.add_command(label = fraasid["batch_export"], command = batch_export, font = uiFont)
 failimenyy.add_separator()
-failimenyy.add_command(label = fraasid["delete_cache"], command = clearCache)
+failimenyy.add_command(label = fraasid["delete_cache"], command = clearCache, font = uiFont)
 failimenyy.add_separator()
-failimenyy.add_command(label = fraasid["quit"], command = output.destroy)
-radarmenyy.add_command(label = fraasid["current_data"], command = activatecurrentnexrad)
+failimenyy.add_command(label = fraasid["quit"], command = output.destroy, font = uiFont)
+radarmenyy.add_command(label = fraasid["current_data"], command = activatecurrentnexrad, font = uiFont)
 radarmenyy.add_separator()
-radarmenyy.add_command(label = fraasid["level3_station_selection"], command = choosenexrad)
-dwdmenyy.add_command(label = fraasid["dwd_credit"], state = Tkinter.DISABLED)
+radarmenyy.add_command(label = fraasid["level3_station_selection"], command = choosenexrad, font = uiFont)
+dwdmenyy.add_command(label = fraasid["dwd_credit"], state = Tkinter.DISABLED, font = uiFont)
 dwdmenyy.add_separator()
-dwdmenyy.add_command(label = "Borkum", command = lambda: loadDWDSite("asb"))
-dwdmenyy.add_command(label = "Boostedt", command = lambda: loadDWDSite("boo"))
-dwdmenyy.add_command(label = "Dresden", command = lambda: loadDWDSite("drs"))
-dwdmenyy.add_command(label = "Eisberg", command = lambda: loadDWDSite("eis"))
-dwdmenyy.add_command(label = "Emden", command = lambda: loadDWDSite("emd"))
-dwdmenyy.add_command(label = "Essen", command = lambda: loadDWDSite("ess"))
-dwdmenyy.add_command(label = "Feldberg", command = lambda: loadDWDSite("fbg"))
-dwdmenyy.add_command(label = "Flechtdorf", command = lambda: loadDWDSite("fld"))
-dwdmenyy.add_command(label = "Hannover", command = lambda: loadDWDSite("hnr"))
-dwdmenyy.add_command(label = "Isen", command = lambda: loadDWDSite("isn"))
-dwdmenyy.add_command(label = "Memmingen", command = lambda: loadDWDSite("mem"))
-dwdmenyy.add_command(label = "Neuhaus", command = lambda: loadDWDSite("neu"))
-dwdmenyy.add_command(label = "Neuheilenbach", command = lambda: loadDWDSite("nhb"))
-dwdmenyy.add_command(label = "Offenthal", command = lambda: loadDWDSite("oft"))
-dwdmenyy.add_command(label = "Prötzel", command = lambda: loadDWDSite("pro"))
-dwdmenyy.add_command(label = "Rostock", command = lambda: loadDWDSite("ros"))
-dwdmenyy.add_command(label = "Türkheim", command = lambda: loadDWDSite("tur"))
-dwdmenyy.add_command(label = "Ummendorf", command = lambda: loadDWDSite("umm"))
+dwdmenyy.add_command(label = "Borkum", command = lambda: loadDWDSite("asb"), font = uiFont)
+dwdmenyy.add_command(label = "Boostedt", command = lambda: loadDWDSite("boo"), font = uiFont)
+dwdmenyy.add_command(label = "Dresden", command = lambda: loadDWDSite("drs"), font = uiFont)
+dwdmenyy.add_command(label = "Eisberg", command = lambda: loadDWDSite("eis"), font = uiFont)
+dwdmenyy.add_command(label = "Emden", command = lambda: loadDWDSite("emd"), font = uiFont)
+dwdmenyy.add_command(label = "Essen", command = lambda: loadDWDSite("ess"), font = uiFont)
+dwdmenyy.add_command(label = "Feldberg", command = lambda: loadDWDSite("fbg"), font = uiFont)
+dwdmenyy.add_command(label = "Flechtdorf", command = lambda: loadDWDSite("fld"), font = uiFont)
+dwdmenyy.add_command(label = "Hannover", command = lambda: loadDWDSite("hnr"), font = uiFont)
+dwdmenyy.add_command(label = "Isen", command = lambda: loadDWDSite("isn"), font = uiFont)
+dwdmenyy.add_command(label = "Memmingen", command = lambda: loadDWDSite("mem"), font = uiFont)
+dwdmenyy.add_command(label = "Neuhaus", command = lambda: loadDWDSite("neu"), font = uiFont)
+dwdmenyy.add_command(label = "Neuheilenbach", command = lambda: loadDWDSite("nhb"), font = uiFont)
+dwdmenyy.add_command(label = "Offenthal", command = lambda: loadDWDSite("oft"), font = uiFont)
+dwdmenyy.add_command(label = "Prötzel", command = lambda: loadDWDSite("pro"), font = uiFont)
+dwdmenyy.add_command(label = "Rostock", command = lambda: loadDWDSite("ros"), font = uiFont)
+dwdmenyy.add_command(label = "Türkheim", command = lambda: loadDWDSite("tur"), font = uiFont)
+dwdmenyy.add_command(label = "Ummendorf", command = lambda: loadDWDSite("umm"), font = uiFont)
 dwdmenyy.add_separator()
-dwdmenyy.add_command(label = fraasid["download_entire_volume"], command = openDWDDialog)
-knmimenyy.add_command(label = "Den Helder", command = lambda: loadKNMI(0))
-knmimenyy.add_command(label = "Herwijnen", command = lambda: loadKNMI(1))
+dwdmenyy.add_command(label = fraasid["download_entire_volume"], command = openDWDDialog, font = uiFont)
+knmimenyy.add_command(label = "Den Helder", command = lambda: loadKNMI(0), font = uiFont)
+knmimenyy.add_command(label = "Herwijnen", command = lambda: loadKNMI(1), font = uiFont)
 
 dealiasingMenu = Tkinter.Menu(toolsmenyy, tearoff = 0)
-dealiasingMenu.add_command(label=fraasid["dealiassequence1"], command = lambda: dealiasVelocitiesStart([0,1,2,1,0]))
-dealiasingMenu.add_command(label=fraasid["dealiassequence2"], command = lambda: dealiasVelocitiesStart([1,0,3,2,0]))
+dealiasingMenu.add_command(label=fraasid["dealiassequence1"], command = lambda: dealiasVelocitiesStart([0,1,2,1,0]), font = uiFont)
+dealiasingMenu.add_command(label=fraasid["dealiassequence2"], command = lambda: dealiasVelocitiesStart([1,0,3,2,0]), font = uiFont)
 dealiasingMenu.add_separator()
-dealiasingMenu.add_command(label = fraasid["dealias1"], command = lambda: dealiasVelocitiesStart([0]))
-dealiasingMenu.add_command(label = fraasid["dealias2"], command = lambda: dealiasVelocitiesStart([1]))
-dealiasingMenu.add_command(label = fraasid["dealias3"], command = lambda: dealiasVelocitiesStart([2]))
-dealiasingMenu.add_command(label = fraasid["dealias4"], command = lambda: dealiasVelocitiesStart([3]))
+dealiasingMenu.add_command(label = fraasid["dealias1"], command = lambda: dealiasVelocitiesStart([0]), font = uiFont)
+dealiasingMenu.add_command(label = fraasid["dealias2"], command = lambda: dealiasVelocitiesStart([1]), font = uiFont)
+dealiasingMenu.add_command(label = fraasid["dealias3"], command = lambda: dealiasVelocitiesStart([2]), font = uiFont)
+dealiasingMenu.add_command(label = fraasid["dealias4"], command = lambda: dealiasVelocitiesStart([3]), font = uiFont)
 
-toolsmenyy.add_command(label = fraasid["linear_interp"], command = interpolateData, state = Tkinter.DISABLED)
-toolsmenyy.add_cascade(label = fraasid["dealiasing"], menu=dealiasingMenu, state = Tkinter.DISABLED)
+toolsmenyy.add_command(label = fraasid["linear_interp"], command = interpolateData, state = Tkinter.DISABLED, font = uiFont)
+toolsmenyy.add_cascade(label = fraasid["dealiasing"], menu=dealiasingMenu, state = Tkinter.DISABLED, font = uiFont)
 colortablemenu=Tkinter.Menu(toolsmenyy, tearoff = 0) #Custom color tables menu
 listcolortables() #Adds all available color tables to the menu
 colortablemenu.add_separator()
-colortablemenu.add_command(label = fraasid["default_colors"], command = reset_colortable)
-toolsmenyy.add_cascade(label = fraasid["color_table"], menu = colortablemenu, underline = 0, state = Tkinter.DISABLED)
+colortablemenu.add_command(label = fraasid["default_colors"], command = reset_colortable, font = uiFont)
+toolsmenyy.add_cascade(label = fraasid["color_table"], menu = colortablemenu, underline = 0, state = Tkinter.DISABLED, font = uiFont)
 if arabicOnLinux:
-    toolsmenyy.add_command(label = fixArabic(fraasid["dyn_labels"]), command = dynlabels_settings)
+    toolsmenyy.add_command(label = fixArabic(fraasid["dyn_labels"]), command = dynlabels_settings, font = uiFont)
 else:
-    toolsmenyy.add_command(label = fraasid["dyn_labels"], command = dynlabels_settings)
-abimenyy.add_command(label = fraasid["key_shortcuts_menuentry"], command = keys_list)
+    toolsmenyy.add_command(label = fraasid["dyn_labels"], command = dynlabels_settings, font = uiFont)
+abimenyy.add_command(label = fraasid["key_shortcuts_menuentry"], command = keys_list, font = uiFont)
 abimenyy.add_separator()
-abimenyy.add_command(label = fraasid["about_program"], command = about_program)
-languagemenyy.add_command(label = fraasid["language_estonian"], command = lambda: change_language("estonian"))
-languagemenyy.add_command(label = fraasid["language_english"], command = lambda: change_language("english"))
-languagemenyy.add_command(label = fraasid["language_arabic"], command = lambda: change_language("arabic"))
+abimenyy.add_command(label = fraasid["about_program"], command = about_program, font = uiFont)
+languagemenyy.add_command(label = fraasid["language_estonian"], command = lambda: change_language("estonian"), font = uiFont)
+languagemenyy.add_command(label = fraasid["language_english"], command = lambda: change_language("english"), font = uiFont)
+languagemenyy.add_command(label = fraasid["language_arabic"], command = lambda: change_language("arabic"), font = uiFont)
 ##Drawing area
 w = Tkinter.Canvas(output, width = 600, height = 600, highlightthickness = 0)
 w.bind("<Button-1>", leftclick)
@@ -2700,16 +2718,16 @@ taskbarbtn7 = Tkinter.Button(moderaam, bg = "#0099ff", activebackground = "#0044
 taskbarbtn7.grid(row = 0, column = 6)
 chosenElevation = Tkinter.StringVar(moderaam)
 elevationChoice = Tkinter.OptionMenu(moderaam, chosenElevation, None)
-elevationChoice.config(bg = "#44bbff", activebackground = "#55ccff", highlightbackground = "#55ccff", state = Tkinter.DISABLED)
+elevationChoice.config(bg = "#44bbff", activebackground = "#55ccff", highlightbackground = "#55ccff", state = Tkinter.DISABLED, font = uiFont)
 elevationChoice.grid(row = 0, column = 7, ipadx = 10, sticky="ew")
 chosenProduct = Tkinter.StringVar(moderaam)
 productChoice = Tkinter.OptionMenu(moderaam, chosenProduct, None)
-productChoice.config(bg = "#44bbff", activebackground = "#55ccff", highlightbackground = "#55ccff", state = Tkinter.DISABLED)
+productChoice.config(bg = "#44bbff", activebackground = "#55ccff", highlightbackground = "#55ccff", state = Tkinter.DISABLED, font = uiFont)
 productChoice.grid(row = 0, column = 8, ipadx = 10, sticky="ew")
 if fraasid["LANG_ID"] != "AR":
-    status = Tkinter.Label(output, text = None, justify = Tkinter.LEFT, anchor = "w")
+    status = Tkinter.Label(output, text = None, justify = Tkinter.LEFT, anchor = "w", font = uiFont)
     status.grid(row = 2, column = 0, sticky = "w")
 else:
-    status = Tkinter.Label(output, text = None, justify = Tkinter.RIGHT, anchor = "e")
+    status = Tkinter.Label(output, text = None, justify = Tkinter.RIGHT, anchor = "e", font = uiFont)
     status.grid(row = 2, column = 0, sticky = "e")
 output.mainloop()
