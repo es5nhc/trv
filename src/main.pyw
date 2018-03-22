@@ -559,7 +559,7 @@ class URLAken(Tkinter.Toplevel): ##Dialog to open a web URL
         urltitle.grid(column=0,row=0)
         self.url=Tkinter.StringVar()
         self.url.set("")
-        urlentry=Tkinter.Entry(self,textvariable=self.url,width=70)
+        urlentry=Tkinter.Entry(self,textvariable=self.url,width=70,font=uiFont)
         urlentry.grid(column=1,row=0)
         downloadbutton=Tkinter.Button(self,text=fraasid["open"],command=self.laealla,font=uiFont)
         downloadbutton.grid(column=0,row=1,sticky="w")
