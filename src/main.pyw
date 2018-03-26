@@ -1008,7 +1008,7 @@ def drawInfobox(x,y):
                 row2=u"km %.3f :%s" % (andmed[1], fraasid["height"])
 
     ## DOPPLER SCALE feature
-    canDrawDopplerScale="VRAD" in currentDisplay.quantity and "highprf" in currentlyOpenData.data[currentDisplay.softElIndex][currentDisplay.quantity]
+    canDrawDopplerScale=("VRAD" in currentDisplay.quantity or currentDisplay.quantity in ["VE", "VF", "VC"]) and "highprf" in currentlyOpenData.data[currentDisplay.softElIndex][currentDisplay.quantity]
     if canDrawDopplerScale:
         highPRF=currentlyOpenData.data[currentDisplay.softElIndex][currentDisplay.quantity]["highprf"]
         lowPRF=currentlyOpenData.data[currentDisplay.softElIndex][currentDisplay.quantity]["lowprf"]
@@ -2584,10 +2584,11 @@ if platform.system() == "Linux":
 else:
     uiFont = None #Handled by OS
 
+#Appending icons to the top of the window on Windows and Linux
 if os.name == "nt":
     output.iconbitmap(os.path.realpath("../trv.ico"))
-else:
-    #output.iconbitmap("@"+os.path.realpath("../trv.xbm"))
+
+if platform.system() == "Linux":
     if Tkinter.TkVersion >= 8.6:
         output.iconphoto(True, Tkinter.Image("photo", file="../trv.png"))
     else:
