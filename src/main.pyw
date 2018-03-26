@@ -199,7 +199,7 @@ class DWDDownloadWindow(Tkinter.Toplevel):
         label1.grid(column = 0, row = 0, sticky = "e")
         self.selectedSite = Tkinter.StringVar()
         self.selectedSite.set("Borkum")
-        siteMenu=Tkinter.OptionMenu(self, self.selectedSite, "Borkum","Boostedt","Dresden","Eisberg","Emden","Essen","Feldberg","Flechtdorf","Hannover","Isen","Memmingen","Neuhaus","Neuheilenbach","Offenthal","Prötzel","Rostock","Türkheim","Ummendorf")
+        siteMenu=Tkinter.OptionMenu(self, self.selectedSite, "Borkum","Boostedt","Dresden","Eisberg","Essen","Feldberg","Flechtdorf","Hannover","Isen","Memmingen","Neuhaus","Neuheilenbach","Offenthal","Prötzel","Rostock","Türkheim","Ummendorf")
         siteMenu.config(font = uiFont)
         siteMenu.grid(column = 1, row = 0, sticky = "w")
 
@@ -268,7 +268,7 @@ class DWDDownloadWindow(Tkinter.Toplevel):
         if d.isdigit() and m.isdigit() and y.isdigit() and h.isdigit() and mi.isdigit():
             try:
                 scanDateTime=datetime.datetime(int(y),int(m),int(d),int(h),int(mi))
-                sites={"Borkum":"asb","Boostedt":"boo","Dresden":"drs","Eisberg":"eis","Emden":"emd","Essen":"ess","Feldberg":"fbg","Flechtdorf":"fld","Hannover":"hnr","Isen":"isn","Memmingen":"mem","Neuhaus":"neu","Neuheilenbach":"nhb","Offenthal":"oft","Prötzel":"pro","Rostock":"ros","Türkheim":"tur","Ummendorf":"umm"}
+                sites={"Borkum":"asb","Boostedt":"boo","Dresden":"drs","Eisberg":"eis","Essen":"ess","Feldberg":"fbg","Flechtdorf":"fld","Hannover":"hnr","Isen":"isn","Memmingen":"mem","Neuhaus":"neu","Neuheilenbach":"nhb","Offenthal":"oft","Prötzel":"pro","Rostock":"ros","Türkheim":"tur","Ummendorf":"umd"}
                 self.withdraw()
                 if sys.version_info[0] > 2:
                     result=loadDWDVolume(sites[self.selectedSite.get()],scanDateTime,self.outputFile.get(),True,True)
@@ -695,19 +695,19 @@ colortablenames={"DBZ":"dbz",
                  "WRADH": "sw",
                  "WRADV": "sw",
                  "SW": "sw",
-                 "WV": "sw",
+                 "VW": "sw",
                  "ZH": "dbz",
                  "VE": "v",
                  "VC": "v",
                  "VF": "v",
                  "ZD": "zdr",
                  "RH": "rhohv",
-                 "PH": "phidp",
+                 "PH": "phi",
                  "DZ": "dbz", 
                  "SH": "dbz", #fixme
                  "SV": "dbz", #fixme
-                 "AH": "dbz", #fixme
-                 "AD": "dbz", #fixme
+                 "AH": "ah",
+                 "AD": "ad", #fixme
                  "DM": "dm", #fixme
                  "NCP": "sqi",
                  "DCC": "dbz",
@@ -1171,14 +1171,18 @@ def drawlegend(product,minimum,maximum,colortable):
         val=minimum+increment*i
         legenddraw.rectangle((25,454-i,35,454-i),fill=getcolor(tabel,val,tosmooth))
     step=1.0/increment
-    majorstep=10
-    if customcolortable == "hurricane.txt": majorstep=20
     if product == "PHIDP":
         majorstep=45
-    if product in [159, 163, 165, "HCLASS", "CLASS"]:
+    elif product in [159, 163, 165, "HCLASS", "CLASS"]:
         majorstep=1
-    if product in [161, "SQI"]:
+    elif product in [161, "SQI", "AD"]:
         majorstep=0.1
+    elif product == "AH":
+        majorstep=0.5
+    elif customcolortable == "hurricane.txt":
+        majorstep=20
+    else:
+        majorstep = 10
     firstten=majorstep+minimum-minimum%majorstep
     if firstten == majorstep+minimum: firstten = minimum
     ystart=454-(firstten-minimum)*step
@@ -1245,9 +1249,9 @@ def init_drawlegend(product,tabel):
     global currentDisplay
     if product in [99, "VRAD", "VRADH", "VRADV", "VRADDH", "VRADDV", "VE", "VC", "VF"]:
         drawlegend(99,-80,80,tabel)
-    elif product in [159, "ZDR", "LZDR"]:
+    elif product in [159, "ZDR", "LZDR", "ZD"]:
         drawlegend(159,-6,6,tabel)
-    elif product in [161, "RHOHV", product == "RHO"]:
+    elif product in [161, "RHOHV", "RHO", "RH"]:
         drawlegend(161,0.2,1.05,tabel)
     elif product in [163, "KDP"]:
         drawlegend(163,-2,7,tabel)
@@ -1259,10 +1263,14 @@ def init_drawlegend(product,tabel):
         drawlegend(94,-25,75,tabel)
     elif product in ["WRAD","WRADH","WRADV","SW","VW"]:
         drawlegend("SW",0,30,tabel)
-    elif product == "PHIDP":
+    elif product in ["PHIDP", "PH"]:
         drawlegend("PHIDP",0,180,tabel)
     elif product == "DM":
         drawlegend("DM",-115,-30,tabel)
+    elif product == "AH":
+        drawlegend("AH",0,5,tabel)
+    elif product == "AD":
+        drawlegend("AD",0,1,tabel)
     elif product in ["SQI","QIDX","SQIH","SQIV","NCP"]:
         drawlegend("SQI",0,1,tabel)
     else:
@@ -1563,7 +1571,7 @@ def loadData(quantity,elevation=None): #Processes and insert data into cache in 
             currentDisplay.data=[[HDF5scaleValue(y, currentDisplay.gain, currentDisplay.offset, currentDisplay.nodata, currentDisplay.undetect, currentDisplay.rangefolding, currentDisplay.quantity, variableType, currentlyOpenData.wavelength) for y in x] for x in currentlyOpenData.data[elevation][quantity]["data"]]   #Load default data
     else:
         currentDisplay.data=[[scaleValue(y, currentDisplay.gain, currentDisplay.offset, currentDisplay.nodata, currentDisplay.undetect, currentDisplay.rangefolding) for y in x] for x in currentlyOpenData.data[elevation][quantity]["data"]]   #Load default data
-    if "VRAD" in quantity:
+    if "VRAD" in quantity or quantity in ["VE", "VF", "VC"]:
         toolsmenyy.entryconfig(fraasid["dealiasing"], state = Tkinter.NORMAL)
     else:
         toolsmenyy.entryconfig(fraasid["dealiasing"], state = Tkinter.DISABLED)
@@ -2388,7 +2396,7 @@ def loadDWDFile(site, elevationNumber, quantity="DBZH", timestamp="latest", down
            "ros":10169,
            "isn":10873,
            "tur":10832,
-           "umm":10356
+           "umd":10356
            }
     if elevationNumber == -1:
         scan="sweep_pcp"
@@ -2397,6 +2405,7 @@ def loadDWDFile(site, elevationNumber, quantity="DBZH", timestamp="latest", down
     quantityMarker="z" if quantity == "DBZH" else "v"
     currentDWDFileName=scan+"_"+quantityMarker+"_"+str(elevationNumber if elevationNumber != -1 else 0)+"-"+timestamp+"_"+str(wmoCodes[site])+"--buf.bz2"
     downloadurl="http://opendata.dwd.de/weather/radar/sites/"+scan+"_"+quantityMarker+"/"+site+"/"+currentDWDFileName
+    print(downloadurl)
     if not downloadOnly: currenturl=downloadurl
     try:
         cachefilename="../cache/dwdcache/"+site+scan+quantityMarker+str(elevationNumber)+timestamp
@@ -2546,7 +2555,7 @@ def dealiasVelocitiesStart(onePass = False):
     global currentlyOpenData
     global currentDisplay
     global currenturl
-    if "VRAD" in currentDisplay.quantity:
+    if "VRAD" in currentDisplay.quantity or currentDisplay.quantity in ["VE", "VF", "VC"]:
         currentlyOpenData,currentDisplay.quantity=dealiasVelocities(currentlyOpenData,currentDisplay.quantity,currentDisplay.softElIndex, onePass)
         if not (currenturl and "opendata.dwd.de" in currenturl):
             listProducts(currentDisplay.softElIndex)
@@ -2574,6 +2583,15 @@ if platform.system() == "Linux":
     output.option_add("*Dialog.msg.font", "DejaVuSansCondensed 9")
 else:
     uiFont = None #Handled by OS
+
+if os.name == "nt":
+    output.iconbitmap(os.path.realpath("../trv.ico"))
+else:
+    #output.iconbitmap("@"+os.path.realpath("../trv.xbm"))
+    if Tkinter.TkVersion >= 8.6:
+        output.iconphoto(True, Tkinter.Image("photo", file="../trv.png"))
+    else:
+        output.iconphoto(True, PhotoImage(laepilt("../trv.png")))
     
 output.title(fraasid["name"])
 if os.name in ["posix", "nt"]:
@@ -2618,7 +2636,6 @@ dwdmenyy.add_command(label = "Borkum", command = lambda: loadDWDSite("asb"), fon
 dwdmenyy.add_command(label = "Boostedt", command = lambda: loadDWDSite("boo"), font = uiFont)
 dwdmenyy.add_command(label = "Dresden", command = lambda: loadDWDSite("drs"), font = uiFont)
 dwdmenyy.add_command(label = "Eisberg", command = lambda: loadDWDSite("eis"), font = uiFont)
-dwdmenyy.add_command(label = "Emden", command = lambda: loadDWDSite("emd"), font = uiFont)
 dwdmenyy.add_command(label = "Essen", command = lambda: loadDWDSite("ess"), font = uiFont)
 dwdmenyy.add_command(label = "Feldberg", command = lambda: loadDWDSite("fbg"), font = uiFont)
 dwdmenyy.add_command(label = "Flechtdorf", command = lambda: loadDWDSite("fld"), font = uiFont)
@@ -2631,7 +2648,7 @@ dwdmenyy.add_command(label = "Offenthal", command = lambda: loadDWDSite("oft"), 
 dwdmenyy.add_command(label = "Prötzel", command = lambda: loadDWDSite("pro"), font = uiFont)
 dwdmenyy.add_command(label = "Rostock", command = lambda: loadDWDSite("ros"), font = uiFont)
 dwdmenyy.add_command(label = "Türkheim", command = lambda: loadDWDSite("tur"), font = uiFont)
-dwdmenyy.add_command(label = "Ummendorf", command = lambda: loadDWDSite("umm"), font = uiFont)
+dwdmenyy.add_command(label = "Ummendorf", command = lambda: loadDWDSite("umd"), font = uiFont)
 dwdmenyy.add_separator()
 dwdmenyy.add_command(label = fraasid["download_entire_volume"], command = openDWDDialog, font = uiFont)
 knmimenyy.add_command(label = "Den Helder", command = lambda: loadKNMI(0), font = uiFont)

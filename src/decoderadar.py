@@ -714,7 +714,7 @@ class DORADE(): #SUPPORT IS VERY PRELIMINARY WITH SHORTCUTS TAKEN - probably not
             self.sensors.append({"radd":radd,"parms":parms,"celv":celv,"csfd":csfd,"cfac":cfac})
 
         #SWIB
-        #DANGER WILL ROBINSON - ASSUMING A FILE WHERE THERE IS ONLY ONE SENSOR AND ONE SWEEP.
+        #DANGER WILL ROBINSON - ASSUMING A FILE WHERE THERE IS ONLY ONE SENSOR
         sweepCount=0
         while data[ptr:ptr+4] == b"SWIB":
             prfs = self.sensors[sweepCount]["radd"]["prfs"]
@@ -771,32 +771,34 @@ class DORADE(): #SUPPORT IS VERY PRELIMINARY WITH SHORTCUTS TAKEN - probably not
                 for l in range(len(self.sensors[sweepCount]["parms"])):
                     nextItem = data[ptr:ptr+4] #RDAT or QDAT!
                     params=self.sensors[sweepCount]["parms"][l]
+                    compression=self.sensors[sweepCount]["radd"]["data_compress"]
                     qty = params["parameter_name"].decode("utf-8")
 
                     if qty not in self.data[-1]:
                         baddata=params["bad_data"]
-                        self.data[-1][qty]={"data":[],"highprf": highprf, "lowprf": lowprf, "gain":1/params["parameter_scale"],"offset":params["parameter_bias"],"undetect":params["bad_data"],"nodata":baddata,"rstart":rstart,"rscale":rscale}
+                        self.data[-1][qty]={"data":[],"highprf": highprf, "lowprf": lowprf if qty != "VF" else highprf, "gain":1/params["parameter_scale"],"offset":params["parameter_bias"],"undetect":params["bad_data"],"nodata":baddata,"rstart":rstart,"rscale":rscale}
                         self.quantities[-1].append(qty)
                     if nextItem == b"RDAT":
                         rdat={"nbytes": word(data[ptr+4:ptr+8], False, False),
                               "pdata_name": data[ptr+8:ptr+16].rstrip(b"\x00").rstrip()}
                         datarow=np.fromstring(data[ptr+16:ptr+rdat["nbytes"]],params["binary_format"]).tolist()
-                        datarownew=[]
-                        datarowptr=0
-                        while datarowptr < len(datarow):
-                            val = datarow[datarowptr]
-                            if val < -30000 and val != baddata:
-                                amt = val & 32767
+                        if compression == 1: #If HRD compression is being used
+                            datarownew=[]
+                            datarowptr=0
+                            while datarowptr < len(datarow):
+                                val = datarow[datarowptr]
+                                if val < -30000 and val != baddata:
+                                    amt = val & 32767
+                                    datarowptr += 1
+                                    datarownew += datarow[datarowptr:datarowptr+amt]
+                                    datarowptr += amt-1
+                                else:
+                                    if val != 1:
+                                        datarownew += [baddata]*val
+                                    else: #1 = end of compression. Considering the ray ended
+                                        break
                                 datarowptr += 1
-                                datarownew += datarow[datarowptr:datarowptr+amt]
-                                datarowptr += amt-1
-                            else:
-                                if val != 1:
-                                    datarownew += [baddata]*val
-                                else: #1 = end of compression. Considering the ray ended
-                                    break
-                            datarowptr += 1
-                        datarow=datarownew
+                            datarow=datarownew
                         self.data[-1][qty]["data"].append(datarow)
                         ptr+=rdat["nbytes"]
 
@@ -1186,7 +1188,6 @@ class NEXRADLevel2():
                 compressionControlWord=abs(word(sisu[ptr:ptr+4]))
                 if compressionControlWord:
                     fullmsg=decompress(sisu[ptr+4:ptr+compressionControlWord+4])[12:]
-                    messageSize=halfw(fullmsg[0:2],False)
                     ptr+=compressionControlWord+4
                     y=0
                 else:
@@ -1202,6 +1203,7 @@ class NEXRADLevel2():
                         while sisu[ptr+12] in [0,"\0"]: ptr+=2432
                 msgptr=0 #Pointer within a message
                 while msgptr < len(fullmsg):
+                    messageSize=halfw(fullmsg[msgptr:msgptr+2], False)
                     msg=fullmsg[msgptr:msgptr+messageSize*2+12]
                     if compressionControlWord:
                         messageType=ord(msg[3]) if python2 else msg[3]
@@ -1212,7 +1214,7 @@ class NEXRADLevel2():
                         #azimuthResolutionSpacing=msg[36]*0.5
                         #radialStatus=msg[37]
                         elevationNumber=ord(msg[38]) if python2 else msg[38]
-                        if elevationNumber == 255:
+                        if elevationNumber in [255, 49, 43]:
                             break #Okay, looks like empty data. Skipping.
                         else:
                             elIndex=elevationNumber-1
@@ -1229,14 +1231,16 @@ class NEXRADLevel2():
                             rdcSize=msg[rdcPointer+4:rdcPointer+6]
                             rMax=halfw(msg[rdcPointer+6:rdcPointer+8])*0.1
                             vMax=halfw(msg[rdcPointer+16:rdcPointer+18])*0.01
-                            PRF=round(150000/rMax)
+                            if rMax > 0:
+                                PRF=round(150000/rMax)
+                            else:
+                                PRF=None
                             if not self.wavelength:
                                 self.wavelength=vMax*4/PRF
                             self.rMax.append(rMax)
                             self.vMax.append(vMax)
                             
                         self.times[-1].append(collectionTime)
-                        
                         self.elevations[elIndex].append(elevationAngle)
                         azimuthCentres[elIndex].append(azAngle)
                         #Latitude and longitude data
@@ -1265,7 +1269,10 @@ class NEXRADLevel2():
                                 dataOffset=-floating(msg[x+24:x+28])*dataGain
                                 if quantityName not in self.data[-1]:
                                     rscale=halfw(msg[x+12:x+14])/1000
-                                    self.data[elIndex][quantityName]={"data":[],"gain":dataGain,"offset":dataOffset,"undetect":0,"rangefolding":1,"nodata":2**dataWordSize-1,"rscale":rscale,"rstart":halfw(msg[x+10:x+12])/1000-rscale/2,"highprf":PRF,"lowprf":PRF}
+                                    if PRF:
+                                        self.data[elIndex][quantityName]={"data":[],"gain":dataGain,"offset":dataOffset,"undetect":0,"rangefolding":1,"nodata":2**dataWordSize-1,"rscale":rscale,"rstart":halfw(msg[x+10:x+12])/1000-rscale/2,"highprf":PRF,"lowprf":PRF}
+                                    else:
+                                        self.data[elIndex][quantityName]={"data":[],"gain":dataGain,"offset":dataOffset,"undetect":0,"rangefolding":1,"nodata":2**dataWordSize-1,"rscale":rscale,"rstart":halfw(msg[x+10:x+12])/1000-rscale/2}
                                     self.quantities[elIndex].append(quantityName)
 
                                 if dataWordSize == 8:
@@ -1274,7 +1281,9 @@ class NEXRADLevel2():
                                     dataRow=array("H",msg[x+28:x+28+dataQuantityGatesNr*2])
                                     dataRow.byteswap() #CAVEAT: byteswap modifies the variable in place and returns None!
                                 self.data[elIndex][quantityName]["data"].append(dataRow)
-                    msgptr+=messageSize*2+12
+                        msgptr+=messageSize*2+12
+                    else: #Not message 31 - skipping over and moving ahead by 2432 bytes.
+                        msgptr+=2432
             #Final processing: Trying to guess nominal elevation angle
             for e in self.elevations:
                 self.nominalElevations.append(round(sum(e)/len(e),2))
@@ -1286,7 +1295,7 @@ class NEXRADLevel2():
                 eelmine_az=x[0]
                 #self.azimuths.append([azimuthCentres[i][-1]]+azimuthCentres[i][:-1])
                 for j in range(len(x)):
-                    if x[j] < eelmine_az and eelmine_az-x[j] > 350: #If crossing North
+                    if x[j] < eelmine_az and eelmine_az-x[j] > 300: #If crossing North
                         eelmine_az-=360
                     az_begin=(x[j]+eelmine_az)/2
                     eelmine_az=x[j]
@@ -1788,9 +1797,6 @@ def dealiasVelocities(dataObject,quantity,index, passesList=[1,2,3,2,1]):
         if passnr == 3: #If doing an along-an-azimuth dealias counter clockwise  - thus reverse the list
             newData.reverse()
         for i in iRange:
-        #    azPraegu = dataObject.azimuths[index][i % numberOfRays]
-        #    if azPraegu > 265.5 or azPraegu < 265: continue
-      #      print("--------------------------",azPraegu)
             prev = None
             gapSize = 0 #Size of gap between current and previous bin
             j = 0
