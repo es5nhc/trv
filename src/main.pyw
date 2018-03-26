@@ -2036,7 +2036,8 @@ def getinfo(x,y):
         gr=rhix(x)
         h=(canvasdimensions[1]-y-80)/((canvasdimensions[1]-120)/17.0)
         r=sqrt(gr**2+h**2)
-        a=beamangle(h,r)
+        rh=currentlyOpenData.headers["height"]/1000 #radar height
+        a=beamangle(h-rh,r)
         return gr, h, getrhibin(h,gr,float(a))
 def moveMinus(nr): #For Arabic compatibility on Windows.
     if not type(nr) is str:
@@ -2099,9 +2100,9 @@ def chooserhi(): #Choose RHI
 def rhiypix(h,bottom):
     samm=(bottom-120)/17.0
     return bottom-80-h*samm
-def rhiy(r,a,bottom):
+def rhiy(r,rh,a,bottom): #params: range, height of radar, elevation angle, bottom pixel
     samm=(bottom-120)/17.0
-    return bottom-80-beamheight(r,float(a))*samm
+    return bottom-80-(rh+beamheight(r,float(a)))*samm
 def rhix(x):
     global currentDisplay
     global canvasdimensions
@@ -2189,6 +2190,7 @@ def mkrhi():
             varvitabel=loadcolortable("../colortables/"+colortablenames[currentDisplay.quantity]+".txt") #Load a color table
         init_drawlegend(currentDisplay.quantity,varvitabel) #Redraw color table just in case it is changed in RHI mode.
         a=0
+        rh=currentlyOpenData.headers["height"]/1000
         a0=currentDisplay.rhiElevations[0]-0.5
         elevationsCount=len(currentDisplay.rhiElevations)
         for i in range(elevationsCount):
@@ -2209,9 +2211,9 @@ def mkrhi():
                     x1=x0+xsamm if currentDisplay.rhiEnd-r > samm else laius-50
                     if j != None:
                         if r-currentDisplay.rhiStart < 0:
-                            path=[50,rhiy(r, a0, pikkus),x1,rhiy(r+samm, a0, pikkus),x1,rhiy(r+samm,a,pikkus),50,rhiy(r,a,pikkus)]
+                            path=[50,rhiy(r, rh, a0, pikkus),x1,rhiy(r+samm, rh, a0, pikkus),x1,rhiy(r+samm, rh, a, pikkus),50,rhiy(r, rh, a, pikkus)]
                         else:
-                            path=[x0,rhiy(r, a0, pikkus),x1,rhiy(r+samm, a0, pikkus),x1,rhiy(r+samm,a,pikkus),x0,rhiy(r,a,pikkus)]
+                            path=[x0,rhiy(r, rh, a0, pikkus),x1,rhiy(r+samm, rh, a0, pikkus),x1,rhiy(r+samm, rh, a, pikkus),x0,rhiy(r, rh, a, pikkus)]
                         joonis.polygon(path,fill=getcolor(varvitabel,j))
                     x0=x1
                 r+=samm
