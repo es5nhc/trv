@@ -2487,7 +2487,7 @@ def loadKNMI(index,downloadOnly=False,scanTime=False):
     global currentlyOpenData
     global currentDisplay
     global currenturl
-    folders = ["ftp://data.knmi.nl/download/radar_volume_denhelder/2.0/noversion/","ftp://data.knmi.nl/download/radar_volume_full_herwijnen/1.0/noversion/"]
+    folders = ["https://data.knmi.nl/download/radar_volume_denhelder/2.0/noversion/","https://data.knmi.nl/download/radar_volume_full_herwijnen/1.0/noversion/"]
     fileNamePrefixes = ["RAD_NL61_VOL_NA_","RAD_NL62_VOL_NA_"]
 
     #Guess the latest available scan time
@@ -2520,6 +2520,7 @@ def loadKNMI(index,downloadOnly=False,scanTime=False):
     if download:
         if not downloadOnly:
             currenturl = downloadurl
+            print(downloadurl)
             downloadSuccess=multithreadedDownload(downloadurl,cachePath)
         else:
             download_file(downloadurl,cachePath)
