@@ -1775,7 +1775,6 @@ def dealiasVelocities(dataObject,quantity,index, passesList=[1,2,3,2,1]):
     undetect = dataObject.data[index][quantity]["undetect"]
     dualPRF = False if highprf == lowprf else True
     threshold = 0.5 if not dualPRF else 0.6
-    maxGapSize = 0 if dualPRF else 5000 #Maximum gap at which to still trust the previous valid measurement
     
     rangefolding = None if not "rangefolding" in dataObject.data[index][quantity] else dataObject.data[index][quantity]["rangefolding"]
     vMaxIntervalHigh = round(wavelength*highprf*0.5/gain) #Converting to data values steps
@@ -1793,6 +1792,7 @@ def dealiasVelocities(dataObject,quantity,index, passesList=[1,2,3,2,1]):
         algusaeg=time.time()
         iRange = iRanges[passnr]
         jRange = jRanges[passnr]
+        maxGapSize = 0 if dualPRF else 5000 #Maximum gap at which to still trust the previous valid measurement
         print("Dealiasing pass - type", passnr+1)
         if passnr == 3: #If doing an along-an-azimuth dealias counter clockwise  - thus reverse the list
             newData.reverse()
@@ -1803,6 +1803,7 @@ def dealiasVelocities(dataObject,quantity,index, passesList=[1,2,3,2,1]):
             #If azimuthal check:
             #First do a survey trying to find a region where the wind is perpendicular to the radar beam.
             if passnr in [1, 3]:
+                maxGapSize = 90
                 for az1 in range(0, -numberOfRays, -1):
                     if abs(newData[az1][i]-zeroValue) < 3/gain:
                         j += az1
@@ -1819,8 +1820,11 @@ def dealiasVelocities(dataObject,quantity,index, passesList=[1,2,3,2,1]):
                 if current != nodata and current != undetect and current != rangefolding:# and j > 5:
                     if prev != None:
                         diffFromPrev=current-prev
-
                         if gapSize > maxGapSize:
+                            if passnr in [1, 3]: #Special case for azimuthal scan: Leave just first bin untouched, declare gap over and proceed to the next azimuth
+                                gapSize = 0
+                                prev = current
+                                continue
                             nearby = newData[i][(j+2) % numberOfBins] if passnr not in [1, 3] else newData[(j + 1) % numberOfRays][i-1]
                             if nearby != nodata and nearby != undetect and nearby != rangefolding: 
                                 diffFromNextTo=current-nearby
