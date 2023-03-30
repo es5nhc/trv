@@ -6,9 +6,9 @@
 
 --------------------------------------------------
 
-Versioon 2018.3.26
+Versioon 2023.3.30
 
-Tarmo Tanilsoo, 2018
+Tarmo Tanilsoo, 2023
 
 -----
 Põhirõhk on Python3 all arendamisel. Esialgu on siiski pakett ka Python 2 all jooksutatav, kuid asjad võivad minna katki ja jääda kahe silma vahele.
@@ -73,13 +73,14 @@ Windowsi kasutajatel peaks olema ilmselt kõige lihtsam paigaldada käsurealt Py
 * KNMI HDF5 - samad produktid mis ODIM H5 variandi puhul, suunatud KNMI avaandmete väljundile.
 * IRIS RAW - samad produktid, mis ODIM H5 puhul. (fail peab lõppema .raw laiendiga!)
 * DORADE - väga toores tugi.
+* JMA GRIB - polaarkoordinaadistikus andmed. Faili nimi peab järgima JMA struktuuri, kuna seda kasutatakse produkti tüübi tuvastamiseks.
 
-Olen avatud täiendavatele formaatidele toe lisamisele, kuid sellisel juhul vajan formaadi dokumentatsiooni, näidisfaile ning näidet nende väljundist.
+Olen avatud täiendavatele formaatidele toe lisamisele, kuid sellisel juhul vajan formaadi dokumentatsiooni, näidisfaile ning näidet oodatavast väljundist.
 
 Kasutatud allikad:
 
 Kaardikontuurid - Natural Earth - http://www.naturalearthdata.com
-Pildiosas kasutatav font - DejaVu Sans Condensed - http://dejavu-fonts.org
+Pildiosas kasutatavad fondid - DejaVu Sans Condensed - http://dejavu-fonts.org, Noto Sans JP: https://fonts.google.com/noto/specimen/Noto+Sans+JP
 Näidisfail /data kaustas: NEXRAD Level 2 arhiiv(Vaata märget ülalpool!) - www.ncdc.noaa.gov/nexradinv/ (doi:10.7289/V5W9574V)
 Näites kasutatud dünaamiline andmefail põhineb USA tormiennustuskeskuse (SPC) tormiraportitel 20. mai 2013 kohta.
 

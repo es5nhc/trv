@@ -6,9 +6,9 @@
 
 --------------------------------------------------
 
-Version 2018.3.26
+Version 2023.3.30
 
-Tarmo Tanilsoo, 2018
+Tarmo Tanilsoo, 2023
 _____
 This software is coded with Python 3 in mind. While I've added backwards compatibility for Python 2 users, things may break in the future and go unnoticed until brought to my attention or when I find out on my own.
 
@@ -76,14 +76,15 @@ I recommend to have at least 1 GB of RAM.
 * KNMI HDF5 - aimed at radar images in KNMI's Open Data output. Same products supported as in ODIM. Please note that the quantity definitions are preliminary and subject to errors.
 * IRIS RAW - file name must end with .raw extension
 * DORADE - very crude support at the moment.
+* JMA GRIB - polar coordinate data. File name must follow JMA's convention for correct product detection.
 
-I am open to adding additional documents, but for that I'd need the format documentation and example files to experiment with, as well as an example of expected output.
+I am open to adding additional formats, but for that I'd need the format documentation and example files to experiment with, as well as an example of expected output.
 
 
 Used materials:
 
 Map contours - Natural Earth - http://www.naturalearthdata.com
-Font used on rendered images - DejaVu Sans Condensed - http://dejavu-fonts.org
+Font used on rendered images - DejaVu Sans Condensed - http://dejavu-fonts.org,  Noto Sans JP: https://fonts.google.com/noto/specimen/Noto+Sans+JP
 Example file in /data directory: NEXRAD Level 2 arhiiv(See note above!) - www.ncdc.noaa.gov/nexradinv/ - (doi:10.7289/V5W9574V)
 Example dynamic data file is based from SPC storm reports for 20 May 2013.
 
@@ -99,6 +100,7 @@ Notes:
 * ODIM H5 output is preliminary with the goal of having a single output format where the program could dump data from other sources. Due to the way some data sources provide data, especially the Americans (varying rscale and nbins by elevation), not all exports will probably be fully up to the ODIM standard. German data should export fine though.
 * Algorithm for dealiasing radial velocities is very primitive and depending on file content, manual work of selecting a pattern of different dealiasing directions may be necessary.
 * Arabic language support is prone to translation errors due to the level of my proficiency, any native Arabic speaking radar meteorologists are kindly invited to send fixes via pull requests. This also has not been tested on Mac OS given that I have no access to that operating system.
+* Same caveat applies to Japanese language. ミスが見たら、ぜひ連絡してください！
 
 ---------
 Contact:

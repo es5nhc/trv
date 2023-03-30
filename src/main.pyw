@@ -37,7 +37,7 @@ from __future__ import division
 import bz2
 import translations
 from translations import fixArabic
-from math import floor, sqrt, radians as d2r, degrees as r2d, cos, copysign, pi
+from math import gcd, floor, sqrt, radians as d2r, degrees as r2d, cos, copysign, pi
 from colorconversion import *
 from coordinates import *
 import sys
@@ -75,7 +75,10 @@ arabicOnLinux = fraasid["LANG_ID"] == "AR" and platform.system() == "Linux"
 #Show a splash and import necessary geodata.
 splash = Tkinter.Tk()
 if platform.system() == "Linux":
-    uiFont = tkFont.Font(family = "DejaVu Sans Condensed", size = 9) #Let's theme the Linux display
+    if fraasid["LANG_ID"] != "JP":
+        uiFont = tkFont.Font(family = "DejaVu Sans Condensed", size = 9) #Let's theme the Linux display
+    else:
+        uiFont = tkFont.Font(family = "Noto Sans JP", size = 9) #Let's theme the Linux display
 else:
     uiFont = None #Handled by OS
 splash.overrideredirect(1)
@@ -189,7 +192,182 @@ class Display(): #Class for storing properties of current display
         self.isSameMap=False #If True, don't render the map again on a new render - Condition: if the resultant map is expected to be identical to previous renders
         self.renderAgain=False #If true, product, colour table etc as been changed while in PseudoRHI view. Need to render again upon returning to PPI
         self.isCanvasBusy=False
+
+class DopplerHistogram(Tkinter.Toplevel):
+    def __init__(self, parent, title = None):
+        global conf
+        Tkinter.Toplevel.__init__(self,parent)
+        self.protocol("WM_DELETE_WINDOW", self.onclose)
+        self.N = Tkinter.StringVar()
+        self.N.set(1)
+        self.showingHistogram = False
+        self.diff = Tkinter.IntVar()
+        label1 = Tkinter.Label(self, text = fraasid["hist_intervals"], font=uiFont)
+        label1.grid(column=0, row=0, sticky="e")
+        vcmd = (self.register(self.validation), "%P")
+        self.nEntry = Tkinter.Entry(self, width = 4, textvariable=self.N, validatecommand = vcmd, validate="key", font = uiFont)
+        self.nEntry.grid(column=1, row=0, sticky="w")
+        self.diffCheck = Tkinter.Checkbutton(self, variable=self.diff, text = fraasid["hist_comparechg"], font=uiFont)
+        self.diffCheck.grid(column=0, row=1, columnspan=2)
+        self.genButton = Tkinter.Button(self, text = fraasid["hist_create"], command=self.generateHistogram, font=uiFont)
+        self.genButton.grid(column=0, row=2, columnspan=2)
+        self.plotCanvas = Tkinter.Canvas(self, background="white", height=300, width=400)
+        self.plotImage = self.plotCanvas.create_image((200, 150))
+        self.progressBar = self.plotCanvas.create_rectangle((0, 280, 400, 300), fill="blue", outline="black")
+        self.plotCanvas.itemconfig(self.progressBar, state=Tkinter.HIDDEN)
+        self.cursorLine = self.plotCanvas.create_line((0,0,0,300), fill="black",state=Tkinter.HIDDEN)
+        self.cursorText = self.plotCanvas.create_text(0,0,text="",fill="black",font=uiFont, state=Tkinter.HIDDEN)
+        self.plotCanvas.grid(column=0,row=3,columnspan=2)
+    def mousemove(self, event):
+        if event.x > self.plotInfo["startX"] and event.x < self.plotInfo["startX"] + self.plotInfo["width"]:
+            self.plotCanvas.coords(self.cursorLine, (event.x, 0, event.x, 280))
+            velocityRange = self.histogramStart*-2
+            velocityStep = velocityRange / self.plotInfo["width"]
+            currentVelocity = round(self.histogramStart + (event.x - self.plotInfo["startX"]) * velocityStep,1)
+            self.plotCanvas.coords(self.cursorText, event.x, 290)
+            self.plotCanvas.itemconfig(self.cursorText, text=str(currentVelocity) + " m/s")
+        pass
+    def validation(self, s):
+        if s.isdigit() or s=="": return True
+        self.bell()
+        return False
+    def plotHistogram(self):
+        self.histogramImage = uuspilt("RGB", (400, 300), "white")
+        joonis = Draw(self.histogramImage)
+        maxValue = max(self.histogramData)
+        longestYLabelSize = joonis.textsize(str(maxValue), font=pildifont)
+        plotWidth = (370-longestYLabelSize[0])
+        membersN = int(self.N.get())
+
+        startX=20+longestYLabelSize[0]
+
+        curX = startX
+        dX = plotWidth/membersN
+        for val in self.histogramData:
+            y = 250-(235/maxValue)*val
+            if membersN < plotWidth:
+                joonis.rectangle((round(curX),round(y),round(curX+dX), 250), fill="#bbeeff", outline="#0077ff")
+            else:
+                joonis.line((round(curX),round(y),round(curX), 250), fill="#0077ff")
+            curX+=dX
+
         
+        joonis.text((10,10), str(maxValue), fill="black", font=pildifont)
+        joonis.text((startX-10-joonis.textsize("0", font=pildifont)[0], 245), "0", fill="black", font=pildifont)
+        
+        joonis.rectangle((startX,15,390,250),outline="black")
+        joonis.line((startX-5,15,startX,15), fill="black")
+        joonis.line((startX-5,250,startX,250), fill="black")
+        joonis.line((startX,15,startX,255), fill="black")
+        joonis.line((int(startX+plotWidth/2),15,int(startX+plotWidth/2),255), fill="black")
+        joonis.line((390,15,390,255), fill="black")
+        
+        joonis.text((startX, 265), str(round(self.histogramStart,1)), fill="black", anchor="lm", font=pildifont)
+        joonis.text((startX+plotWidth/2, 265), "0", fill="black", anchor="mm", font=pildifont)
+        joonis.text((startX+plotWidth, 265), str(round(-self.histogramStart,1)), fill="black", anchor="rm", font=pildifont)
+        
+        self.phImg = PhotoImage(self.histogramImage)
+        self.plotCanvas.itemconfig(self.plotImage, image=self.phImg)
+        self.plotCanvas.bind("<Motion>", self.mousemove)
+        self.plotInfo = {"startX": startX, "width": plotWidth}
+        self.showingHistogram = True
+        return True
+    def generateHistogram(self):
+        if self.N.get() != "":
+            N = int(self.N.get())
+            hasNeededData=("VRAD" in currentDisplay.quantity or currentDisplay.quantity in ["VE", "VF", "VC"]) and "highprf" in currentlyOpenData.data[currentDisplay.softElIndex][currentDisplay.quantity]
+            if hasNeededData and N > 0:
+                highPRF=currentlyOpenData.data[currentDisplay.softElIndex][currentDisplay.quantity]["highprf"]
+                lowPRF=currentlyOpenData.data[currentDisplay.softElIndex][currentDisplay.quantity]["lowprf"]
+                if highPRF and lowPRF:
+                    
+                    self.plotCanvas.itemconfig(self.progressBar, state=Tkinter.NORMAL)
+                    self.plotCanvas.itemconfig(self.cursorLine, state=Tkinter.HIDDEN)
+                    self.plotCanvas.itemconfig(self.cursorText, state=Tkinter.HIDDEN)
+                    self.nEntry.config(state=Tkinter.DISABLED)
+                    self.diffCheck.config(state=Tkinter.DISABLED)
+                    self.genButton.config(state=Tkinter.DISABLED)
+                    multiplier = None
+                    if highPRF == lowPRF:
+                        vMax = highPRF*currentlyOpenData.wavelength/4
+                    else:
+                        for numerator in range(2,10):
+                            for nominator in range(1,10):
+                                if lowPRF*numerator/nominator == highPRF:
+                                    multiplier = nominator
+                                    break
+                            if multiplier : break
+                        vMax = highPRF*currentlyOpenData.wavelength/4*multiplier
+                    intervalStart = -vMax
+                    intervalSize = vMax*2/N
+                    if self.diff.get() and highPRF == lowPRF:
+                        intervalStart *= 3
+                        intervalSize *= 3
+                    self.histogramStart = intervalStart #For plotting routines
+                    self.histogramInterval = intervalSize #For plotting routines
+                    self.histogramData = []
+                    intervalEnd = intervalStart + intervalSize
+                    i = 0
+                    while intervalStart < vMax:
+                        count=0
+                        for az in currentDisplay.data:
+                            for rindex in range(len(az)):
+                                if self.diff.get():
+                                    if rindex > 0 and az[rindex-1] and az[rindex]:
+                                        r = az[rindex]-az[rindex-1]
+                                    else:
+                                        r = None
+                                else:
+                                    r = az[rindex]
+                                if r and r >= intervalStart and r < intervalEnd: count+=1
+                        self.histogramData.append(count)
+                        intervalStart += intervalSize
+                        intervalEnd += intervalSize
+                        self.plotCanvas.coords(self.progressBar, (0, 280, 400*(i/N), 300))
+                        self.plotCanvas.update()
+                        i+=1
+                    self.plotHistogram()
+                    self.plotCanvas.itemconfig(self.progressBar, state=Tkinter.HIDDEN)
+                    self.plotCanvas.itemconfig(self.cursorLine, state=Tkinter.NORMAL)
+                    self.plotCanvas.itemconfig(self.cursorText, state=Tkinter.NORMAL)
+                    self.nEntry.config(state=Tkinter.NORMAL)
+                    self.diffCheck.config(state=Tkinter.NORMAL)
+                    self.genButton.config(state=Tkinter.ACTIVE)
+                else:
+                    hasNeededData = False
+            if not hasNeededData:
+                tkMessageBox.showerror(fraasid["name"], fraasid["hist_insufficient"])
+                    
+    def onclose(self):
+        global histogramOpen
+        histogramOpen = 0
+        self.destroy()
+class KNMIConfig(Tkinter.Toplevel):
+    def __init__(self, parent, title = None):
+        global conf
+        Tkinter.Toplevel.__init__(self,parent)
+        self.title(fraasid["knmi_set_key"])
+        self.protocol("WM_DELETE_WINDOW", self.onclose)
+        self.apiKey = Tkinter.StringVar()
+        if "KNMIAPI" in conf.keys():
+            self.apiKey.set(conf["KNMIAPI"])
+        label1 = Tkinter.Label(self, text = fraasid["apikey"], font=uiFont)
+        label1.grid(column=0, row=0)
+        entry1 = Tkinter.Entry(self, width=125, textvariable=self.apiKey, font=uiFont)
+        entry1.grid(column=1, row=0)
+        btn1 = Tkinter.Button(self, text = fraasid["okbutton"], command=self.changeConfig, font=uiFont)
+        btn1.grid(column=1,row=1)
+        self.mainloop()
+    def changeConfig(self):
+        global conf
+        conf["KNMIAPI"] = self.apiKey.get()
+        save_config_file()
+        self.onclose()
+        return True
+    def onclose(self):
+        global knmiConfOpen
+        knmiConfOpen = 0
+        self.destroy()
 class DWDDownloadWindow(Tkinter.Toplevel):
     def __init__(self, parent, title = None):
         Tkinter.Toplevel.__init__(self,parent)
@@ -225,7 +403,7 @@ class DWDDownloadWindow(Tkinter.Toplevel):
         dateFrame = Tkinter.Frame(self)
         dateFrame.grid(column = 2, row = 0, sticky = "e", padx = 3, pady = 3)
         Tkinter.Label(dateFrame, text = fraasid["date"]+": ", font=uiFont).grid(column = 0, row = 0)
-        scanDayEntry = Tkinter.Entry(dateFrame, textvariable = self.scanDay, width = 2)
+        scanDayEntry = Tkinter.Entry(dateFrame, textvariable = self.scanDay, width = 2, font = uiFont)
         scanDayEntry.grid(column = 1, row = 0)
         Tkinter.Label(dateFrame, text = ".", font=uiFont).grid(column = 2, row = 0)
         scanMonthEntry = Tkinter.Entry(dateFrame, textvariable = self.scanMonth, width = 2, font=uiFont)
@@ -445,19 +623,19 @@ class DynamicLabelEditor(Tkinter.Toplevel):
         self.updateInterval=0
         self.sourceType=Tkinter.IntVar()
         self.enabled=Tkinter.IntVar()
-        label1=Tkinter.Label(self,text="Type")
+        label1=Tkinter.Label(self,text="Type",font=uiFont)
         label1.grid(column=0,row=0,sticky=Tkinter.E)
-        type1=Tkinter.Radiobutton(self,text=fraasid["dyn_online"],variable=self.sourceType,value=0,command=self.goonline)
+        type1=Tkinter.Radiobutton(self,text=fraasid["dyn_online"],variable=self.sourceType,value=0,command=self.goonline,font=uiFont)
         type1.grid(column=1,row=0)
-        type2=Tkinter.Radiobutton(self,text=fraasid["dyn_local"],variable=self.sourceType,value=1,command=self.pickfile)
+        type2=Tkinter.Radiobutton(self,text=fraasid["dyn_local"],variable=self.sourceType,value=1,command=self.pickfile,font=uiFont)
         type2.grid(column=2,row=0)
-        label2=Tkinter.Label(self,text=fraasid["dyn_path"])
+        label2=Tkinter.Label(self,text=fraasid["dyn_path"],font=uiFont)
         label2.grid(column=0,row=1,sticky=Tkinter.E)
-        self.pathentry=Tkinter.Entry(self,width=40,textvariable=self.dataPath)
+        self.pathentry=Tkinter.Entry(self,width=40,textvariable=self.dataPath,font=uiFont)
         self.pathentry.grid(column=1,row=1,columnspan=2)
-        self.enabledcheck=Tkinter.Checkbutton(self, variable=self.enabled, text=fraasid["dyn_enabled"])
+        self.enabledcheck=Tkinter.Checkbutton(self, variable=self.enabled, text=fraasid["dyn_enabled"],font=uiFont)
         self.enabledcheck.grid(column=1,row=2)
-        okbutton=Tkinter.Button(self,text=fraasid["okbutton"],command=lambda: self.submit_source(parent))
+        okbutton=Tkinter.Button(self,text=fraasid["okbutton"],command=lambda: self.submit_source(parent),font=uiFont)
         okbutton.grid(column=2,row=3)
 
         if parent.allikaIndeks == -1:
@@ -507,18 +685,18 @@ class DynamicLabelWindow(Tkinter.Toplevel):
         #List of files
         kerimisriba=Tkinter.Scrollbar(nimekiri)
         kerimisriba.pack(side=Tkinter.RIGHT, fill=Tkinter.Y)
-        self.customfileslist=Tkinter.Listbox(nimekiri,width=60,yscrollcommand=kerimisriba.set)
+        self.customfileslist=Tkinter.Listbox(nimekiri,width=60,yscrollcommand=kerimisriba.set,font=uiFont)
         self.customfileslist.pack(side=Tkinter.LEFT, fill=Tkinter.BOTH)
         kerimisriba.config(command=self.customfileslist.yview)
         nimekiri.pack()
         self.listsources() #List all sources
         #Command buttons
         nupud=Tkinter.Frame(self)
-        nupp1=Tkinter.Button(nupud, text=fraasid["dyn_new"],command=self.add)
+        nupp1=Tkinter.Button(nupud, text=fraasid["dyn_new"],command=self.add,font=uiFont)
         nupp1.pack(side=Tkinter.LEFT)
-        nupp2=Tkinter.Button(nupud, text=fraasid["dyn_edit"],command=self.edit)
+        nupp2=Tkinter.Button(nupud, text=fraasid["dyn_edit"],command=self.edit,font=uiFont)
         nupp2.pack(side=Tkinter.LEFT)
-        nupp3=Tkinter.Button(nupud, text=fraasid["dyn_rm"],command=self.delete)
+        nupp3=Tkinter.Button(nupud, text=fraasid["dyn_rm"],command=self.delete,font=uiFont)
         nupp3.pack(side=Tkinter.LEFT)
         nupud.pack()
         self.mainloop()
@@ -528,9 +706,9 @@ class DynamicLabelWindow(Tkinter.Toplevel):
         self.customfileslist.delete(0,Tkinter.END)
         for i in conf["placesources"]:
             if i[4] == 1:
-                check=u"☑ "
+                check=u"[x] "
             else:
-                check=u"☐ "
+                check=u"[  ] "
             liststring=check+types[i[0]]+" - "+i[5]
             self.customfileslist.insert(Tkinter.END,liststring)
     def add(self):
@@ -597,17 +775,22 @@ rendered2=uuspilt("RGBA",(1,1))
 rhiout2=uuspilt("RGBA",(1,1))
 currentfilepath=None #Path to presently open file
 #Pildifontide laadimine
-pildifont=ImageFont.truetype("../fonts/DejaVuSansCondensed.ttf",12)
-pildifont2=ImageFont.truetype("../fonts/DejaVuSansCondensed.ttf",13)
-pildifont3=ImageFont.truetype("../fonts/DejaVuSansCondensed.ttf",8)
+
+fontPath = "../fonts/NotoSansJP-Regular.otf" if fraasid["LANG_ID"] == "JP" else "../fonts/DejaVuSansCondensed.ttf"    
+pildifont=ImageFont.truetype(fontPath,12)
+pildifont2=ImageFont.truetype(fontPath,13)
+pildifont3=ImageFont.truetype(fontPath,8)
+
 currenturl=None
 nexradstn=conf["nexradstn"] #Chosen NEXRAD station
 urlwindowopen=0 #1 if dialog to open an URL is open
 nexradchooseopen=0 #1 if dialog to choose a nexrad station is open
 addingRmax=0 #1 if configuration window to add Rmax to chunk of data is open.
 dynlabelsopen=0 #same rule as above for selection of dynamic labels
-batchexportopen=0 #same as when batch export window is open.
-dwdDownloadOpen=0 #same as when dwd volume download window is open.
+batchexportopen=0 #same: when batch export window is open.
+dwdDownloadOpen=0 #same: when DWD volume download window is open.
+knmiConfOpen=0 #same: when KNMI key setting window is open
+histogramOpen=0 #same: Doppler Histogram window is open
 zoom=1
 info=0
 rhi=0
@@ -1012,7 +1195,11 @@ def drawInfobox(x,y):
     if canDrawDopplerScale:
         highPRF=currentlyOpenData.data[currentDisplay.softElIndex][currentDisplay.quantity]["highprf"]
         lowPRF=currentlyOpenData.data[currentDisplay.softElIndex][currentDisplay.quantity]["lowprf"]
-        kastikorgus=170 if not currentDisplay.isRHI else 45
+        if highPRF and lowPRF:
+            kastikorgus=170 if not currentDisplay.isRHI else 45
+        else:
+            kastikorgus=84 if not currentDisplay.isRHI else 45
+            canDrawDopplerScale = False
     else:
         kastikorgus=84 if not currentDisplay.isRHI else 45
         
@@ -1101,11 +1288,12 @@ def drawInfobox(x,y):
             kastdraw.polygon((scalePointerX-5,165,scalePointerX+5,165,scalePointerX,160), fill="#ff0000")
                 
             kastdraw.line((scalePointerX,90,scalePointerX,165), fill="#ff0000")
-    #END OF DOPPLER SCALE        
+    #END OF DOPPLER SCALE
     kastdraw.rectangle((0,0,170,16),fill="#0033ee")
     kastdraw.polygon((0,0,10,0,0,10,0,0),fill="#FFFFFF")
+    yoffset = -3 if fraasid["LANG_ID"] == "JP" else 0
     if fraasid["LANG_ID"] != "AR":
-        kastdraw.text((9,1),text=row0, font=pildifont2)
+        kastdraw.text((9,1+yoffset),text=row0, font=pildifont2)
         kastdraw.text((5,17),text=row1, fill="#000000", font=pildifont)
         kastdraw.text((5,30),text=row2, fill="#000000", font=pildifont)
         if not currentDisplay.isRHI:
@@ -1137,8 +1325,9 @@ def drawInfo():
         tekst=headersdecoded(currentDisplay,fraasid)
     textimg=uuspilt("RGB",(530,20), "#0033ee")
     textdraw=Draw(textimg)
+    yoffset = -2 if fraasid["LANG_ID"] == "JP" else 0
     if fraasid["LANG_ID"] != "AR":
-        textdraw.text((5,3),text=tekst, font=pildifont)
+        textdraw.text((5,3+yoffset),text=tekst, font=pildifont)
     else:
         textwidth=textdraw.textsize(tekst, font=pildifont)[0]
         textdraw.text((525-textwidth,3),text=tekst, font=pildifont)
@@ -1248,7 +1437,7 @@ def showrendered(pilt):
 def init_drawlegend(product,tabel):
     global currentDisplay
     if product in [99, "VRAD", "VRADH", "VRADV", "VRADDH", "VRADDV", "VE", "VC", "VF"]:
-        drawlegend(99,-80,80,tabel)
+        drawlegend(99,-90,90,tabel)
     elif product in [159, "ZDR", "LZDR", "ZD"]:
         drawlegend(159,-6,6,tabel)
     elif product in [161, "RHOHV", "RHO", "RH"]:
@@ -1457,9 +1646,9 @@ def renderRadarData():
                                 pilt.paste(iconfile,(int(x-icw/2),int(y-ich/2)),iconfile)
                             if koht["label"]:
                                 fontsize=int(koht["size"])
-                                teksty=y-int(fontsize/2) #Y coordinate of the label
-                                joonis.text((textx+1,teksty+1),text=koht["txt"],fill="black",font=ImageFont.truetype("../fonts/DejaVuSansCondensed.ttf",fontsize))
-                                joonis.text((textx,teksty),text=koht["txt"],fill=koht["color"],font=ImageFont.truetype("../fonts/DejaVuSansCondensed.ttf",fontsize))
+                                teksty=y-int(fontsize/2) #Y coordinate of the label                                
+                                joonis.text((textx+1,teksty+1),text=koht["txt"],fill="black",font=ImageFont.truetype(fontPath,fontsize))
+                                joonis.text((textx,teksty),text=koht["txt"],fill=koht["color"],font=ImageFont.truetype(fontPath,fontsize))
                     elif andmetyyp==1: #More than one point in set. Therefore polygon
                         path=[]
                         for p in range(len(koht["la"])):
@@ -1478,9 +1667,9 @@ def renderRadarData():
                         if coords[0] < 3000 and coords[0] > 0 and coords[1] < 3000 and coords[1] > 0: #Filter out points outside of plot
                             x,y=map(int,coords)
                             fontsize=int(koht["size"])
-                            txtx,txty=map(lambda x:x/2,joonis.textsize(koht["txt"],font=ImageFont.truetype("../fonts/DejaVuSansCondensed.ttf",fontsize))) #Determine size of the plot
-                            joonis.text((x-txtx+1,y-txty+1),text=koht["txt"],fill="black",font=ImageFont.truetype("../fonts/DejaVuSansCondensed.ttf",fontsize))
-                            joonis.text((x-txtx,y-txty),text=koht["txt"],fill=koht["color"],font=ImageFont.truetype("../fonts/DejaVuSansCondensed.ttf",fontsize))
+                            txtx,txty=map(lambda x:x/2,joonis.textsize(koht["txt"],font=ImageFont.truetype(fontPath,fontsize))) #Determine size of the plot
+                            joonis.text((x-txtx+1,y-txty+1),text=koht["txt"],fill="black",font=ImageFont.truetype(fontPath,fontsize))
+                            joonis.text((x-txtx,y-txty),text=koht["txt"],fill=koht["color"],font=ImageFont.truetype(fontPath,fontsize))
             save_config_file() #Update config file with updated data.
         except:
             tkMessageBox.showerror(fraasid["name"],fraasid["ddp_error"]+i[5]+"\n"+str(sys.exc_info()))
@@ -1493,11 +1682,24 @@ def renderRadarData():
     print("Time elapsed:", lopus-alguses,"seconds")
     setcursor()
     return 0
+def openHistogramDialog():
+    global histogramOpen
+    if histogramOpen == 0:
+        histogramOpen == 1
+        h = DopplerHistogram(output)
+        h.resizable(height = False, width = False)
+def openKNMIDialog():
+    global knmiConfOpen
+    if knmiConfOpen == 0:
+        knmiConfOpen == 1
+        KNMIConfig(output)
+    return 0
 def openDWDDialog():
     global dwdDownloadOpen
     if dwdDownloadOpen == 0:
         dwdDownloadOpen = 1
         DWDDownloadWindow(output)
+    return 0
 def loadurl():
     global urlwindowopen
     if urlwindowopen == 0:
@@ -1573,8 +1775,10 @@ def loadData(quantity,elevation=None): #Processes and insert data into cache in 
         currentDisplay.data=[[scaleValue(y, currentDisplay.gain, currentDisplay.offset, currentDisplay.nodata, currentDisplay.undetect, currentDisplay.rangefolding) for y in x] for x in currentlyOpenData.data[elevation][quantity]["data"]]   #Load default data
     if "VRAD" in quantity or quantity in ["VE", "VF", "VC"]:
         toolsmenyy.entryconfig(fraasid["dealiasing"], state = Tkinter.NORMAL)
+        toolsmenyy.entryconfig(fraasid["hist_menuitem"], state = Tkinter.NORMAL)
     else:
         toolsmenyy.entryconfig(fraasid["dealiasing"], state = Tkinter.DISABLED)
+        toolsmenyy.entryconfig(fraasid["hist_menuitem"], state = Tkinter.DISABLED)
 
 def listProducts(elIndex=None): #Populates products selection menu
     global productChoice
@@ -1599,20 +1803,35 @@ def load(path=None,defaultElevation=0):
     global fmt
     global currentlyOpenData
     global currentDisplay
+    global conf
     clickbox=None
     if path == None:
-        filed=tkFileDialog.Open(None,initialdir="../data")
+        if "openDir" not in conf.keys():
+            initialDir = "../data"
+        else:
+            initialDir = conf["openDir"]
+        filed=tkFileDialog.Open(None,initialdir=initialDir)
         path=filed.show()
         currenturl=None
     if len(path) > 0: #If a file was given
+        #New in 2022: Save the current working directory
+        pathDir = os.path.dirname(path)
+        if "../cache" not in pathDir: conf["openDir"]=pathDir #Exclude opening files from cache from setting the working directory
+        save_config_file()
+        #
         toolsmenyy.entryconfig(fraasid["linear_interp"], state = Tkinter.NORMAL)
         toolsmenyy.entryconfig(fraasid["color_table"], state = Tkinter.NORMAL) #Enable ability to override colormaps since we now have something to show
+        toolsmenyy.entryconfig(fraasid["dbz_mask"], state = Tkinter.NORMAL)
         stream=file_read(path)
         currentfilepath=path
         msgtostatus(fraasid["decoding"])
         if stream[0:2] == b"BZ":
             stream=bz2.decompress(stream)
-        if path[-3:]== ".h5" or stream[1:4]==b"HDF":
+        if stream[0:4] == b"GRIB":
+            productChoice.config(state=Tkinter.NORMAL)
+            elevationChoice.config(state=Tkinter.NORMAL)
+            currentlyOpenData=JMA(path)
+        elif path[-3:]== ".h5" or stream[1:4]==b"HDF":
             productChoice.config(state=Tkinter.NORMAL)
             elevationChoice.config(state=Tkinter.NORMAL)
             hcanames=fraasid["iris_hca"]
@@ -2066,7 +2285,7 @@ def onmousemove(event):
             val=info[2][0]
             if fraasid["LANG_ID"] == "AR":
                 if arabicOnLinux:
-                    infostring=u"%.3f°%s %.3f°%s ؛°%.2f :%s ؛km %.3f :%s ؛%s :%s" % (abs(lon),lonl,abs(lat),latl,floor(info[1][0]*100)/100.0,fraasid["azimuth"],floor(info[1][1]*1000)/1000.0,fraasid["range"],val,fraasid["value"])
+                    infostring=u"%.3f°%s %.3f°%s ؛°%.2f :%s ؛km %.3f :%s ؛%s :%s" % (abs(lon),lonl,abs(lat),latl,floor(info[1][0]*100)/100.0,fixArabic(fraasid["azimuth"]),floor(info[1][1]*1000)/1000.0,fixArabic(fraasid["range"]),val,fixArabic(fraasid["value"]))
                 else:
                     infostring=u"%.3f°%s %.3f°%s %s: °%.2f؛ %s: %.3f ؛%s: %s؛ " % (abs(lon),lonl,abs(lat),latl,fraasid["azimuth"],floor(info[1][0]*100)/100.0,fraasid["range"],floor(info[1][1]*1000)/1000.0,fraasid["value"],moveMinus(val))
             else:
@@ -2309,30 +2528,29 @@ def loadDWDVolume(site="fld",volumeTime=datetime.datetime(2018,2,15,11,30,0),out
     dataObject = None
     incomplete = False
     for quantity in ["z","v"]:
-        fileListingURL="http://opendata.dwd.de/weather/radar/sites/sweep_vol_"+quantity+"/"+site+"/"
+        fileListingURL="http://opendata.dwd.de/weather/radar/sites/sweep_vol_"+quantity+"/"+site+"/hdf5/filter_polarimetric/"
         download_file(fileListingURL,"../cache/dwdcache/dir_list_"+quantity)
         listRaw=file_read("../cache/dwdcache/dir_list_"+quantity)
-        listContent=listRaw.split(b"<a")[1:]
+        listContent=listRaw.split(b"<a href=\"")[1:]
         sweepTimes={}
         for i in listContent: #Let's get available files
-            fileName=i[i.find(b">")+1:i.find(b"</a>")]
-            if b"buf" in fileName:
+            fileName=i[0:i.find(b"\">")]
+            if b"-hd5" in fileName:
                 fileInfo=fileName.split(b"_")
-                elevNumber,timeStamp=fileInfo[3].split(b"-")
-                fileWMO=int(fileInfo[4][:fileInfo[4].find(b"-")])
-                if not timeStamp==b"latest":
-                    year=int(timeStamp[0:4])
-                    month=int(timeStamp[4:6])
-                    day=int(timeStamp[6:8])
-                    hour=int(timeStamp[8:10])
-                    minute=int(timeStamp[10:12])
-                    second=int(timeStamp[12:14])
-                    scanTime=datetime.datetime(year,month,day,hour,minute,second)
-                    timeFromVolumeStart=(scanTime-volumeTime)
-                    secondsFromVolumeStart=timeFromVolumeStart.seconds
-                    daysFromVolumeStart=timeFromVolumeStart.days
-                    if secondsFromVolumeStart < 300 and daysFromVolumeStart == 0:
-                        sweepTimes[int(elevNumber)]=timeStamp.decode("utf-8")
+                elevNumber,timeStamp,stationID,fileWMO=fileInfo[3].split(b"-")[0:4]
+                year=int(timeStamp[0:4])
+                month=int(timeStamp[4:6])
+                day=int(timeStamp[6:8])
+                hour=int(timeStamp[8:10])
+                minute=int(timeStamp[10:12])
+                second=int(timeStamp[12:14])
+                scanTime=datetime.datetime(year,month,day,hour,minute,second)
+                timeFromVolumeStart=(scanTime-volumeTime)
+                secondsFromVolumeStart=timeFromVolumeStart.seconds
+                daysFromVolumeStart=timeFromVolumeStart.days
+                if secondsFromVolumeStart < 300 and daysFromVolumeStart == 0:
+                    sweepTimes[int(elevNumber)]=timeStamp.decode("utf-8")
+        print(sweepTimes)
         if len(sweepTimes) < 10 and len(sweepTimes) > 0:
             if not incomplete:
                 if gui:
@@ -2351,19 +2569,18 @@ def loadDWDVolume(site="fld",volumeTime=datetime.datetime(2018,2,15,11,30,0),out
             quantityCode = "DBZH" if quantity == "z" else "VRADH"
             if DWDElevs.index(j) in sweepTimes:
                 cachefile = loadDWDFile(site,j,quantityCode,sweepTimes[DWDElevs.index(j)],downloadOnly,False,gui)
-                loadedData = BUFR(cachefile)
+                loadedData = HDF5(cachefile)
                 if dataObject == None:
                     dataObject = loadedData
+                    dataObject.elevations=deepcopy(loadedData.nominalElevations)
                 else:
                     if len(dataObject.azimuths) < j+1:
                         dataObject.azimuths+=loadedData.azimuths
                         dataObject.times+=loadedData.times
                         dataObject.data+=loadedData.data
-                        dataObject.vMax+=loadedData.vMax
-                        dataObject.rMax+=loadedData.rMax
                         dataObject.nominalElevations+=loadedData.nominalElevations
                         dataObject.elevationNumbers+=loadedData.elevationNumbers
-                        dataObject.elevations+=loadedData.elevations
+                        dataObject.elevations+=loadedData.nominalElevations
                         dataObject.quantities+=loadedData.quantities
                     else:
                         if quantityCode not in dataObject.quantities[j][0]:
@@ -2374,7 +2591,14 @@ def loadDWDVolume(site="fld",volumeTime=datetime.datetime(2018,2,15,11,30,0),out
         w.update()
     dumpVolume(dataObject, output)
     return True
-    
+
+def getLatestDWDFile(fileListingURL, elevationNumber):
+    download_file(fileListingURL,"../cache/dwdcache/dir_list-dwd")
+    listRaw=file_read("../cache/dwdcache/dir_list-dwd").decode("utf-8")
+    listContent=listRaw.split("<a href=\"")[1:]
+    if elevationNumber != -1:
+        listContent=[x for x in listContent if "_"+str(elevationNumber).zfill(2)+"-" in x]
+    return fileListingURL+"/"+listContent[-1][0:listContent[-1].index("\">")]
 def loadDWDFile(site, elevationNumber, quantity="DBZH", timestamp="latest", downloadOnly=False, realTime=True, gui=False):
     global currenturl
     global currentDisplay
@@ -2401,23 +2625,22 @@ def loadDWDFile(site, elevationNumber, quantity="DBZH", timestamp="latest", down
            "umd":10356
            }
     if elevationNumber == -1:
-        scan="sweep_pcp"
+        scan="ras07-pcpng01_sweeph5onem"
+        scan2 = "sweep_pcp"
     else:
-        scan="sweep_vol"
+        scan="ras07-vol5minng01_sweeph5onem"
+        scan2 = "sweep_vol"
     quantityMarker="z" if quantity == "DBZH" else "v"
-    currentDWDFileName=scan+"_"+quantityMarker+"_"+str(elevationNumber if elevationNumber != -1 else 0)+"-"+timestamp+"_"+str(wmoCodes[site])+"--buf.bz2"
-    downloadurl="http://opendata.dwd.de/weather/radar/sites/"+scan+"_"+quantityMarker+"/"+site+"/"+currentDWDFileName
-    print(downloadurl)
+    downloadurl=getLatestDWDFile("http://opendata.dwd.de/weather/radar/sites/"+scan2+"_"+quantityMarker+"/"+site+"/hdf5/filter_polarimetric/", elevationNumber)
     if not downloadOnly: currenturl=downloadurl
     try:
         cachefilename="../cache/dwdcache/"+site+scan+quantityMarker+str(elevationNumber)+timestamp
         if os.path.isfile(cachefilename):
-            cachedFileTime=BUFR(cachefilename).times[0][0]
+            cachedFileTime=HDF5(cachefilename).times[0][0]
             if (datetime.datetime.utcnow()-cachedFileTime).seconds > 330 and realTime:
                 downloadAgain=True
             else:
                 downloadAgain=False
-             #   print("Already have it. Loading from cache.")
         else:
             downloadAgain=True
             
@@ -2436,7 +2659,6 @@ def loadDWDFile(site, elevationNumber, quantity="DBZH", timestamp="latest", down
                 else:
                     msgtostatus(cachefilename+u" "+fraasid["loading_from_cache"])
                 w.update()
-            #print("Downloading from the server")
             
         if not downloadOnly:
             currentfilepath=cachefilename
@@ -2487,7 +2709,8 @@ def loadKNMI(index,downloadOnly=False,scanTime=False):
     global currentlyOpenData
     global currentDisplay
     global currenturl
-    folders = ["https://data.knmi.nl/download/radar_volume_denhelder/2.0/noversion/","https://data.knmi.nl/download/radar_volume_full_herwijnen/1.0/noversion/"]
+    global conf
+    requestPrefixes = ["https://api.dataplatform.knmi.nl/open-data/datasets/radar_volume_denhelder/versions/2.0/files","https://api.dataplatform.knmi.nl/open-data/datasets/radar_volume_full_herwijnen/versions/1.0/files"]
     fileNamePrefixes = ["RAD_NL61_VOL_NA_","RAD_NL62_VOL_NA_"]
 
     #Guess the latest available scan time
@@ -2496,7 +2719,7 @@ def loadKNMI(index,downloadOnly=False,scanTime=False):
         secondsFromScan = (currentTime.minute % 5) * 60 + currentTime.second + currentTime.microsecond / 1000000
         scanTime = currentTime - datetime.timedelta(seconds = secondsFromScan)
 
-    downloadurl = folders[index] + scanTime.strftime("%Y/%m/%d/") + fileNamePrefixes[index] + scanTime.strftime("%H%M") + ".h5"
+    queryURL = requestPrefixes[index] + "/"+fileNamePrefixes[index]+scanTime.strftime("%Y%m%d%H%M")+".h5/url"
 
     #Checking cache first
     cachePath = "../cache/knmicache/" + fileNamePrefixes[index] + "cache"
@@ -2506,7 +2729,6 @@ def loadKNMI(index,downloadOnly=False,scanTime=False):
             w.update()
         try:
             cachedTime=HDF5(cachePath).headers["timestamp"]
-            print(currentTime, cachePath, cachedTime, datetime.datetime.utcnow(), scanTime)
             if (currentTime-cachedTime).seconds < 300:
                 download = False
             else:
@@ -2518,10 +2740,22 @@ def loadKNMI(index,downloadOnly=False,scanTime=False):
         download = True
         
     if download:
+        #File download
+        fileReq = urllibRequest.Request(queryURL) #First getting the temporary download URL
+        fileReq.add_header("Authorization", conf["KNMIAPI"])
+        fileReq.add_header("User-agent","TRV/"+fraasid["name"].split()[1])
+        try:
+            fileConn = urllibRequest.urlopen(fileReq)
+            fileURLRaw = fileConn.read()
+            downloadurl=json.loads(fileURLRaw)["temporaryDownloadUrl"]
+            
+        except:
+            errorMsg = str(sys.exc_info()[1])
+            tkMessageBox.showerror(fraasid["name"],"Download failed due to following error:\n\n"+errorMsg+"\n\nPlease refer to the KNMI Data Platform documentation for further information")
+        
         if not downloadOnly:
             currenturl = downloadurl
-            print(downloadurl)
-            downloadSuccess=multithreadedDownload(downloadurl,cachePath)
+            downloadSuccess = multithreadedDownload(downloadurl,cachePath)
         else:
             download_file(downloadurl,cachePath)
             downloadSuccess = True
@@ -2529,6 +2763,7 @@ def loadKNMI(index,downloadOnly=False,scanTime=False):
         if not downloadOnly:
             msgtostatus(fraasid["loading_from_cache"]+"...")
             w.update()
+            downloadSuccess = True
         else:
             print("No need for downloading!")
     if (not downloadOnly) and downloadSuccess: load(cachePath,-1)
@@ -2554,12 +2789,22 @@ def loadDWDSite(site):
     currentDisplay.softElIndex = 0
     currentDisplay.elIndex = 5
     loadDWDFile(site,0)
-def dealiasVelocitiesStart(onePass = False):
+def moveNyquistStart(direction):
     global currentlyOpenData
     global currentDisplay
     global currenturl
     if "VRAD" in currentDisplay.quantity or currentDisplay.quantity in ["VE", "VF", "VC"]:
-        currentlyOpenData,currentDisplay.quantity=dealiasVelocities(currentlyOpenData,currentDisplay.quantity,currentDisplay.softElIndex, onePass)
+        currentlyOpenData,currentDisplay.quantity=moveByNyquist(currentlyOpenData,currentDisplay.quantity,currentDisplay.softElIndex, direction)
+        if not (currenturl and "opendata.dwd.de" in currenturl):
+            listProducts(currentDisplay.softElIndex)
+        changeProduct(currentDisplay.quantity)
+        currentlyOpenData.isModified = True
+def dealiasVelocitiesStart(onePass = False, dualPRF = True):
+    global currentlyOpenData
+    global currentDisplay
+    global currenturl
+    if "VRAD" in currentDisplay.quantity or currentDisplay.quantity in ["VE", "VF", "VC"]:
+        currentlyOpenData,currentDisplay.quantity=dealiasVelocities(currentlyOpenData,currentDisplay.quantity,currentDisplay.softElIndex, onePass, dualPRF)
         if not (currenturl and "opendata.dwd.de" in currenturl):
             listProducts(currentDisplay.softElIndex)
         changeProduct(currentDisplay.quantity)
@@ -2580,10 +2825,25 @@ def change_language(lang):
     tkMessageBox.showinfo(fraasid["name"],translations.phrases[lang]["conf_restart_required"])
 clickcoords=[]
 output=Tkinter.Tk()
+def dBZMask():
+    global currentlyOpenData
+    global currentfilepath
+    if currentfilepath:
+        for elev in range(len(currentlyOpenData.data)):
+            products = [x for x in list(currentlyOpenData.data[elev].keys()) if "DBZ" not in x]
+            sourceProduct = "DBZ" if "DBZH" not in currentlyOpenData.data[elev] else "DBZH"
+            mask = currentlyOpenData.data[elev][sourceProduct]["data"] == currentlyOpenData.data[elev][sourceProduct]["undetect"]
+            for product in products:
+                currentlyOpenData.data[elev][product]["data"][mask] = currentlyOpenData.data[elev][product]["undetect"]
+        changeProduct(currentDisplay.quantity)
 
 if platform.system() == "Linux":
-    uiFont = tkFont.Font(family = "DejaVu Sans Condensed", size = 9) #Let's theme the Linux display
-    output.option_add("*Dialog.msg.font", "DejaVuSansCondensed 9")
+    if fraasid["LANG_ID"] != "JP":
+        uiFont = tkFont.Font(family = "DejaVu Sans Condensed", size = 9) #Let's theme the Linux display
+        output.option_add("*Dialog.msg.font", "DejaVuSansCondensed 9")
+    else:
+        uiFont = tkFont.Font(family = "Noto Sans JP", size = 9) #Let's theme the Linux display
+        output.option_add("*Dialog.msg.font", "NotoSansJP 9")
 else:
     uiFont = None #Handled by OS
 
@@ -2657,18 +2917,26 @@ dwdmenyy.add_separator()
 dwdmenyy.add_command(label = fraasid["download_entire_volume"], command = openDWDDialog, font = uiFont)
 knmimenyy.add_command(label = "Den Helder", command = lambda: loadKNMI(0), font = uiFont)
 knmimenyy.add_command(label = "Herwijnen", command = lambda: loadKNMI(1), font = uiFont)
+knmimenyy.add_separator()
+knmimenyy.add_command(label = fraasid["knmi_set_key"], command = openKNMIDialog, font = uiFont)
 
 dealiasingMenu = Tkinter.Menu(toolsmenyy, tearoff = 0)
-dealiasingMenu.add_command(label=fraasid["dealiassequence1"], command = lambda: dealiasVelocitiesStart([0,1,2,1,0]), font = uiFont)
-dealiasingMenu.add_command(label=fraasid["dealiassequence2"], command = lambda: dealiasVelocitiesStart([1,0,3,2,0]), font = uiFont)
+dealiasingMenu.add_command(label=fraasid["dealiassequence1"], command = lambda: dealiasVelocitiesStart([0,1,2,1,0], False), font = uiFont)
+dealiasingMenu.add_command(label=fraasid["dealiassequence2"], command = lambda: dealiasVelocitiesStart([1,0,3,2,0], False), font = uiFont)
 dealiasingMenu.add_separator()
-dealiasingMenu.add_command(label = fraasid["dealias1"], command = lambda: dealiasVelocitiesStart([0]), font = uiFont)
-dealiasingMenu.add_command(label = fraasid["dealias2"], command = lambda: dealiasVelocitiesStart([1]), font = uiFont)
-dealiasingMenu.add_command(label = fraasid["dealias3"], command = lambda: dealiasVelocitiesStart([2]), font = uiFont)
-dealiasingMenu.add_command(label = fraasid["dealias4"], command = lambda: dealiasVelocitiesStart([3]), font = uiFont)
+#dealiasingMenu.add_command(label = fraasid["dealiasdualPrf"], command = lambda: dealiasVelocitiesStart([], True), font = uiFont) #TODO: Algorithm for Dual-PRF
+dealiasingMenu.add_command(label = fraasid["dealias1"], command = lambda: dealiasVelocitiesStart([0], False), font = uiFont)
+dealiasingMenu.add_command(label = fraasid["dealias2"], command = lambda: dealiasVelocitiesStart([1], False), font = uiFont)
+dealiasingMenu.add_command(label = fraasid["dealias3"], command = lambda: dealiasVelocitiesStart([2], False), font = uiFont)
+dealiasingMenu.add_command(label = fraasid["dealias4"], command = lambda: dealiasVelocitiesStart([3], False), font = uiFont)
+dealiasingMenu.add_separator()
+dealiasingMenu.add_command(label = fraasid["dealias5"], command = lambda: moveNyquistStart(1), font = uiFont)
+dealiasingMenu.add_command(label = fraasid["dealias6"], command = lambda: moveNyquistStart(-1), font = uiFont)
 
 toolsmenyy.add_command(label = fraasid["linear_interp"], command = interpolateData, state = Tkinter.DISABLED, font = uiFont)
 toolsmenyy.add_cascade(label = fraasid["dealiasing"], menu=dealiasingMenu, state = Tkinter.DISABLED, font = uiFont)
+toolsmenyy.add_command(label = fraasid["dbz_mask"], command = dBZMask, state = Tkinter.DISABLED, font = uiFont)
+toolsmenyy.add_command(label = fraasid["hist_menuitem"], command = openHistogramDialog, state = Tkinter.DISABLED, font = uiFont)
 colortablemenu=Tkinter.Menu(toolsmenyy, tearoff = 0) #Custom color tables menu
 listcolortables() #Adds all available color tables to the menu
 colortablemenu.add_separator()
@@ -2684,6 +2952,7 @@ abimenyy.add_command(label = fraasid["about_program"], command = about_program, 
 languagemenyy.add_command(label = fraasid["language_estonian"], command = lambda: change_language("estonian"), font = uiFont)
 languagemenyy.add_command(label = fraasid["language_english"], command = lambda: change_language("english"), font = uiFont)
 languagemenyy.add_command(label = fraasid["language_arabic"], command = lambda: change_language("arabic"), font = uiFont)
+languagemenyy.add_command(label = fraasid["language_japanese"], command = lambda: change_language("japanese"), font = uiFont)
 ##Drawing area
 w = Tkinter.Canvas(output, width = 600, height = 600, highlightthickness = 0)
 w.bind("<Button-1>", leftclick)

@@ -36,7 +36,7 @@ from coordinates import getcoords
 from coordinates import parsecoords
 from translations import fixArabic
 import datetime
-from math import radians as d2r, cos, pi, sqrt, copysign
+from math import radians as d2r, cos, pi, sqrt, copysign, floor, log10
 import time
 from h5py import File as HDF5Fail
 import string
@@ -58,8 +58,227 @@ NP_INT32 = np.int32
 NP_FLOAT = np.float32
 
 
+def JMARLE(data, NBITS, MAXV):
+    LNGU = 2**(NBITS)-1-MAXV
+    out = []
+    n = 0
+    for i in data:
+        print(i)
+        if i > MAXV:
+            n+=1
+            rl = (LNGU**(n-1))*(i-(MAXV+1))
+            out += [out[-1]]*rl
+        else:
+            n=0
+            out.append(i)
+    return out
 class FileFormatError(Exception): ##Exception to throw if decoding classes fed wrong type of content
     pass
+
+class JMA(): #JMA's GRIB polar coordinate radar data
+    ##Format documentation: https://www.data.jma.go.jp/add/suishin/catalogue/format/ObdObs004_format.pdf
+    def __init__(self,path):
+        python2 = True if sys.version_info[0] == 2 else False #Check for Python 2 in use
+        self.type = "JMA"
+        self._quantity="DBZ" if "_Pz" in path else "VRAD" #Estimated from file name
+        self.elevationNumbers = []
+        self.elevations = []
+        self.times = []
+        self.azimuths = []
+        self.nominalElevations = []
+        self.quantities = []
+        self.data=[]
+        self.headers={}
+        r = file_read(path)
+        self.rawData = r
+        self.group0={}
+        elAngle = None
+        ptr=4
+        self.group0["reserved"] = halfw(r[ptr:ptr+2])
+        self.group0["productType"] = ord(r[ptr+2]) if python2 else r[ptr+2]
+        self.group0["groupNumber"] = ord(r[ptr+3]) if python2 else r[ptr+3]
+        self.group0["wholeSize"] = doubleword(r[ptr+4:ptr+12])
+        self.rawBins = []
+        ptr+=12
+
+        while r[ptr:ptr+4] != b"7777":
+            if ptr > self.group0["wholeSize"]:
+                print("We went past the end of file. We may have lost track with data, terminating! Check file, and decoder code. Especially the code.")
+                break
+            groupSize = word(r[ptr:ptr+4])
+            groupNumber = ord(r[ptr+4]) if python2 else r[ptr+4]
+            if groupNumber == 1:
+                self.group1 = {}
+                self.group1["groupSize"] = groupSize
+                self.group1["groupNumber"] = groupNumber
+                self.group1["producingCentreID"] = halfw(r[ptr+5:ptr+7])
+                self.group1["subCentreID"] = halfw(r[ptr+7:ptr+9])
+                self.group1["gribMasterTableVersion"] = ord(r[ptr+9]) if python2 else r[ptr+9]
+                self.group1["gribRegionalTableVersion"] = ord(r[ptr+10]) if python2 else r[ptr+10]
+                self.group1["referenceTimeMeaning"] = ord(r[ptr+11]) if python2 else r[ptr+11]
+                self.group1["year"] = halfw(r[ptr+12:ptr+14])
+                self.group1["month"] = ord(r[ptr+14]) if python2 else r[ptr+14]
+                self.group1["day"] = ord(r[ptr+15]) if python2 else r[ptr+15]
+                self.group1["hour"] = ord(r[ptr+16]) if python2 else r[ptr+16]
+                self.group1["minute"] = ord(r[ptr+17]) if python2 else r[ptr+17]
+                self.group1["second"] = ord(r[ptr+18]) if python2 else r[ptr+18]
+                referenceTime = datetime.datetime(self.group1["year"], self.group1["month"], self.group1["day"], self.group1["hour"], self.group1["minute"], self.group1["second"])
+                self.group1["productionStatus"] = ord(r[ptr+19]) if python2 else r[ptr+19]
+                self.group1["category"] = ord(r[ptr+20]) if python2 else r[ptr+20]
+                ptr += groupSize
+            if groupNumber == 3:
+                self.group3 = {}
+                self.group3["groupSize"] = groupSize
+                self.group3["groupNumber"] = groupNumber
+                self.group3["gridDefinitionSource"] = ord(r[ptr+5]) if python2 else r[ptr+5]
+                self.group3["dataPointsCount"] = word(r[ptr+6:ptr+10])
+                self.group3["octetOfGridPointAmountDefinitionList"] = ord(r[ptr+10]) if python2 else r[ptr+10]
+                self.group3["explanationOfGridPointAmountDefinitionList"] = ord(r[ptr+11]) if python2 else r[ptr+11]
+                self.group3["gridSystemDefinitionTemplateNumber"] = halfw(r[ptr+12:ptr+14])
+                self.group3["rangeBinsAmount"] = word(r[ptr+14:ptr+18])
+                self.group3["radialsAmount"] = word(r[ptr+18:ptr+22])
+                self.group3["radarLatitude"] = word(r[ptr+22:ptr+26])*1e-6
+                self.group3["radarLongitude"] = word(r[ptr+26:ptr+30])*1e-6
+                self.group3["rscale"] = word(r[ptr+30:ptr+34])*1e-6 #from mm to km which is used natively by TRV's plotting
+                self.group3["rstart"] = word(r[ptr+34:ptr+38])*1e-6
+                self.group3["scanningMode"] = ord(r[ptr+38]) if python2 else r[ptr+38]
+                self.group3["startaz"] = halfw(r[ptr+39:ptr+41])*1e-2
+                self.azimuths.append([(self.group3["startaz"]+360*x/self.group3["radialsAmount"])%360 for x in range(self.group3["radialsAmount"])])
+                ptr += groupSize
+            if groupNumber == 4:
+                self.group4 = {}
+                self.group4["groupSize"] = groupSize
+                self.group4["groupNumber"] = groupNumber
+                self.group4["amountOfCoordinatesFollowingTemplate"] = halfw(r[ptr+5:ptr+7])
+                self.group4["projectDefinitionTableNumber"] = halfw(r[ptr+7:ptr+9])
+                self.group4["parameterCategory"] = ord(r[ptr+9]) if python2 else r[ptr+9]
+                self.group4["parameterNumber"] = ord(r[ptr+10]) if python2 else r[ptr+10]
+                self.group4["creationProcessCategory"] = ord(r[ptr+11]) if python2 else r[ptr+11]
+                self.group4["usedRadarStationsAmount"] = ord(r[ptr+12]) if python2 else r[ptr+12]
+                self.group4["durationUnitIndicator"] = ord(r[ptr+13]) if python2 else r[ptr+13]
+                self.group4["radarLatitude"] = word(r[ptr+14:ptr+18])*1e-6
+                self.group4["radarLongitude"] = word(r[ptr+18:ptr+22])*1e-6
+                self.group4["radarElevation"] = halfw(r[ptr+22:ptr+24])*0.1
+
+                self.headers={"timestamp":referenceTime,
+                              "latitude":self.group4["radarLatitude"],
+                              "longitude":self.group4["radarLongitude"],
+                              "height": self.group4["radarElevation"]}
+                
+                self.group4["radarIDAN"] = r[ptr:24+28].decode("utf-8")
+                self.group4["radarIDN"] = halfw(r[ptr+28:ptr+30],False)
+                self.group4["magneticDeclination"] = halfw(r[ptr+30:ptr+32])*0.01
+                self.group4["transmissionFrequency"] = word(r[ptr+32:ptr+36])*0.001 #to MHz
+                self.wavelength = 299.792458/self.group4["transmissionFrequency"]
+                self.group4["polarisation"] = ord(r[ptr+36]) if python2 else r[ptr+36]
+                self.group4["operationMode"] = ord(r[ptr+37]) if python2 else r[ptr+37]
+                self.group4["reflectivityCorrection"] = ord(r[ptr+38])*0.1 if python2 else r[ptr+38]*0.1
+                if self.group4["reflectivityCorrection"] == 25.5: self.group4["reflectivityCorrection"] = None
+                self.group4["antennaElevationAngle"] = JMAConvert(halfw(r[ptr+41:ptr+43], False),16)/100
+                
+                self.group4["prfCount"] = ord(r[ptr+43]) if python2 else r[ptr+43]
+                self.group4["prf1"] = halfw(r[ptr+44:ptr+46])*0.1
+                if self.group4["prf1"] == -0.1: self.group4["prf1"] = None
+                self.group4["prf2"] = halfw(r[ptr+46:ptr+48])*0.1
+                if self.group4["prf2"] == -0.1: self.group4["prf2"] = None
+                self.group4["prf3"] = halfw(r[ptr+48:ptr+50])*0.1
+                if self.group4["prf3"] == -0.1: self.group4["prf3"] = None
+                self.group4["obsStartTimeFromReference"] = JMAConvert(halfw(r[ptr+50:ptr+52],False), 16)
+                self.group4["obsEndTimeFromReference"] = JMAConvert(halfw(r[ptr+52:ptr+54], False), 16)
+                
+                self.times.append([referenceTime+datetime.timedelta(seconds=self.group4["obsStartTimeFromReference"]),referenceTime+datetime.timedelta(seconds=self.group4["obsEndTimeFromReference"])])
+                
+                self.group4["echoTopReferenceReflectivity"] = ord(r[ptr+54]) if python2 else r[ptr+54]
+                self.group4["rangeInterval"] = (halfw(r[ptr+55:ptr+57]) << 8)+ r[ptr+57]
+                self.group4["angleInterval"] = (halfw(r[ptr+58:ptr+60]) << 8)+ r[ptr+60]
+                ptr+=60
+                sweepElevations = []
+                self.group4["prfs"] = []
+                for i in range(self.group3["radialsAmount"]):
+                    sweepElevations.append(JMAConvert(halfw(r[ptr:ptr+2],False), 16)*0.01)
+                    self.group4["prfs"].append(halfw(r[ptr+2:ptr+4])*0.1)
+                    ptr+=4
+                
+                self.elevations.append(sweepElevations)
+                self.elevationNumbers.append(len(self.elevations))
+                self.nominalElevations.append(sum(sweepElevations)/len(sweepElevations))
+
+            if groupNumber == 5:
+                self.group5={}
+                self.group5["groupSize"] = groupSize
+                self.group5["groupNumber"] = groupNumber
+                self.group5["amtOfAllPoints"] = word(r[ptr+5:ptr+9])
+                self.group5["presentationTemplateNumber"] = halfw(r[ptr+10:ptr+11])
+                self.group5["NBIT"] = ord(r[ptr+11]) if python2 else r[ptr+11]
+                self.group5["MAXV"] = halfw(r[ptr+12:ptr+14])
+                self.group5["MAXVmax"] = halfw(r[ptr+14:ptr+16])
+                self.group5["LNGU"] = 2**(self.group5["NBIT"])-1-self.group5["MAXV"]
+                self.group5["scaleFactor"] = ord(r[ptr+16]) if python2 else r[ptr+16]
+                ptr+=17
+                self.group5["values"] = [np.nan]
+                for i in range(self.group5["MAXVmax"]):
+                    self.group5["values"].append(JMAConvert(halfw(r[ptr:ptr+2],False),16)*10**(-self.group5["scaleFactor"]))
+                    ptr+=2
+
+            if groupNumber == 6:
+                self.group6={}
+                self.group6["groupSize"] = groupSize
+                self.group6["groupNumber"] = groupNumber
+                self.group6["bitmapIndicator"] = ord(r[ptr+5]) if python2 else r[ptr+5]
+                ptr+=groupSize
+
+            if groupNumber == 7:
+                self.group7={}
+                self.group7["groupSize"] = groupSize
+                self.group7["groupNumber"] = ord(r[ptr+4]) if python2 else r[ptr+4]
+
+                decompressedData = []
+                compressedData = []
+
+                n=0
+                for i in r[ptr+5:ptr+groupSize]:
+                    if i > self.group5["MAXV"]:
+                        n+=1
+                        rl = (self.group5["LNGU"]**(n-1))*(i-(self.group5["MAXV"]+1))
+                        decompressedData += [decompressedData[-1]]*rl
+                    else:
+                        n=0
+                        decompressedData.append(i)
+
+                #Processing of data
+                dataarr = np.take(self.group5["values"], decompressedData).reshape((self.group3["radialsAmount"],self.group3["rangeBinsAmount"]))
+
+                #Remapping to my Europe-centric code so that I could dump this as HDF5 if I want to
+                if self._quantity == "VRAD":
+                    #Will do +-100 m/s to +100 m/s at 0.01 m/s resolution
+                    offset = -100
+                    dataarr += 100
+                    dataarr *= 100
+                    dataarr[dataarr == np.nan] = 1
+                else:
+                    #From -32 dBZ to 96 dBz at 0.01 dBZ steps.
+                    offset = -32
+                    dataarr[dataarr == 0] = np.nan
+                    dataarr += 32
+                    dataarr *= 100
+                    dataarr[dataarr == np.nan] = 1
+                    
+                dataDict = {self._quantity:{"data" : dataarr.astype(np.uint16),
+                                            "dataType": np.uint16,
+                                            "rscale": self.group3["rscale"],
+                                            "rstart": self.group3["rstart"],
+                                            "highprf":max(self.group4["prfs"]),
+                                            "lowprf":min(self.group4["prfs"]),
+                                            "offset":offset,
+                                            "gain":0.01,
+                                            "nodata":0,
+                                            "undetect":1}}
+                self.quantities.append([self._quantity])
+                self.data.append(dataDict)
+                
+                #print("----\n","3", self.group3,"\n4",self.group4,"\n5",self.group5,"\n6",self.group6)
+                ptr += groupSize
+        
 
 class IRIS(): #IRIS RAW
     def __init__(self,path):
@@ -1287,7 +1506,7 @@ class NEXRADLevel2():
             #Final processing: Trying to guess nominal elevation angle
             for e in self.elevations:
                 self.nominalElevations.append(round(sum(e)/len(e),2))
-            #Final processing: The azimuths. The final azimuths list does not contain the direction of the beam center, but rather the boundaries between two adjacent bins. 
+            #Final processing: The azimuths. The final azimuths list does not contain the direction of the beam centre, but rather the boundaries between two adjacent bins. 
             self.azimuths=[]
             for i in range(len(azimuthCentres)):
                 self.azimuths.append([])
@@ -1388,7 +1607,7 @@ class NEXRADLevel2():
             #Final processing: Trying to guess nominal elevation angle
             for e in self.elevations:
                 self.nominalElevations.append(round(sum(e)/len(e),2))
-            #Final processing: The azimuths. The final azimuths list does not contain the direction of the beam center, but rather the boundaries between two adjacent bins. 
+            #Final processing: The azimuths. The final azimuths list does not contain the direction of the beam centre, but rather the boundaries between two adjacent bins. 
             self.azimuths=[]
             for i in range(len(azimuthCentres)):
                 self.azimuths.append([])
@@ -1406,6 +1625,10 @@ class NEXRADLevel2():
         del(sisu) #Garbage collecting - this file can be bigly!
                 
 class HDF5():
+    def warn(self,message):
+        if message not in self.issuedWarnings:
+            print(message,file=sys.stderr)
+            self.issuedWarnings.append(message)
     def __init__(self,path):
         self.type="HDF5"
         self.headers={}
@@ -1416,6 +1639,7 @@ class HDF5():
         self.elevations=[]
         self.quantities=[]
         self.isModified = False
+        self.issuedWarnings=[]
 
         andmed=HDF5Fail(path,"r") #Load the data file
 
@@ -1429,8 +1653,13 @@ class HDF5():
                 ajastring=mainwhatattrs.get("date")[0]+mainwhatattrs.get("time")[0]
             else:
                 ajastring=mainwhatattrs.get("date")+mainwhatattrs.get("time")
+                
+            if not isinstance(ajastring, str): ajastring = ajastring.decode("utf-8")
             self.source = mainwhatattrs.get("source")
-            self.headers["timestamp"]=datetime.datetime.strptime(ajastring.decode("utf-8"),"%Y%m%d%H%M%S")
+            if self.source == None:
+                self.source=b"hiljem"
+                
+            self.headers["timestamp"]=datetime.datetime.strptime(ajastring,"%Y%m%d%H%M%S")
             self.headers["latitude"]=float(mainwhereattrs.get(u"lat"))
             self.headers["longitude"]=float(mainwhereattrs.get(u"lon"))
             self.headers["height"]=mainwhereattrs.get(u"height")
@@ -1452,13 +1681,15 @@ class HDF5():
                             endtimestring=whatattrs.get("enddate")[0]+whatattrs.get("endtime")[0]
                         else:
                             endtimestring=whatattrs.get("enddate")+whatattrs.get("endtime")
-                                
-                        starttime=datetime.datetime.strptime(starttimestring.decode("utf-8"),"%Y%m%d%H%M%S")
-                        endtime=datetime.datetime.strptime(endtimestring.decode("utf-8"),"%Y%m%d%H%M%S")
+
+                        if not isinstance(starttimestring, str): starttimestring = starttimestring.decode("utf-8")
+                        if not isinstance(endtimestring, str): endtimestring = endtimestring.decode("utf-8")
+                        starttime=datetime.datetime.strptime(starttimestring,"%Y%m%d%H%M%S")
+                        endtime=datetime.datetime.strptime(endtimestring,"%Y%m%d%H%M%S")
                         self.times.append([starttime,endtime])
                         
                         self.nominalElevations.append(elevation)
-                        self.azimuths.append(range(0,len(andmed[name+str(i)+"/data"])))
+                        self.azimuths.append(list(range(0,len(andmed[name+str(i)+"/data"]))))
                         self.data.append({})
                         self.quantities.append([])
                         
@@ -1471,13 +1702,16 @@ class HDF5():
                         mainhowattrs=andmed["/how"].attrs
                         highprf=float(mainhowattrs.get("highprf"))
                         lowprf=float(mainhowattrs.get("lowprf"))
+                        if not highprf and not lowprf and "prf" in mainhowattrs.keys(): #Workaround for non-compliant data from Denmark
+                            highprf=float(mainhowattrs.get("prf"))
+                            lowprf=highprf
                     except:
                         highprf=None
                         lowprf=None
                         
                     self.data[elIndex][quantity]={
                         "data": np.array(andmed[name+str(i)+"/data"]),
-                        "dataType": type(andmed[name+str(i)+"/data"][0]),
+                        "dataType": type(andmed[name+str(i)+"/data"][0][0]),
                         "rscale":float(mainwhereattrs.get("xscale"))/1000,
                         "rstart":0,
                         "highprf":highprf,
@@ -1513,11 +1747,14 @@ class HDF5():
                         if not starttimedate and not starttimetime: ## Workaround for my internally generated HDF5s derived from GeoTIFF images
                             noStartTime=True
                         else:
-                            starttimestring=datasetwhat.get("startdate")+datasetwhat.get("starttime")
+                            starttimestring=starttimedate+starttimetime
                             endtimestring=datasetwhat.get("enddate")+datasetwhat.get("endtime")
+                            if not isinstance(starttimestring, str): starttimestring = starttimestring.decode("utf-8")
+                            if not isinstance(endtimestring, str): endtimestring = endtimestring.decode("utf-8")
+                            
                     if not noStartTime:
-                        starttime=datetime.datetime.strptime(starttimestring.decode("utf-8"),"%Y%m%d%H%M%S")
-                        endtime=datetime.datetime.strptime(endtimestring.decode("utf-8"),"%Y%m%d%H%M%S")
+                        starttime=datetime.datetime.strptime(starttimestring,"%Y%m%d%H%M%S")
+                        endtime=datetime.datetime.strptime(endtimestring,"%Y%m%d%H%M%S")                        
                     else:
                         starttime=None
                         endtime=None
@@ -1537,14 +1774,20 @@ class HDF5():
                         datahow=andmed[datasetpath+"/"+d+"/how"].attrs if "how" in andmed[datasetpath+"/"+d] else None
                         quantity=datawhat.get("quantity")
                         if type(quantity) is np.ndarray: quantity=quantity[0]
-                        quantity=quantity.decode("utf-8")
+                        if not isinstance(quantity, str): quantity=quantity.decode("utf-8")
                         if quantity not in self.quantities[-1]:
                             self.quantities[-1].append(quantity)
                             
                         try:
                             datasethow=andmed[datasetpath+"/how"].attrs
-                            highprf=float(datasethow.get("highprf"))
-                            lowprf=float(datasethow.get("lowprf"))
+                            if "highprf" not in datasethow or "lowprf" not in datasethow: #Workaround for non-compliant Danish data
+                                self.warn("WARNING: Working around to recover misplaced PRF information. PRF data(non-compliant!) found in general /how but not dataset's /how")
+                                highprf=float(andmed["how"].attrs.get("prf"))
+                                N = andmed["how"].attrs.get("prffac")
+                                lowprf=highprf*(N)/(N+1) if N != 1 else highprf
+                            else:
+                                highprf=float(datasethow.get("highprf"))
+                                lowprf=float(datasethow.get("lowprf"))
                         except:
                             highprf=None
                             lowprf=None
@@ -1765,7 +2008,7 @@ def addRmax(dataObject,elIndex,az0,az1,r0,r1):
         
     return dataObject
 
-def dealiasVelocities(dataObject,quantity,index, passesList=[1,2,3,2,1]):
+def moveByNyquist(dataObject, quantity, index, direction):
     wavelength = dataObject.wavelength
     highprf = dataObject.data[index][quantity]["highprf"]
     lowprf = dataObject.data[index][quantity]["lowprf"]
@@ -1779,6 +2022,60 @@ def dealiasVelocities(dataObject,quantity,index, passesList=[1,2,3,2,1]):
     rangefolding = None if not "rangefolding" in dataObject.data[index][quantity] else dataObject.data[index][quantity]["rangefolding"]
     vMaxIntervalHigh = round(wavelength*highprf*0.5/gain) #Converting to data values steps
     vMaxIntervalLow = round(wavelength*lowprf*0.5/gain)
+
+    if not isinstance(dataObject.data[index][quantity]["data"][0],list):
+        dataList = [x.tolist() for x in dataObject.data[index][quantity]["data"]]
+    else:
+        dataList = deepcopy(dataObject.data[index][quantity]["data"])
+
+    for i in range(len(dataList)):
+        for j in range(len(dataList[i])):
+            if dataList[i][j] not in [nodata, undetect, rangefolding]:
+                if direction == 1:
+                    dataList[i][j] += vMaxIntervalHigh
+                else:
+                    dataList[i][j] -= vMaxIntervalHigh
+    
+    firstTry = False
+    if quantity == "VRAD":  #Assuming horizontal polarisation by default
+        newQuantity = "VRADDH"
+        firstTry = True
+    elif not "VRADD" in quantity and quantity != "VRAD":
+        newQuantity = quantity.replace("VRAD","VRADD")
+        firstTry = True
+    else:
+        newQuantity = quantity
+    if firstTry:
+        if newQuantity not in dataObject.quantities[index]: dataObject.quantities[index].append(newQuantity)
+        dataObject.data[index][newQuantity] = deepcopy(dataObject.data[index][quantity])
+    dataObject.data[index][newQuantity]["data"] = dataList
+    return dataObject, newQuantity
+
+def getN(highPRF, lowPRF):
+    multiplier=None
+    for numerator in range(2,10):
+        for nominator in range(1,10):
+            if abs(lowPRF*numerator/nominator-highPRF) < 1:
+                multiplier = nominator
+        if multiplier: return multiplier
+
+def dealiasVelocities(dataObject,quantity,index, passesList=[1,2,3,2,1], dualPRF = True):
+    wavelength = dataObject.wavelength
+    highprf = dataObject.data[index][quantity]["highprf"]
+    lowprf = dataObject.data[index][quantity]["lowprf"]
+    gain = dataObject.data[index][quantity]["gain"]
+    offset = dataObject.data[index][quantity]["offset"]
+    zeroValue = (dataObject.data[index][quantity]["offset"]/gain)*-1
+    nodata = dataObject.data[index][quantity]["nodata"]
+    undetect = dataObject.data[index][quantity]["undetect"]
+    
+    dBZproduct = "DBZ" if "DBZH" not in dataObject.data[index] else "DBZH" #product for DBZ mask
+    
+    threshold = 0.5 if not dualPRF else 0.6
+    
+    rangefolding = None if not "rangefolding" in dataObject.data[index][quantity] else dataObject.data[index][quantity]["rangefolding"]
+    vMaxIntervalHigh = round(wavelength*highprf*0.5/gain) #Converting to data values steps
+    vMaxIntervalLow = round(wavelength*lowprf*0.5/gain)
     if not isinstance(dataObject.data[index][quantity]["data"][0],list):
         newData = [x.tolist() for x in dataObject.data[index][quantity]["data"]]
     else:
@@ -1787,90 +2084,295 @@ def dealiasVelocities(dataObject,quantity,index, passesList=[1,2,3,2,1]):
     numberOfBins = len(dataObject.data[index][quantity]["data"][0])
     iRanges = [range(numberOfRays), range(numberOfBins), range(numberOfRays), range(numberOfBins)]
     jRanges = [numberOfBins, numberOfRays, numberOfBins, numberOfRays]
+
+    if dualPRF:
+        pass
+    else:
+        for passnr in passesList:
+            algusaeg=time.time()
+            iRange = iRanges[passnr]
+            jRange = jRanges[passnr]
+            maxGapSize = 0 if dualPRF else 5000 #Maximum gap at which to still trust the previous valid measurement
+            print("Dealiasing pass - type", passnr+1)
+            if passnr == 3: #If doing an along-an-azimuth dealias counter clockwise  - thus reverse the list
+                newData.reverse()
+            for i in iRange:
+                prev = None
+                gapSize = 0 #Size of gap between current and previous bin
+                j = 0
+                #If azimuthal check:
+                #First do a survey trying to find a region where the wind is perpendicular to the radar beam.
+                if passnr in [1, 3]:
+                    maxGapSize = 90
+                    for az1 in range(0, -numberOfRays, -1):
+                        if abs(newData[az1][i]-zeroValue) < 3/gain:
+                            j += az1
+                            jRange = jRanges[passnr] + az1
+                            break
+                if passnr == 2:
+                    newData[i].reverse() #Reverse values in bin
+                    newData[i-1].reverse()
+                while j < jRange:
+                    if passnr not in [1, 3]:
+                        current=newData[i][j]
+                    else:
+                        current=newData[j][i]
+                    if current != nodata and current != undetect and current != rangefolding:# and j > 5:
+                        if prev != None:
+                            diffFromPrev=current-prev
+                            if gapSize > maxGapSize:
+                                if passnr in [1, 3]: #Special case for azimuthal scan: Leave just first bin untouched, declare gap over and proceed to the next azimuth
+                                    gapSize = 0
+                                    prev = current
+                                    continue
+                                nearby = newData[i][(j+2) % numberOfBins] if passnr not in [1, 3] else newData[(j + 1) % numberOfRays][i-1]
+                                if nearby != nodata and nearby != undetect and nearby != rangefolding: 
+                                    diffFromNextTo=current-nearby
+                                    if abs(diffFromNextTo) < abs(diffFromPrev):
+                                        diffFromPrev=diffFromNextTo
+                            else:
+                                nearby = (newData[i-1][j-1]) if passnr not in [1, 3] else newData[j-1][i-1]
+                                if nearby != nodata and nearby != undetect and nearby != rangefolding: 
+                                    diffFromNextTo=current-nearby
+                                    if abs(diffFromNextTo) < abs(diffFromPrev):
+                                        diffFromPrev=diffFromNextTo
+                            if diffFromPrev > vMaxIntervalLow*threshold or diffFromPrev < -vMaxIntervalLow*threshold:
+                                ratio1=diffFromPrev/vMaxIntervalHigh
+                                ratioweight1 = abs(((ratio1*2) % 1) - 0.5)
+                                if dualPRF:
+                                    ratio2=diffFromPrev/vMaxIntervalLow
+                                    ratioweight2 = abs(((ratio2*2) % 1) - 0.5)
+                                else:
+                                    ratioweight2 = ratioweight1
+
+                                if ratioweight1 >= ratioweight2:
+                                    multiplier = round(ratio1)
+                                    if multiplier == 0: multiplier = copysign(2, ratio1)
+                                    current -= int(vMaxIntervalHigh * multiplier)
+                                else:
+                                    multiplier = round(ratio2)
+                                    if multiplier == 0: multiplier = copysign(2, ratio2)
+                                    current -= int(vMaxIntervalLow * multiplier)
+                                    
+                                if passnr not in [1, 3]:
+                                    newData[i][j]=current
+                                else:
+                                    newData[j][i]=current
+                        
+                        prev = current
+
+                        gapSize = 0
+                    else:
+                        gapSize += 1
+                    j += 1
+                if passnr == 2:
+                    newData[i].reverse() #Reverse back
+                    newData[i-1].reverse() #Reverse back
+            if passnr == 3: #Reverse back
+                newData.reverse()
+            print("Pass duration: %f seconds" %(time.time()-algusaeg))
+    firstTry = False
+    if quantity == "VRAD":  #Assuming horizontal polarisation by default
+        newQuantity = "VRADDH"
+        firstTry = True
+    elif not "VRADD" in quantity and quantity != "VRAD":
+        newQuantity = quantity.replace("VRAD","VRADD")
+        firstTry = True
+    else:
+        newQuantity = quantity
+    if firstTry:
+        if newQuantity not in dataObject.quantities[index]: dataObject.quantities[index].append(newQuantity)
+        dataObject.data[index][newQuantity] = deepcopy(dataObject.data[index][quantity])
+    dataObject.data[index][newQuantity]["data"] = newData
+
+
+    return dataObject, newQuantity
+
+def dealiasVelocitiesOLD(dataObject,quantity,index, passesList=[1,2,3,2,1], dualPRF = True):
+    wavelength = dataObject.wavelength
+    highprf = dataObject.data[index][quantity]["highprf"]
+    lowprf = dataObject.data[index][quantity]["lowprf"]
+    gain = dataObject.data[index][quantity]["gain"]
+    zeroValue = (dataObject.data[index][quantity]["offset"]/gain)*-1
+    nodata = dataObject.data[index][quantity]["nodata"]
+    undetect = dataObject.data[index][quantity]["undetect"]
+    threshold = 0.5 if not dualPRF else 0.6
     
-    for passnr in passesList:
-        algusaeg=time.time()
-        iRange = iRanges[passnr]
-        jRange = jRanges[passnr]
-        maxGapSize = 0 if dualPRF else 5000 #Maximum gap at which to still trust the previous valid measurement
-        print("Dealiasing pass - type", passnr+1)
-        if passnr == 3: #If doing an along-an-azimuth dealias counter clockwise  - thus reverse the list
-            newData.reverse()
-        for i in iRange:
-            prev = None
-            gapSize = 0 #Size of gap between current and previous bin
-            j = 0
-            #If azimuthal check:
-            #First do a survey trying to find a region where the wind is perpendicular to the radar beam.
-            if passnr in [1, 3]:
-                maxGapSize = 90
-                for az1 in range(0, -numberOfRays, -1):
-                    if abs(newData[az1][i]-zeroValue) < 3/gain:
-                        j += az1
-                        jRange = jRanges[passnr] + az1
-                        break
-            if passnr == 2:
-                newData[i].reverse() #Reverse values in bin
-                newData[i-1].reverse()
-            while j < jRange:
-                if passnr not in [1, 3]:
-                    current=newData[i][j]
-                else:
-                    current=newData[j][i]
-                if current != nodata and current != undetect and current != rangefolding:# and j > 5:
-                    if prev != None:
-                        diffFromPrev=current-prev
-                        if gapSize > maxGapSize:
-                            if passnr in [1, 3]: #Special case for azimuthal scan: Leave just first bin untouched, declare gap over and proceed to the next azimuth
-                                gapSize = 0
-                                prev = current
-                                continue
-                            nearby = newData[i][(j+2) % numberOfBins] if passnr not in [1, 3] else newData[(j + 1) % numberOfRays][i-1]
-                            if nearby != nodata and nearby != undetect and nearby != rangefolding: 
-                                diffFromNextTo=current-nearby
-                                if abs(diffFromNextTo) < abs(diffFromPrev):
-                                    diffFromPrev=diffFromNextTo
-                        else:
-                            nearby = (newData[i-1][j-1]) if passnr not in [1, 3] else newData[j-1][i-1]
-                            if nearby != nodata and nearby != undetect and nearby != rangefolding: 
-                                diffFromNextTo=current-nearby
-                                if abs(diffFromNextTo) < abs(diffFromPrev):
-                                    diffFromPrev=diffFromNextTo
-                        if diffFromPrev > vMaxIntervalLow*threshold or diffFromPrev < -vMaxIntervalLow*threshold:
-                            ratio1=diffFromPrev/vMaxIntervalHigh
-                            ratioweight1 = abs(((ratio1*2) % 1) - 0.5)
-                            if dualPRF:
-                                ratio2=diffFromPrev/vMaxIntervalLow
-                                ratioweight2 = abs(((ratio2*2) % 1) - 0.5)
-                            else:
-                                ratioweight2 = ratioweight1
+    rangefolding = None if not "rangefolding" in dataObject.data[index][quantity] else dataObject.data[index][quantity]["rangefolding"]
+    vMaxIntervalHigh = round(wavelength*highprf*0.5/gain) #Converting to data values steps
+    vMaxIntervalLow = round(wavelength*lowprf*0.5/gain)
+    if not isinstance(dataObject.data[index][quantity]["data"][0],list):
+        newData = [x.tolist() for x in dataObject.data[index][quantity]["data"]]
+    else:
+        newData = deepcopy(dataObject.data[index][quantity]["data"])
+    numberOfRays = len(dataObject.data[index][quantity]["data"])
+    numberOfBins = len(dataObject.data[index][quantity]["data"][0])
+    iRanges = [range(numberOfRays), range(numberOfBins), range(numberOfRays), range(numberOfBins)]
+    jRanges = [numberOfBins, numberOfRays, numberOfBins, numberOfRays]
 
-                            if ratioweight1 >= ratioweight2:
-                                multiplier = round(ratio1)
-                                if multiplier == 0: multiplier = copysign(2, ratio1)
-                                current -= int(vMaxIntervalHigh * multiplier)
+    if dualPRF:
+        if not isinstance(dataObject.data[index][quantity]["data"][0],list):
+            dataList = [x.tolist() for x in dataObject.data[index][quantity]["data"]]
+        else:
+            dataList = deepcopy(dataObject.data[index][quantity]["data"])
+        
+        rangefolding = None if not "rangefolding" in dataObject.data[index][quantity] else dataObject.data[index][quantity]["rangefolding"]
+        vMaxLowPRF = lowprf*wavelength/4
+        vMaxHighPRF = highprf*wavelength/4
+        vMaxLowPRFInt = vMaxLowPRF/gain*2
+        vMaxHighPRFInt = vMaxHighPRF/gain*2
+        halfLowPRFInt = vMaxLowPRF/gain
+        halfHighPRFInt = vMaxHighPRF/gain
+        windowWidthMultiplier=2
+        intervalCentresDistance = (vMaxHighPRFInt-vMaxLowPRFInt)/2
+        windowWidth = intervalCentresDistance*windowWidthMultiplier
+        highPRFWindowCentre = vMaxHighPRFInt+intervalCentresDistance*(windowWidthMultiplier-1)
+        lowPRFWindowCentre = vMaxLowPRFInt-intervalCentresDistance*(windowWidthMultiplier-1)
+        highPRFVelocityCriteria = highPRFWindowCentre-windowWidth
+        lowPRFVelocityCriteria = lowPRFWindowCentre-windowWidth
+        
+        
+        for passnr in range(25): #We'll run this 25 times to smooth things out
+            print("Dual-PRF dealiasing nr",passnr+1)
+            for i in range(len(dataList)): #For each ray
+                nextFromPrev = 0
+                prev = 0
+                jsuund = 1
+                j = 0
+                recentVals=[0]
+                nbins=len(dataList[i])
+                while j < nbins:
+                    value = dataList[i][j]
+                    if prev not in [nodata, undetect, rangefolding] and value not in [nodata, undetect, rangefolding]:
+                        diff = value - prev
+                        diffSign = diff/abs(diff) if diff != 0 else 1
+                        aliasAmount=0
+                        if diff > lowPRFVelocityCriteria*0.50:
+                            IntervalAmt = round(diff / vMaxLowPRFInt)
+                            IntervalExpected = vMaxLowPRFInt# * IntervalAmt
+                            if abs(diff-lowPRFWindowCentre) > windowWidth * IntervalAmt:
+                                IntervalAmt = round(diff / vMaxHighPRFInt)
+                                IntervalExpected = vMaxHighPRFInt# * IntervalAmt
+                            if abs(IntervalAmt) > 1: #This usually indicates also that the previous bin was wrong.
+                                value-=IntervalExpected*diffSign
+                                prev+=IntervalExpected*diffSign
+                                dataList[i][j] = value
+                                dataList[i][j-(1*jsuund)]=prev
+                            elif IntervalAmt == 1:
+                                if abs(value-nextFromPrev) < lowPRFVelocityCriteria: #Check 1
+                                    prev+=IntervalExpected*diffSign
+                                    dataList[i][j-(1*jsuund)]=prev
+                                else:
+                                    surroundings=[] #Gathering data about bins nearby.
+                                    surroundings.append(dataList[i-1][j])
+                                    surroundings.append(dataList[(i+1) % len(dataList)][j])
+                                    surroundings.append(dataList[(i-2) % len(dataList)][j])
+                                    surroundings.append(dataList[(i+2) % len(dataList)][j])
+                                    surroundings.append(dataList[i-1][j-(1*jsuund)])
+                                    surroundings.append(dataList[(i+1) % len(dataList)][j-(1*jsuund)])
+                                    surroundings.append(dataList[i][j-(2*jsuund)])
+                                    surroundings.append(dataList[(i+1) % len(dataList)][j-(2*jsuund)])
+                                    surroundings.append(dataList[i][j-(3*jsuund)])
+                                    surroundings.append(dataList[(i+1) % len(dataList)][j-(3*jsuund)])
+                                    if abs(np.median(surroundings)-value) < lowPRFVelocityCriteria: #This check not working well in TVS situation
+                                        prev+=IntervalExpected*diffSign
+                                        dataList[i][j-(1*jsuund)]=prev
+                                    elif abs(np.median(recentVals)-value) < lowPRFVelocityCriteria and passnr > 1:
+                                        prev+=IntervalExpected*diffSign
+                                        dataList[i][j-(1*jsuund)]=prev
+                                    else:
+                                        if (passnr-1) % 3 == 0:
+                                            value-=IntervalExpected*diffSign
+                                            dataList[i][j]=value
+                        recentVals=recentVals[-10:]+[value]
+                    nextFromPrev = prev
+                    prev = value
+                    j+=1
+            newData=np.array(dataList, dtype=np.float32)
+    else:
+        for passnr in passesList:
+            algusaeg=time.time()
+            iRange = iRanges[passnr]
+            jRange = jRanges[passnr]
+            maxGapSize = 0 if dualPRF else 5000 #Maximum gap at which to still trust the previous valid measurement
+            print("Dealiasing pass - type", passnr+1)
+            if passnr == 3: #If doing an along-an-azimuth dealias counter clockwise  - thus reverse the list
+                newData.reverse()
+            for i in iRange:
+                prev = None
+                gapSize = 0 #Size of gap between current and previous bin
+                j = 0
+                #If azimuthal check:
+                #First do a survey trying to find a region where the wind is perpendicular to the radar beam.
+                if passnr in [1, 3]:
+                    maxGapSize = 90
+                    for az1 in range(0, -numberOfRays, -1):
+                        if abs(newData[az1][i]-zeroValue) < 3/gain:
+                            j += az1
+                            jRange = jRanges[passnr] + az1
+                            break
+                if passnr == 2:
+                    newData[i].reverse() #Reverse values in bin
+                    newData[i-1].reverse()
+                while j < jRange:
+                    if passnr not in [1, 3]:
+                        current=newData[i][j]
+                    else:
+                        current=newData[j][i]
+                    if current != nodata and current != undetect and current != rangefolding:# and j > 5:
+                        if prev != None:
+                            diffFromPrev=current-prev
+                            if gapSize > maxGapSize:
+                                if passnr in [1, 3]: #Special case for azimuthal scan: Leave just first bin untouched, declare gap over and proceed to the next azimuth
+                                    gapSize = 0
+                                    prev = current
+                                    continue
+                                nearby = newData[i][(j+2) % numberOfBins] if passnr not in [1, 3] else newData[(j + 1) % numberOfRays][i-1]
+                                if nearby != nodata and nearby != undetect and nearby != rangefolding: 
+                                    diffFromNextTo=current-nearby
+                                    if abs(diffFromNextTo) < abs(diffFromPrev):
+                                        diffFromPrev=diffFromNextTo
                             else:
-                                multiplier = round(ratio2)
-                                if multiplier == 0: multiplier = copysign(2, ratio1)
-                                current -= int(vMaxIntervalLow * multiplier)
-                                
-                            if passnr not in [1, 3]:
-                                newData[i][j]=current
-                            else:
-                                newData[j][i]=current
-                    
-                    prev = current
+                                nearby = (newData[i-1][j-1]) if passnr not in [1, 3] else newData[j-1][i-1]
+                                if nearby != nodata and nearby != undetect and nearby != rangefolding: 
+                                    diffFromNextTo=current-nearby
+                                    if abs(diffFromNextTo) < abs(diffFromPrev):
+                                        diffFromPrev=diffFromNextTo
+                            if diffFromPrev > vMaxIntervalLow*threshold or diffFromPrev < -vMaxIntervalLow*threshold:
+                                ratio1=diffFromPrev/vMaxIntervalHigh
+                                ratioweight1 = abs(((ratio1*2) % 1) - 0.5)
+                                if dualPRF:
+                                    ratio2=diffFromPrev/vMaxIntervalLow
+                                    ratioweight2 = abs(((ratio2*2) % 1) - 0.5)
+                                else:
+                                    ratioweight2 = ratioweight1
 
-                    gapSize = 0
-                else:
-                    gapSize += 1
-                j += 1
-            if passnr == 2:
-                newData[i].reverse() #Reverse back
-                newData[i-1].reverse() #Reverse back
-        if passnr == 3: #Reverse back
-            newData.reverse()
-        print("Pass duration: %f seconds" %(time.time()-algusaeg))
+                                if ratioweight1 >= ratioweight2:
+                                    multiplier = round(ratio1)
+                                    if multiplier == 0: multiplier = copysign(2, ratio1)
+                                    current -= int(vMaxIntervalHigh * multiplier)
+                                else:
+                                    multiplier = round(ratio2)
+                                    if multiplier == 0: multiplier = copysign(2, ratio2)
+                                    current -= int(vMaxIntervalLow * multiplier)
+                                    
+                                if passnr not in [1, 3]:
+                                    newData[i][j]=current
+                                else:
+                                    newData[j][i]=current
+                        
+                        prev = current
+
+                        gapSize = 0
+                    else:
+                        gapSize += 1
+                    j += 1
+                if passnr == 2:
+                    newData[i].reverse() #Reverse back
+                    newData[i-1].reverse() #Reverse back
+            if passnr == 3: #Reverse back
+                newData.reverse()
+            print("Pass duration: %f seconds" %(time.time()-algusaeg))
     firstTry = False
     if quantity == "VRAD":  #Assuming horizontal polarisation by default
         newQuantity = "VRADDH"
@@ -1946,10 +2448,10 @@ def dumpVolume(dataObject=None,outputFile=None):
                 
             file[datasetName]["how"].attrs.create("startazA", dataObject.azimuths[i])
             file[datasetName]["how"].attrs.create("stopazA", dataObject.azimuths[i][1:]+[dataObject.azimuths[i][0]])
-            if dataObject.type == "NEXRAD2" or dataObject.type == "BUFR":
-                file[datasetName]["how"].attrs.create("highprf",dataObject.data[i][firstMomentInElevation]["highprf"])
-                file[datasetName]["how"].attrs.create("lowprf",dataObject.data[i][firstMomentInElevation]["lowprf"])
-                file[datasetName]["how"].attrs.create("NI",dataObject.data[i][firstMomentInElevation]["highprf"]*dataObject.wavelength/4)
+            #if dataObject.type == "NEXRAD2" or dataObject.type == "BUFR":
+            file[datasetName]["how"].attrs.create("highprf",dataObject.data[i][firstMomentInElevation]["highprf"])
+            file[datasetName]["how"].attrs.create("lowprf",dataObject.data[i][firstMomentInElevation]["lowprf"])
+            file[datasetName]["how"].attrs.create("NI",dataObject.data[i][firstMomentInElevation]["highprf"]*dataObject.wavelength/4)
             dataCounter=1
 
             nraysList=[]
@@ -2156,15 +2658,15 @@ def headersdecoded(display,fraasid):
     return msg
 
 
-def leiasuund(rad,rad2,y,currentDisplay,zoom=1,center=[1000,1000],samm=1):
+def leiasuund(rad,rad2,y,currentDisplay,zoom=1,centre=[1000,1000],samm=1):
     '''makepath(algasimuut, (asimuudi) samm, kaugus radarist, suurendusaste, renderduse keskpunkti asukoht), kauguse samm'''
     koosinus=1 if not currentDisplay.fileType == "NEXRAD3" else cos(d2r(currentDisplay.elevation)) #Kui on NEXRADi produktid, arvesta nurga muutusega!
     r=y*koosinus
     r_new=r+samm*koosinus
-    coords1=getcoords((r_new,rad),zoom,center)
-    coords2=getcoords((r_new,rad+rad2),zoom,center)
-    coords3=getcoords((r,rad),zoom,center)
-    coords4=getcoords((r,rad+rad2),zoom,center)
+    coords1=getcoords((r_new,rad),zoom,centre)
+    coords2=getcoords((r_new,rad+rad2),zoom,centre)
+    coords3=getcoords((r,rad),zoom,centre)
+    coords4=getcoords((r,rad+rad2),zoom,centre)
     startx1,starty1=coords3
     startx2,starty2=coords4
     endx1,endy1=coords1
@@ -2206,7 +2708,7 @@ def HDF5scaleValue(value,gain,offset,nodata,undetect,rangefolding,quantity,varia
         elif quantity == "HCLASS":
             return IrisMETEO(value)
         else:
-            return value*gain+offset
+            return round(value*gain+offset,5)
     else:
         if value == rangefolding:
             return "RF"

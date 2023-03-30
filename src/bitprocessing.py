@@ -68,29 +68,48 @@ def convertToSigned(value,bitLength=8):
         return -(value - (1 << (bitLength-1)))
     else:
         return value
-    
-def halfw(halfw,signed=True,bigEndian=True):
+
+def JMAConvert(old, bits):
+    signBit = 2**(bits-1)
+    if old & signBit > 0:
+        if old == 65535:
+            return -1
+        else:
+            return -(old ^ signBit)
+    else:
+        return old
+def halfw(halfw, signed=True, bigEndian=True):
     '''Read half word'''
     if len(halfw) != 2: return 0
     if bigEndian:
-        if signed: return unpack(">h",halfw)[0]
+        if signed: return unpack(">h", halfw)[0]
         else: return unpack(">H",halfw)[0]
     else:
-        if signed: return unpack("<h",halfw)[0]
+        if signed: return unpack("<h", halfw)[0]
         else: return unpack("<H",halfw)[0]
-def floating(f,bigEndian=True):
+def floating(f, bigEndian=True):
     ''' Read a float '''
     if len(f) != 4: return 0
     if bigEndian:
         return unpack(">f",f)[0]
     else:
         return unpack("<f",f)[0]
-def word(sona,signed=True,bigEndian=True):
+def word(sona, signed=True, bigEndian=True):
     '''Read a word'''
     if len(sona) != 4: return 0
     if bigEndian:
-        if signed: return unpack(">i",sona)[0]
+        if signed: return unpack(">i", sona)[0]
         else: return unpack(">I", sona)[0]
     else:
         if signed: return unpack("<i",sona)[0]
         else: return unpack("<I", sona)[0]
+
+def doubleword(topeltsona, signed=True, bigEndian=True):
+    '''Read a word'''
+    if len(topeltsona) != 8: return 0
+    if bigEndian:
+        if signed: return unpack(">q", topeltsona)[0]
+        else: return unpack(">Q", topeltsona)[0]
+    else:
+        if signed: return unpack("<q",topeltsona)[0]
+        else: return unpack("<Q", topeltsona)[0]
