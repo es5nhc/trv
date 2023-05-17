@@ -6,7 +6,7 @@
 
 --------------------------------------------------
 
-Versioon 2023.3.30
+Versioon 2023.5.17
 
 Tarmo Tanilsoo, 2023
 
@@ -58,6 +58,7 @@ Vaata ka demovideot, kus näidatakse töö käiku: http://youtu.be/RZOYDvJv434
 * Python Imaging Library, võib olla ka selle Pillow fork(arendusmasinal jooksebki juba see, kuna see tuleb uuemate Ubuntu distributsioonidega kaasa). Muuhulgas peab olema ka ImageTk moodul, vähemalt Ubuntulistel on see eraldi pakis.
 * H5Py
 * numpy
+* netCDF4
 
 Soovitatavalt vähemalt 1 GB RAM'i.
 
@@ -74,6 +75,7 @@ Windowsi kasutajatel peaks olema ilmselt kõige lihtsam paigaldada käsurealt Py
 * IRIS RAW - samad produktid, mis ODIM H5 puhul. (fail peab lõppema .raw laiendiga!)
 * DORADE - väga toores tugi.
 * JMA GRIB - polaarkoordinaadistikus andmed. Faili nimi peab järgima JMA struktuuri, kuna seda kasutatakse produkti tüübi tuvastamiseks.
+* CfRadial - veel toores, sihitud PyART'i poolt genereeritud failidele
 
 Olen avatud täiendavatele formaatidele toe lisamisele, kuid sellisel juhul vajan formaadi dokumentatsiooni, näidisfaile ning näidet oodatavast väljundist.
 

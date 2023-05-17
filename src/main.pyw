@@ -541,11 +541,16 @@ class BatchExportWindow(Tkinter.Toplevel): #Window for batch export
                 path=self.datadir+"/"+i
                 currentfilepath=path
                 stream=file_read(path)
-                if path[-3:]== ".h5" or stream[1:4]==b"HDF":
+                if path[-3:]== ".h5":
                     productChoice.config(state=Tkinter.NORMAL)
                     elevationChoice.config(state=Tkinter.NORMAL)
                     hcanames=fraasid["iris_hca"]
                     currentlyOpenData=HDF5(path)
+                elif path[-3:]== ".nc":
+                    productChoice.config(state=Tkinter.NORMAL)
+                    elevationChoice.config(state=Tkinter.NORMAL)
+                    hcanames=fraasid["iris_hca"]
+                    currentlyOpenData=CfRadial(path)
                 elif stream[0:4] == b"AR2V" or stream[0:8] == b"ARCHIVE2":
                     productChoice.config(state=Tkinter.NORMAL)
                     elevationChoice.config(state=Tkinter.NORMAL)
@@ -1831,11 +1836,16 @@ def load(path=None,defaultElevation=0):
             productChoice.config(state=Tkinter.NORMAL)
             elevationChoice.config(state=Tkinter.NORMAL)
             currentlyOpenData=JMA(path)
-        elif path[-3:]== ".h5" or stream[1:4]==b"HDF":
+        elif path[-3:]== ".h5":
             productChoice.config(state=Tkinter.NORMAL)
             elevationChoice.config(state=Tkinter.NORMAL)
             hcanames=fraasid["iris_hca"]
             currentlyOpenData=HDF5(path)
+        elif path[-3:]== ".nc":
+            productChoice.config(state=Tkinter.NORMAL)
+            elevationChoice.config(state=Tkinter.NORMAL)
+            hcanames=fraasid["iris_hca"]
+            currentlyOpenData=CfRadial(path)
         elif path[-4:].lower() == ".raw":
             productChoice.config(state=Tkinter.NORMAL)
             elevationChoice.config(state=Tkinter.NORMAL)

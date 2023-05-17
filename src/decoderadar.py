@@ -44,7 +44,7 @@ import os
 import sys
 import platform
 from copy import deepcopy
-
+import netCDF4
 from array import array
 import numpy as np
 from numpy import fromstring
@@ -57,6 +57,93 @@ NP_INT16 = np.int16
 NP_INT32 = np.int32
 NP_FLOAT = np.float32
 
+class CfRadial():
+    def processTime(self,timestamp): #Convert CfRadial timestamp to Python datetime
+        return datetime.datetime.strptime(timestamp.decode("utf-8").strip().replace("\x00",""), "%Y-%m-%dT%H:%M:%SZ")
+    
+    def __init__(self,path):
+        self.type = "CfRadial"
+        self.headers = {}
+        self.azimuths = []
+        self.data = []
+        self.times = []
+        self.elevations = []
+        self.elevationNumbers = []
+        self.quantities = []
+        self.isModified = False
+        self._raw = netCDF4.Dataset(path)
+
+        self._raw.set_auto_maskandscale(False)
+        
+        self.nominalElevations=np.round_(self._raw["fixed_angle"][:],2).tolist()
+        if "time_reference" in self._raw.variables:
+            referenceTime = self.processTime(self._raw["time_reference"][:].tobytes())
+        else:
+            referenceTime = self.processTime(self._raw["time_coverage_start"][:].tobytes())
+
+        #Wavelength calculation
+        prtratio = self._raw["prt_ratio"][:][0]
+        prt = self._raw["prt"][:][0]
+        highprf = round(1/prt,2)
+        lowprf = round(highprf/prtratio,2)
+        rmax = self._raw["unambiguous_range"][:][0]
+        vmax = self._raw["nyquist_velocity"][:][0]
+        for numerator in range(1,10):
+            if round(prtratio*numerator,2) % 1 == 0: break
+        self.wavelength = ((vmax/numerator)*4)/highprf
+
+        self.headers={"timestamp":referenceTime,
+                      "latitude":float(self._raw.variables["latitude"][0]),
+                      "longitude":float(self._raw.variables["longitude"][0]),
+                      "height": float(self._raw.variables["altitude"][0])}
+        
+        sweepStarts = self._raw.variables["sweep_start_ray_index"][:].tolist()
+        sweepEnds = self._raw.variables["sweep_end_ray_index"][:].tolist()
+        nSweeps = len(sweepStarts)
+
+        #Conversion between radial quantity names and ODIM
+
+        quantityNames = {
+            "total_power": "TH",
+            "reflectivity": "DBZH",
+            "velocity": "VRADH",
+            "spectrum_width": "WRADH",
+            "differential_reflectivity": "ZDR",
+            "specific_differential_phase": "KDP",
+            "differential_phase": "PHIDP",
+            "normalized_coherent_power":"NCP",
+            "cross_correlation_ratio":"RHOHV",
+            "radar_echo_classification":"HCLASS",
+            "corrected_velocity":"VRADDH"}
+
+        for i in range(len(sweepStarts)):
+            times = []
+            for t in self._raw["time"][sweepStarts[i]:sweepEnds[i]+1][:]:
+                times.append(referenceTime + datetime.timedelta(seconds = t))
+            self.times.append(times)
+            self.elevations.append(self._raw["elevation"][sweepStarts[i]:sweepEnds[i]+1][:])
+            self.azimuths.append(self._raw["azimuth"][sweepStarts[i]:sweepEnds[i]+1][:])
+            dataEntry = {}
+            quantitiesInSweep = []
+            for j in quantityNames:
+                quantityCode = quantityNames[j]
+                if j in self._raw.variables:
+                    quantitiesInSweep.append(quantityCode)
+                    sweepData = np.array(self._raw[j][sweepStarts[i]:sweepEnds[i]+1])
+                    dataEntry[quantityCode] = {"data" : sweepData,
+                                               "dataType": np.uint16,
+                                               "rscale": self._raw["range"].meters_between_gates / 1000,
+                                               "rstart": (self._raw["range"].meters_to_center_of_first_gate - (self._raw["range"].meters_between_gates / 2)) / 1000, #Coordinate system used by TRV assumes the rstart indicates the start of bin, not centre of bin
+                                               "highprf":highprf,
+                                               "lowprf":lowprf,
+                                               "offset":None,
+                                               "gain":None,
+                                               "nodata":0,
+                                               "undetect":self._raw[j]._FillValue}
+            self.data.append(dataEntry)
+            self.quantities.append(quantitiesInSweep)
+            self.elevationNumbers.append(len(self.elevations))
+            
 
 def JMARLE(data, NBITS, MAXV):
     LNGU = 2**(NBITS)-1-MAXV
@@ -1625,10 +1712,6 @@ class NEXRADLevel2():
         del(sisu) #Garbage collecting - this file can be bigly!
                 
 class HDF5():
-    def warn(self,message):
-        if message not in self.issuedWarnings:
-            print(message,file=sys.stderr)
-            self.issuedWarnings.append(message)
     def __init__(self,path):
         self.type="HDF5"
         self.headers={}
@@ -1639,7 +1722,6 @@ class HDF5():
         self.elevations=[]
         self.quantities=[]
         self.isModified = False
-        self.issuedWarnings=[]
 
         andmed=HDF5Fail(path,"r") #Load the data file
 
@@ -2679,7 +2761,10 @@ def leiasuund(rad,rad2,y,currentDisplay,zoom=1,centre=[1000,1000],samm=1):
 
 def scaleValue(value,gain,offset,nodata,undetect,rangefolding):
     if value != nodata and value != undetect and value != rangefolding:
-        return round(value*gain+offset,6)
+        if gain and offset:
+            return round(value*gain+offset,6)
+        else: #In case we have already floats (like in CfRadial)
+            return value
     else:
         if value == rangefolding:
             return "RF"
