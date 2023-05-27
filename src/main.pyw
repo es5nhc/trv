@@ -1448,7 +1448,8 @@ def drawlegend(product,minimum,maximum,colortable):
     hulk=int((lastten-firstten)/majorstep)
     yend=ystart-majorstep*step*hulk #If the next full step is too close to the edge.
     if yend < 30: hulk-=1 #Let's not list this last point on legend
-    legenddraw.text((5,0),text=unit, font=pildifont)
+    yoffset = -4 if fraasid["LANG_ID"] == "JP" else 0
+    legenddraw.text((5,0+yoffset),text=unit, font=pildifont)
     for j in range(hulk+1):
         y=ystart-majorstep*step*j
         if product in ["CLASS", "HCLASS"] and currentDisplay.fileType=="NEXRAD3": #Other products have a numeric value
@@ -1464,7 +1465,7 @@ def drawlegend(product,minimum,maximum,colortable):
             else:
                 legendtext=str(legendval)
         legenddraw.line((0,y,45,y),fill="white")
-        legenddraw.text((2,y-17),text=legendtext,font=pildifont)
+        legenddraw.text((2,y-17+yoffset),text=legendtext,font=pildifont)
     rlegend2=legendimg
     rlegend=PhotoImage(image=legendimg)
     w.itemconfig(legend,image=rlegend)
