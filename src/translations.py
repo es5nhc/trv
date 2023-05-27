@@ -145,7 +145,7 @@ import sys
 phrases={"estonian":
          {
              "LANG_ID":"EE",
-             "name":"TRV 2023.5.17",
+             "name":"TRV 2023.5.27",
              "loading_states":"Laen andmeid... osariigid",
              "coastlines":"Rannajooned",
              "countries":"Maismaapiirid",
@@ -234,8 +234,8 @@ phrases={"estonian":
              "product_radialvelocity":"radiaalkiirus",
              "vradh":"radiaalkiirus (h)",
              "vradv":"radiaalkiirus (v)",
-             "vraddh":"dealiasitud radiaalkiirus (h)",
-             "vraddv":"dealiasitud radiaalkiirus (v)",
+             "vraddh":"parandatud radiaalkiirus (h)",
+             "vraddv":"parandatud radiaalkiirus (v)",
              "product_rhohv":"korrelatsioonikoefitsent",
              "product_zdr":"diferentsiaalne peegelduvus",
              "product_kdp":"spetsiifiline diferentsiaalne faas",
@@ -327,7 +327,7 @@ phrases={"estonian":
          "english":
          {
              "LANG_ID":"EN",
-             "name":"TRV 2023.5.17",
+             "name":"TRV 2023.5.27",
              "loading_states":"Loading data... states",
              "coastlines":"Coastlines",
              "countries":"Countries",
@@ -509,7 +509,7 @@ phrases={"estonian":
          "arabic":  #NOTE: I am not a native speaker. Corrections are more than welcome as pull requests, especially from radar meteorologists(even from PME!)
          {
              "LANG_ID":"AR",
-             "name":u"TRV 2023.5.17",
+             "name":u"TRV 2023.5.27",
              "loading_states":u"فتح البيانات غيوغرافي... ولايات",
              "coastlines":u"خطوط الساحل",
              "countries":u"دول",
@@ -589,8 +589,8 @@ phrases={"estonian":
              "key_shortcuts_menuentry":u"اختصارات لوحة المفاتيح",
              "about_program":u"عن البرنامج",
              "product_reflectivity":u"الانعكاسية",
-             "th":u"الانعكاسية الخامة (افقية)",
-             "tv":u"الانعكاسية الخامة (رأسية)",
+             "th":u"الانعكاسية الكاملة (افقية)",
+             "tv":u"الانعكاسية الكاملة (رأسية)",
              "dbzh":u"الانعكاسية (افقية)",
              "dbzv":u"الانعكاسية (رأسية)", 
              "sqi":u"المؤشر جودة الاشارة",
@@ -692,7 +692,7 @@ phrases={"estonian":
          "japanese":
          {
              "LANG_ID":"JP",
-             "name":"TRV 2023.5.17",
+             "name":"TRV 2023.5.27",
              "loading_states":u"データをロード中... 州",
              "coastlines":u"海岸線",
              "countries":u"郡の境界",

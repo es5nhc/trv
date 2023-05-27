@@ -37,7 +37,7 @@ from __future__ import division
 import bz2
 import translations
 from translations import fixArabic
-from math import gcd, floor, sqrt, radians as d2r, degrees as r2d, cos, copysign, pi
+from math import gcd, floor, log10, sqrt, radians as d2r, degrees as r2d, cos, copysign, pi
 from colorconversion import *
 from coordinates import *
 import sys
@@ -104,6 +104,7 @@ try:
         from PIL.ImageDraw import Draw
         from PIL.ImageTk import PhotoImage, BitmapImage
         from PIL import ImageFont
+        from PIL import ImageGrab
         splashImage=laepilt("../images/splash.png")
         splashPhotoImg = PhotoImage(splashImage)
         splashCanvas.create_image((320,180), image=splashPhotoImg)
@@ -428,7 +429,11 @@ class DWDDownloadWindow(Tkinter.Toplevel):
         Tkinter.Button(self, text = fraasid["start_download"], command=self.initDownload, font=uiFont).grid(column = 1, row = 2)
         self.mainloop()
     def pickDestination(self):
-        filed=tkFileDialog.SaveAs(None,initialdir="../data")
+        if "openDir" not in conf.keys():
+            initialDir = "../data"
+        else:
+            initialDir = conf["openDir"]
+        filed=tkFileDialog.SaveAs(None, initialdir = initialDir)
         path=filed.show()
         if len(path) > 0:
             self.outputFile.set(path)
@@ -568,6 +573,7 @@ class BatchExportWindow(Tkinter.Toplevel): #Window for batch export
                             if not (currentlyOpenData.type=="NEXRAD2" and "VRAD" in currentlyOpenData.data[j]):
                                 loadData(self.outprod.get(),j)
                                 drawInfo()
+                                drawMapScale()
                                 renderRadarData()
                                 exportimg(self.outdir+"/"+str(counter).zfill(4)+"."+self.outfmt.get(),False)
                                 counter+=1
@@ -772,19 +778,28 @@ infotekst=None #Information as PhotoImage
 clickbox=None #Pixel information as PhotoImage
 rendered=None #Rendered radar image as PhotoImage
 rhiout=None #PseudoRHI as PhotoImage
+mapscale=None #Map scale as PhotoImage
 #Above as an PIL/Pillow image.
 rlegend2=uuspilt("RGBA",(1,1))
 infotekst2=uuspilt("RGBA",(1,1))
 clickbox2=uuspilt("RGBA",(1,1))
 rendered2=uuspilt("RGBA",(1,1))
 rhiout2=uuspilt("RGBA",(1,1))
+mapscale2=uuspilt("RGBA",(1,1))
+
 currentfilepath=None #Path to presently open file
 #Pildifontide laadimine
 
-fontPath = "../fonts/NotoSansJP-Regular.otf" if fraasid["LANG_ID"] == "JP" else "../fonts/DejaVuSansCondensed.ttf"    
-pildifont=ImageFont.truetype(fontPath,12)
-pildifont2=ImageFont.truetype(fontPath,13)
-pildifont3=ImageFont.truetype(fontPath,8)
+if fraasid["LANG_ID"] == "JP":
+    fontPath = "../fonts/NotoSansJP-Regular.otf"
+    sizeReduction = 2
+else:
+    fontPath = "../fonts/DejaVuSansCondensed.ttf"
+    sizeReduction = 0
+
+pildifont=ImageFont.truetype(fontPath, 16)
+pildifont2=ImageFont.truetype(fontPath, 17)
+pildifont3=ImageFont.truetype(fontPath, 12)
 
 currenturl=None
 nexradstn=conf["nexradstn"] #Chosen NEXRAD station
@@ -978,7 +993,6 @@ def populatenexradmenus(product="p94r0"):
         productcode=product[:-1]+str(i)
         elevationChoice["menu"].add_command(label=fraasid["level3_slice"].replace("/NR/",str(i+1)),command=lambda x=productcode: fetchnexrad(x), font = uiFont)
     index=product[-1]
-    #chosenElevation.set(fraasid["level3_slice"].replace("/NR/",str(int(product[-1])+1)))
     chosenProduct.set(ids[product[0:3]])
     productChoice["menu"].delete(0, 'end')
     productChoice["menu"].add_command(label="DBZH",command=lambda x=index: fetchnexrad("p94r"+index), font = uiFont)
@@ -992,7 +1006,11 @@ def saveHDF5(path=None):
     global currentlyOpenData
     global currentfilepath
     if not path:
-        filed=tkFileDialog.SaveAs(None,initialdir="../data")
+        if "openDir" not in conf.keys():
+            initialDir = "../data"
+        else:
+            initialDir = conf["openDir"]
+        filed=tkFileDialog.SaveAs(None,initialdir=initialDir)
         path=filed.show()
     if path != "":
         if currentlyOpenData.type != "HDF5" or (currentlyOpenData.type == "HDF5" and currentlyOpenData.isODIM == False) or (currentlyOpenData.type == "HDF5" and currentlyOpenData.isModified == True):
@@ -1011,6 +1029,8 @@ def saveHDF5(path=None):
                 tkMessageBox.showinfo(fraasid["name"],"Successfully saved another version.")
             except:
                 tkMessageBox.showerror(fraasid["name"],"Error occurred while saving.")
+
+
 def exportimg(path=None,GUI=True):
     global rendered2
     global rlegend2
@@ -1020,6 +1040,7 @@ def exportimg(path=None,GUI=True):
     global clickboxloc
     global currentDisplay
     if len(currentDisplay.data) > 0:
+        
         y=int(w.cget("height"))
         if y % 2 != 0 and not currentDisplay.isRHI: y+=1
         x=int(w.cget("width"))
@@ -1042,15 +1063,18 @@ def exportimg(path=None,GUI=True):
                 outimage=uuspilt("RGB",(x,y),"#000025")
                 joonis=Draw(outimage)
                 if not currentDisplay.isRHI:
-                    if rendered != None: outimage.paste(rendered2.crop((cx-halfx,cy-halfy,cx+halfx,cy+halfy)),((0,0,x,y))) #PPI
+                    cropped = rendered2.crop((cx-halfx,cy-halfy,cx+halfx,cy+halfy))
+                    if rendered != None: outimage.paste(cropped,((0,0,x,y)), cropped) #PPI
+                    if mapscale != None: outimage.paste(mapscale2,(20,20,20+mapscale2.width,20+mapscale2.height), mapscale2) #Map scale
                 else:
-                    outimage.paste(rhiout2,(0,0,x,y)) #PseudoRHI
-                if clickbox != None: outimage.paste(clickbox2,(cbx,cby+1,cbx+170,cby+cbh+1))
-                if rlegend != None: outimage.paste(rlegend2,(x-35,halfy-228,x,halfy+227))
-                if infotekst != None: outimage.paste(infotekst2,(halfx-265,y-30,halfx+265,y-10))
+                    outimage.paste(rhiout2,(0,0,x,y), rhiout2) #PseudoRHI
+                if clickbox != None: outimage.paste(clickbox2,(cbx,cby+1,cbx+220,cby+cbh+1))
+                if rlegend != None: outimage.paste(rlegend2,(x-45,halfy-228,x,halfy+227))
+                if infotekst != None: outimage.paste(infotekst2,(halfx-265,y-50,halfx+265,y-10), infotekst2)
                 outimage.save(path)
                 if GUI: tkMessageBox.showinfo(fraasid["name"],fraasid["export_success"])
             except:
+                raise Exception("Nani?")
                 tkMessageBox.showerror(fraasid["name"],fraasid["export_format_fail"])
         return 0
     else:
@@ -1132,6 +1156,42 @@ def shouldirender(path):
         if i > 0 and i < 2000:
             return True
     return False
+def drawMapScale():
+    global mapscale
+    global mapscale2
+    global currentDisplay
+    #zoomlevel = pix per km
+
+    unitExponent = floor(log10(100/currentDisplay.zoomLevel))
+    
+    scaleMaxWidth = 200
+    scaleMinWidth = 100
+
+    scaleText = None
+    testExponent = 0 #Exponent of 10 tries to determine a value to show on the scale bar
+    while not scaleText: #As long we have not found a scale point that would fit our requirements
+        testExponent+=1
+        testStepsAmount = 10**testExponent
+        for v in range(0,testStepsAmount): #Test what could be a distance to be included in scale bar, given length constraint
+            scaleValue = v*(10**(unitExponent+testExponent-1))
+            scaleWidth = round(scaleValue*currentDisplay.zoomLevel)
+            unit = "m" if scaleValue < 1 else "km"
+            if scaleWidth >= scaleMinWidth and scaleWidth <= scaleMaxWidth:
+                if unit == "km":
+                    scaleText = str(int(scaleValue))+" km"
+                else:
+                    scaleText = str(int(1000*scaleValue))+" m"
+                break
+
+    mapscale2 = uuspilt("RGBA", (scaleWidth+20,35), (0,0,0,0))
+    mapscaledraw = Draw(mapscale2)
+    mapscaledraw.rectangle((0,0,scaleWidth+20,35), fill=(0,0,100,175))
+    mapscaledraw.line((10,5,10,10,10+scaleWidth,10,10+scaleWidth,5), fill="white")
+    scaleTextSize = mapscaledraw.textsize(scaleText, font=pildifont2)[0]
+    mapscaledraw.text(((scaleWidth+20)/2-scaleTextSize/2,15),text=scaleText, fill="white", outline="black", font=pildifont2)
+    mapscale = PhotoImage(image=mapscale2)
+    w.itemconfig(scalegraphic,image=mapscale)
+    
 def drawInfobox(x,y):
     global clickbox
     global clickbox2
@@ -1201,14 +1261,14 @@ def drawInfobox(x,y):
         highPRF=currentlyOpenData.data[currentDisplay.softElIndex][currentDisplay.quantity]["highprf"]
         lowPRF=currentlyOpenData.data[currentDisplay.softElIndex][currentDisplay.quantity]["lowprf"]
         if highPRF and lowPRF:
-            kastikorgus=170 if not currentDisplay.isRHI else 45
+            kastikorgus=220 if not currentDisplay.isRHI else 60
         else:
-            kastikorgus=84 if not currentDisplay.isRHI else 45
+            kastikorgus=109 if not currentDisplay.isRHI else 60
             canDrawDopplerScale = False
     else:
-        kastikorgus=84 if not currentDisplay.isRHI else 45
+        kastikorgus=109 if not currentDisplay.isRHI else 60
         
-    kast=uuspilt("RGB",(170,kastikorgus),"#44ccff") #Create the image for the infobox
+    kast=uuspilt("RGB",(220,kastikorgus),"#44ccff") #Create the image for the infobox
     kastdraw=Draw(kast)
 
     if sys.version_info[0] > 2:
@@ -1218,12 +1278,12 @@ def drawInfobox(x,y):
         
     if canDrawDopplerScale: #Doppler scale
         
-        kastdraw.rectangle((0,85,170,170), fill="#ffffff")
-        kastdraw.line((5,128,165,128), fill="#000000")
-        kastdraw.line((85,123,85,133), fill="#000000")
+        kastdraw.rectangle((0,110,220,220), fill="#ffffff")
+        kastdraw.line((5,165,215,165), fill="#000000")
+        kastdraw.line((110,155,110,165), fill="#000000")
         
         unitlabelsize=kastdraw.textsize("m/s", font=pildifont3)[0]
-        kastdraw.text((85-unitlabelsize/2,90), text="m/s", fill="#000000", font=pildifont3)
+        kastdraw.text((110-unitlabelsize/2,120), text="m/s", fill="#000000", font=pildifont3)
 
         NI1=highPRF*0.5*currentlyOpenData.wavelength #Getting the length of whole interval, so vMax*2
         
@@ -1240,39 +1300,39 @@ def drawInfobox(x,y):
             NI2 = lowPRF*0.5*currentlyOpenData.wavelength
             NI2IntervalRange=int(round((NI1*(dopplerRange-0.5)*highPRF/lowPRF)))
 
-        xgain=80/(NI1*(dopplerRange-0.5))
+        xgain=104/(NI1*(dopplerRange-0.5))
         if fraasid["LANG_ID"] == "AR": xgain *= -1
 
         for interval in range(-dopplerRange,dopplerRange):
             v1=NI1/2+NI1*interval
-            v1x=85+xgain*v1
-            if v1x >= 5 and v1x <= 165:
-                kastdraw.line((v1x,100,v1x,128 if highPRF != lowPRF else 155), fill="#000000")
+            v1x=110+xgain*v1
+            if v1x >= 5 and v1x <= 215:
+                kastdraw.line((v1x,135,v1x,165 if highPRF != lowPRF else 195), fill="#000000")
                 textwidth=kastdraw.textsize(str(round(v1,1)), font=pildifont3)[0]
                 if interval == -dopplerRange:
-                    kastdraw.text((v1x if fraasid["LANG_ID"] != "AR" else v1x-textwidth, 90), text = str(round(v1,1)), fill="#000000", font=pildifont3)
-                elif interval == dopplerRange -1:
-                    kastdraw.text((v1x-textwidth if fraasid["LANG_ID"] != "AR" else v1x, 90), text = str(round(v1,1)), fill="#000000", font=pildifont3)
+                    kastdraw.text((v1x if fraasid["LANG_ID"] != "AR" else v1x-textwidth, 120), text = str(round(v1,1)), fill="#000000", font=pildifont3)
+                elif interval == dopplerRange-1:
+                    kastdraw.text((v1x-textwidth if fraasid["LANG_ID"] != "AR" else v1x, 120), text = str(round(v1,1)), fill="#000000", font=pildifont3)
                 else:
-                    kastdraw.text((v1x-textwidth/2, 90), text = str(round(v1,1)), fill="#000000", font=pildifont3)
+                    kastdraw.text((v1x-textwidth/2, 120), text = str(round(v1,1)), fill="#000000", font=pildifont3)
         if highPRF != lowPRF:
             for interval2 in range(-NI2IntervalRange,NI2IntervalRange):
                 v2=NI2/2+NI2*interval2
-                v2x=85+xgain*v2
-                if v2x >= 5 and v2x <= 165:
-                    kastdraw.line((v2x,128,v2x,155), fill="#000000")
+                v2x=110+xgain*v2
+                if v2x >= 5 and v2x <= 215:
+                    kastdraw.line((v2x,165,v2x,195), fill="#000000")
                     textwidth=kastdraw.textsize(str(round(v2,1)), font=pildifont3)[0]
                     if interval2 == -NI2IntervalRange:
-                        kastdraw.text((v2x if fraasid["LANG_ID"] != "AR" else v2x-textwidth, 155), text = str(round(v2,1)), fill="#000000", font=pildifont3)
+                        kastdraw.text((v2x if fraasid["LANG_ID"] != "AR" else v2x-textwidth, 195), text = str(round(v2,1)), fill="#000000", font=pildifont3)
                     elif interval2 == NI2IntervalRange-1:
-                        kastdraw.text((v2x-textwidth if fraasid["LANG_ID"] != "AR" else v2x, 155), text = str(round(v2,1)), fill="#000000", font=pildifont3)
+                        kastdraw.text((v2x-textwidth if fraasid["LANG_ID"] != "AR" else v2x, 195), text = str(round(v2,1)), fill="#000000", font=pildifont3)
                     else:
-                        kastdraw.text((v2x-textwidth/2, 155), text = str(round(v2,1)), fill="#000000", font=pildifont3)
+                        kastdraw.text((v2x-textwidth/2, 195), text = str(round(v2,1)), fill="#000000", font=pildifont3)
         
         #Lets draw the NI gates.
         
         if validValue:
-            scalePointerX=85+xgain*vaartus
+            scalePointerX=110+xgain*vaartus
             v1aliased=((vaartus+NI1/2)%NI1)-(NI1/2)
             v2aliased=((vaartus+NI2/2)%NI2)-(NI2/2)
 
@@ -1280,44 +1340,44 @@ def drawInfobox(x,y):
             if dopplerRange > 1:
                 for interval in range(-dopplerRange,dopplerRange):
                     v1=v1aliased+NI1*interval
-                    v1x=85+xgain*v1
-                    if v1x >= 5 and v1x <= 165:
-                        kastdraw.line((v1x,100,v1x,128), fill="#aaaaaa")
+                    v1x=110+xgain*v1
+                    if v1x >= 5 and v1x <= 215:
+                        kastdraw.line((v1x,135,v1x,165), fill="#aaaaaa")
                 for interval2 in range(-NI2IntervalRange,NI2IntervalRange):
                     v2=v2aliased+NI2*interval2
-                    v2x=85+xgain*v2
-                    if v2x >= 5 and v2x <= 165:
-                        kastdraw.line((v2x,128,v2x,155), fill="#aaaaaa")
+                    v2x=110+xgain*v2
+                    if v2x >= 5 and v2x <= 215:
+                        kastdraw.line((v2x,165,v2x,195), fill="#aaaaaa")
             ##
-            kastdraw.polygon((scalePointerX-5,90,scalePointerX+5,90,scalePointerX,95), fill="#ff0000")
-            kastdraw.polygon((scalePointerX-5,165,scalePointerX+5,165,scalePointerX,160), fill="#ff0000")
+            kastdraw.polygon((scalePointerX-5,120,scalePointerX+5,120,scalePointerX,125), fill="#ff0000")
+            kastdraw.polygon((scalePointerX-5,215,scalePointerX+5,215,scalePointerX,210), fill="#ff0000")
                 
-            kastdraw.line((scalePointerX,90,scalePointerX,165), fill="#ff0000")
+            kastdraw.line((scalePointerX,120,scalePointerX,220), fill="#ff0000")
     #END OF DOPPLER SCALE
-    kastdraw.rectangle((0,0,170,16),fill="#0033ee")
+    kastdraw.rectangle((0,0,220,20),fill="#0033ee")
     kastdraw.polygon((0,0,10,0,0,10,0,0),fill="#FFFFFF")
     yoffset = -3 if fraasid["LANG_ID"] == "JP" else 0
     if fraasid["LANG_ID"] != "AR":
         kastdraw.text((9,1+yoffset),text=row0, font=pildifont2)
-        kastdraw.text((5,17),text=row1, fill="#000000", font=pildifont)
-        kastdraw.text((5,30),text=row2, fill="#000000", font=pildifont)
+        kastdraw.text((5,22),text=row1, fill="#000000", font=pildifont)
+        kastdraw.text((5,39),text=row2, fill="#000000", font=pildifont)
         if not currentDisplay.isRHI:
-            kastdraw.text((5,43),text=row3, fill="#000000", font=pildifont)
-            kastdraw.text((5,56),text=row4, fill="#000000", font=pildifont)
-            if row5 != None: kastdraw.text((5,69),text=row5, fill="#000000", font=pildifont)
+            kastdraw.text((5,56),text=row3, fill="#000000", font=pildifont)
+            kastdraw.text((5,73),text=row4, fill="#000000", font=pildifont)
+            if row5 != None: kastdraw.text((5,90),text=row5, fill="#000000", font=pildifont)
     else:
         kastdraw.text((160-kastdraw.textsize(row0,pildifont)[0],1),text=row0, font=pildifont2)
-        kastdraw.text((163-kastdraw.textsize(row1,pildifont)[0],17),text=row1, fill="#000000", font=pildifont)
-        kastdraw.text((165-kastdraw.textsize(row2,pildifont)[0],30),text=row2, fill="#000000", font=pildifont)
+        kastdraw.text((163-kastdraw.textsize(row1,pildifont)[0],22),text=row1, fill="#000000", font=pildifont)
+        kastdraw.text((165-kastdraw.textsize(row2,pildifont)[0],39),text=row2, fill="#000000", font=pildifont)
         if not currentDisplay.isRHI:
-            kastdraw.text((165-kastdraw.textsize(row3,pildifont)[0],43),text=row3, fill="#000000", font=pildifont)
-            kastdraw.text((165-kastdraw.textsize(row4,pildifont)[0],56),text=row4, fill="#000000", font=pildifont)
-            if row5 != None: kastdraw.text((165-kastdraw.textsize(row5,pildifont)[0],69),text=row5, fill="#000000", font=pildifont)
+            kastdraw.text((165-kastdraw.textsize(row3,pildifont)[0],56),text=row3, fill="#000000", font=pildifont)
+            kastdraw.text((165-kastdraw.textsize(row4,pildifont)[0],73),text=row4, fill="#000000", font=pildifont)
+            if row5 != None: kastdraw.text((165-kastdraw.textsize(row5,pildifont)[0],90),text=row5, fill="#000000", font=pildifont)
     clickbox2=kast
     clickbox=PhotoImage(image=kast)
     clickboxloc=[x,y]
     w.itemconfig(clicktext,image=clickbox)
-    w.coords(clicktext,(x+85,y+kastikorgus/2))
+    w.coords(clicktext,(x+110,y+kastikorgus/2))
     return 0
 def drawInfo():
     global infotekst
@@ -1325,17 +1385,21 @@ def drawInfo():
     global currentDisplay
     global fraasid
     if currentDisplay.isRHI:
-        tekst=rhiheadersdecoded(currentDisplay,fraasid)
+        toortekst=rhiheadersdecoded(currentDisplay,fraasid)
     else:
-        tekst=headersdecoded(currentDisplay,fraasid)
-    textimg=uuspilt("RGB",(530,20), "#0033ee")
+        toortekst=headersdecoded(currentDisplay,fraasid)
+    textimg=uuspilt("RGBA",(530,40), (0,51,238, 200))
     textdraw=Draw(textimg)
-    yoffset = -2 if fraasid["LANG_ID"] == "JP" else 0
-    if fraasid["LANG_ID"] != "AR":
-        textdraw.text((5,3+yoffset),text=tekst, font=pildifont)
-    else:
-        textwidth=textdraw.textsize(tekst, font=pildifont)[0]
-        textdraw.text((525-textwidth,3),text=tekst, font=pildifont)
+    textdraw.rectangle((0, 0, 530, 21), fill=(0, 17, 170, 230))
+    yoffset = -4 if fraasid["LANG_ID"] == "JP" else 0
+    textY = 3
+    for tekst in toortekst.split("\n"):
+        tekstisuurus = textdraw.textsize(tekst, font=pildifont)
+        if fraasid["LANG_ID"] != "AR":
+            textdraw.text((5,textY+yoffset),text=tekst, font=pildifont)
+        else:
+            textdraw.text((525-tekstisuurus[0],textY),text=tekst, font=pildifont)
+        textY+=tekstisuurus[1]+yoffset
     infotekst2=textimg
     infotekst=PhotoImage(image=textimg)
     w.itemconfig(radardetails,image=infotekst)
@@ -1359,11 +1423,11 @@ def drawlegend(product,minimum,maximum,colortable):
     if product == 165 or product == "HCLASS" or product == "CLASS":
         tosmooth=0
     increment=(maximum-minimum)/430.0
-    legendimg=uuspilt("RGB",(35,455),"#0033ee")
+    legendimg=uuspilt("RGB",(45,455),"#0033ee")
     legenddraw=Draw(legendimg)
     for i in range(430):
         val=minimum+increment*i
-        legenddraw.rectangle((25,454-i,35,454-i),fill=getcolor(tabel,val,tosmooth))
+        legenddraw.rectangle((35,454-i,45,454-i),fill=getcolor(tabel,val,tosmooth))
     step=1.0/increment
     if product == "PHIDP":
         majorstep=45
@@ -1399,8 +1463,8 @@ def drawlegend(product,minimum,maximum,colortable):
                 legendtext=str(int(legendval))
             else:
                 legendtext=str(legendval)
-        legenddraw.line((0,y,35,y),fill="white")
-        legenddraw.text((0,y-15),text=legendtext,font=pildifont)
+        legenddraw.line((0,y,45,y),fill="white")
+        legenddraw.text((2,y-17),text=legendtext,font=pildifont)
     rlegend2=legendimg
     rlegend=PhotoImage(image=legendimg)
     w.itemconfig(legend,image=rlegend)
@@ -1846,7 +1910,7 @@ def load(path=None,defaultElevation=0):
             elevationChoice.config(state=Tkinter.NORMAL)
             hcanames=fraasid["iris_hca"]
             currentlyOpenData=CfRadial(path)
-        elif path[-4:].lower() == ".raw":
+        elif path[-4:].lower() == ".raw" or (".raw" in path.split("/")[-1].lower()):
             productChoice.config(state=Tkinter.NORMAL)
             elevationChoice.config(state=Tkinter.NORMAL)
             hcanames=fraasid["iris_hca"]
@@ -1895,8 +1959,10 @@ def load(path=None,defaultElevation=0):
         checkradarposition() #Checking if radar position has changed
         #Checking if showing RHI
         if not currentDisplay.isRHI:
+            drawMapScale()
             renderRadarData()
         else:
+            w.itemconfig(scalegraphic, state=Tkinter.HIDDEN)
             if len(currentlyOpenData.nominalElevations) > 1:
                 getrhi(currentDisplay.rhiAzimuth)
                 mkrhi()
@@ -1940,6 +2006,7 @@ def changeElevation(index):
     chosenElevation.set(currentDisplay.elevation)
     if not currentDisplay.isRHI:
         drawInfo()
+        drawMapScale()
         renderRadarData()
     return 0
 def changeProduct(newProduct):
@@ -1962,6 +2029,7 @@ def changeProduct(newProduct):
     chosenProduct.set(newProduct)
     drawInfo()
     if not currentDisplay.isRHI:
+        drawMapScale()
         renderRadarData()
     else:
         currentDisplay.renderAgain = True
@@ -2018,10 +2086,12 @@ def topan(event=None):
         taskbarbtn6.config(state = Tkinter.NORMAL)
         listProducts(currentDisplay.softElIndex)
         drawInfo()
+        drawMapScale()
         if currentDisplay.renderAgain:
             currentDisplay.renderAgain=0
             renderRadarData()
         w.itemconfig(radaripilt,image=rendered)
+        w.itemconfig(scalegraphic,state=Tkinter.NORMAL)
     return 0
 def toinfo(event=None):
     global zoom
@@ -2048,6 +2118,7 @@ def resetzoom(event=None):
         currentDisplay.imageCentre=canvasctr
         currentDisplay.zoomLevel=1
         if currentDisplay.quantity != 0:
+            drawMapScale()
             renderRadarData()
     return 0
 #Drawing area events
@@ -2156,7 +2227,9 @@ def onrelease(event):
                 currentDisplay.renderCentre[1]=1000+newzoom*(pdy+currentDisplay.renderCentre[1]-1000)
                 currentDisplay.zoomLevel*=newzoom
                 w.itemconfig(zoomrect, state=Tkinter.HIDDEN)
-                if currentDisplay.quantity != None: renderRadarData()
+                if currentDisplay.quantity != None:
+                    drawMapScale()
+                    renderRadarData()
             else: #If was zooming among the RHI
                 keskpunkt=rhix(clickcoords[0])
                 kauguskeskpunktist=abs(rhix(event.x)-keskpunkt)
@@ -2192,6 +2265,7 @@ def onrelease(event):
             getrhi(rhiaz)
             currentDisplay.rhiStart=0
             currentDisplay.rhiEnd=250
+            w.itemconfig(scalegraphic, state=Tkinter.HIDDEN)
             mkrhi()
             tozoom()
         else: #If I was moving around
@@ -2227,7 +2301,7 @@ def on_window_reconf(event):
         delta=[(cdim[0]-cenne[0])/2,(cdim[1]-cenne[1])/2]
         w.config(width=cdim[0],height=cdim[1])
         w.coords(legend,(cdim[0]-18,cdim[1]/2))
-        w.coords(radardetails,(cdim[0]/2,cdim[1]-20))
+        w.coords(radardetails,(cdim[0]/2,cdim[1]-30))
         currentDisplay.imageCentre=[currentDisplay.imageCentre[0]+delta[0],currentDisplay.imageCentre[1]+delta[1]]
         canvasctr=[cdim[0]/2,cdim[1]/2]
         w.coords(radaripilt,tuple(currentDisplay.imageCentre))
@@ -2263,7 +2337,7 @@ def getinfo(x,y):
         return geocoords(azrange,float(rlat),float(rlon),float(currentDisplay.zoomLevel)), azrange, getbin(azrange)
     else:
         gr=rhix(x)
-        h=(canvasdimensions[1]-y-80)/((canvasdimensions[1]-120)/17.0)
+        h=(canvasdimensions[1]-y-105)/((canvasdimensions[1]-150)/17.0)
         r=sqrt(gr**2+h**2)
         rh=currentlyOpenData.headers["height"]/1000 #radar height
         a=beamangle(h-rh,r)
@@ -2327,11 +2401,11 @@ def chooserhi(): #Choose RHI
         else:
             tkMessageBox.showerror(fraasid["name"],fraasid["cant_make_pseudorhi"])
 def rhiypix(h,bottom):
-    samm=(bottom-120)/17.0
-    return bottom-80-h*samm
+    samm=(bottom-150)/17.0
+    return bottom-105-h*samm
 def rhiy(r,rh,a,bottom): #params: range, height of radar, elevation angle, bottom pixel
-    samm=(bottom-120)/17.0
-    return bottom-80-(rh+beamheight(r,float(a)))*samm
+    samm=(bottom-150)/17.0
+    return bottom-105-(rh+beamheight(r,float(a)))*samm
 def rhix(x):
     global currentDisplay
     global canvasdimensions
@@ -2411,7 +2485,7 @@ def mkrhi():
         msgtostatus(fraasid["drawing_pseudorhi"])
         pikkus=int(w.cget("height"))
         laius=int(w.cget("width"))
-        pilt=uuspilt("RGB", (laius,pikkus), "#000025") 
+        pilt=uuspilt("RGBA", (laius,pikkus), "#000025") 
         joonis=Draw(pilt)
         if customcolortable: #If color table has been overridden by user
             varvitabel=loadcolortable("../colortables/"+customcolortable) #Load a custom color table
@@ -2449,7 +2523,7 @@ def mkrhi():
             a0=a
         for k in range (0,18):
             korgus=rhiypix(k,pikkus)
-            joonis.line((50,korgus,laius-50,korgus),fill="white")
+            joonis.line((50,korgus,laius-70,korgus),fill="white")
             joonis.text((30,korgus-10),text=str(k),fill="white",font=pildifont)
         ulatus=(currentDisplay.rhiEnd-currentDisplay.rhiStart)
         teljesamm=ulatus/5.0
@@ -2458,7 +2532,7 @@ def mkrhi():
             joonis.line((50+teljexsamm*l,rhiypix(0,pikkus)+10,50+teljexsamm*l,rhiypix(17,pikkus)),fill="white")
             joonis.text((50+teljexsamm*l-10,rhiypix(0,pikkus)+15),text=str(round(currentDisplay.rhiStart+teljesamm*l,2)),fill="white",font=pildifont)
         joonis.line((50,rhiypix(0,pikkus),50,rhiypix(17,pikkus)),fill="white")
-        joonis.text((laius/2,pikkus-50),text="r (km)",fill="white",font=pildifont) #x telje silt
+        joonis.text((laius/2,pikkus-70),text="r (km)",fill="white",font=pildifont) #x telje silt
         joonis.text((10,5),text="h (km)", fill="white", font=pildifont)
         rhiout2=pilt
         rhiout=PhotoImage(image=rhiout2)
@@ -2977,8 +3051,9 @@ w.config(cursor = "crosshair")
 w.grid(row = 0, column = 0)
 radaripilt = w.create_image(tuple(currentDisplay.imageCentre))
 clicktext = w.create_image((300, 300))
-legend = w.create_image((582, 300))
-radardetails = w.create_image((300, 580))
+legend = w.create_image((577, 300))
+radardetails = w.create_image((300, 570))
+scalegraphic = w.create_image((20,20), anchor=Tkinter.NW)
 zoomrect = w.create_rectangle((0, 0, 200, 200), outline = "white", state = Tkinter.HIDDEN) #Ristkülik, mis joonistatakse ekraanile suurendamise ajal.
 rMaxAddSelectorShape = [w.create_arc((0,0,0,0), outline = "white", style = Tkinter.ARC, state = Tkinter.HIDDEN),
                         w.create_line((0,0,0,0), fill = "white", state = Tkinter.HIDDEN),

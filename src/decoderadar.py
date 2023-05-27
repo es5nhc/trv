@@ -47,7 +47,6 @@ from copy import deepcopy
 import netCDF4
 from array import array
 import numpy as np
-from numpy import fromstring
 import nexradtable
 
 NP_UINT8 = np.uint8
@@ -131,14 +130,14 @@ class CfRadial():
                     quantitiesInSweep.append(quantityCode)
                     sweepData = np.array(self._raw[j][sweepStarts[i]:sweepEnds[i]+1])
                     dataEntry[quantityCode] = {"data" : sweepData,
-                                               "dataType": np.uint16,
+                                               "dataType": sweepData.dtype,
                                                "rscale": self._raw["range"].meters_between_gates / 1000,
                                                "rstart": (self._raw["range"].meters_to_center_of_first_gate - (self._raw["range"].meters_between_gates / 2)) / 1000, #Coordinate system used by TRV assumes the rstart indicates the start of bin, not centre of bin
                                                "highprf":highprf,
                                                "lowprf":lowprf,
-                                               "offset":None,
-                                               "gain":None,
-                                               "nodata":0,
+                                               "offset":0,
+                                               "gain":1,
+                                               "nodata":-9999,
                                                "undetect":self._raw[j]._FillValue}
             self.data.append(dataEntry)
             self.quantities.append(quantitiesInSweep)
@@ -150,7 +149,6 @@ def JMARLE(data, NBITS, MAXV):
     out = []
     n = 0
     for i in data:
-        print(i)
         if i > MAXV:
             n+=1
             rl = (LNGU**(n-1))*(i-(MAXV+1))
@@ -363,7 +361,6 @@ class JMA(): #JMA's GRIB polar coordinate radar data
                 self.quantities.append([self._quantity])
                 self.data.append(dataDict)
                 
-                #print("----\n","3", self.group3,"\n4",self.group4,"\n5",self.group5,"\n6",self.group6)
                 ptr += groupSize
         
 
@@ -376,6 +373,7 @@ class IRIS(): #IRIS RAW
         self.azimuths = []
         self.nominalElevations = []
         self.quantities = []
+        self._allquantities = []
         self.data=[]
         self.headers={}
         oneByteProducts=[1,2,3,4,5,7,14,16,17,18,19,25,27,32,35,38,39,46,48,50,52,55,57,75,77,79,81,83,85,87]
@@ -543,7 +541,7 @@ class IRIS(): #IRIS RAW
             self.ingest_header["task_configuration"]["task_dsp_info"] = {"majorMode": halfw(rawdata[ptr:ptr+2], False, False),
                                                                          "dspType": halfw(rawdata[ptr+2:ptr+4], False, False),
                                                                          "quantities": dataTypesFromMask(word(rawdata[ptr+4:ptr+8], False, False),0) + dataTypesFromMask(word(rawdata[ptr+12:ptr+16], False, False),32) + dataTypesFromMask(word(rawdata[ptr+16:ptr+20], False, True), 64) + dataTypesFromMask(word(rawdata[ptr+20:ptr+24], False, True), 96),
-                                                                         "extendedHeaderType": rawdata[ptr+8:ptr+12],
+                                                                         "extendedHeaderType": word(rawdata[ptr+8:ptr+12], True, False),
                                                                          "PRF": word(rawdata[ptr+136:ptr+140], True, False),
                                                                          "pulseWidth": word(rawdata[ptr+140:ptr+144], True, False),
                                                                          "multiPRFflag": halfw(rawdata[ptr+144:ptr+146], False, False),
@@ -630,7 +628,8 @@ class IRIS(): #IRIS RAW
             
             variableTypes={}
             #The table is here because we need to find the PRF and wavelength first
-            dataParameters={1: [-32.0, 0.5, 0, 255], #Order: Offset, Gain, Undetect, Nodata
+            dataParameters={0: [None, None, None, None], #No normal data - extended headers!!!
+                            1: [-32.0, 0.5, 0, 255], #Order: Offset, Gain, Undetect, Nodata
                             2: [-32.0, 0.5, 0, 255],
                             3: [-eightBitDopplerOffset, eightBitDopplerGain, 0, 0],
                             4: [0, 1/256.0, 0, 0], #[sic!]
@@ -684,6 +683,8 @@ class IRIS(): #IRIS RAW
                             56: [0, 1, 0, 65535], #ditto
                             57: [-8, 1/16, 0, 0],
                             58: [-327.68, 0.01, 0, 65535],
+                            65: [-32.0, 0.5, 0, 255],
+                            66: [-32.0, 0.5, 0, 255],
                             75: [0, 1, -999, -999],
                             76: [0, 1, -999, -999],
                             77: [-32.0, 0.5, 0, 255],
@@ -697,7 +698,8 @@ class IRIS(): #IRIS RAW
                             85: [-32.0, 0.5, 0, 255],
                             86: [-327.68, 0.01, 0, 65535],
                             87: [-32.0, 0.5, 0, 255],
-                            88: [-327.68, 0.01, 0, 65535]}
+                            88: [-327.68, 0.01, 0, 65535],
+                            89: [0, 1, 0, 65535]}
             while ptr < len(rawdata):
                 recordBeginning = ptr
                 sweepNr = halfw(rawdata[ptr+2:ptr+4], True, False)
@@ -712,6 +714,7 @@ class IRIS(): #IRIS RAW
                     self.nominalElevations.append(round(binaryAngle(halfw(rawdata[ptr+34:ptr+36], False, False), 16), 2))
                     self.elevationNumbers.append(sweepNr)
                     self.quantities.append([])
+                    self._allquantities.append([])
                     rawSweep.append(b"")
                     
                     ingestDataHeader = {}
@@ -735,9 +738,10 @@ class IRIS(): #IRIS RAW
                         variableTypes[quantity] = {"type": valType,
                                                    "params": dataParameters[quantityCode]
                                                    }
-                        self.quantities[self.elevationNumbers.index(sweepNr)].append(quantity)
+                        if quantity != "DB_XHDR": self.quantities[self.elevationNumbers.index(sweepNr)].append(quantity) #DO NOT TREAT EXTENDED HEADERS AS REST OF THE DATA!
+                        self._allquantities[self.elevationNumbers.index(sweepNr)].append(quantity)
                         record["headers"].append(ingestDataHeader)
-                        ptr+=76
+                        ptr += 76
                 bytesToNextRecord = 6144 - (ptr-recordBeginning)
                 rawSweep[sweepNr-1]+=rawdata[ptr:ptr+bytesToNextRecord]
                 ptr+= bytesToNextRecord
@@ -756,7 +760,7 @@ class IRIS(): #IRIS RAW
                 self.azimuths.append([])
                 self.times.append([])
                 while blockLength != -6:
-                    for qty in self.quantities[swpnr]:
+                    for qty in self._allquantities[swpnr]:
                         dataType = variableTypes[qty]["type"]
                         offset, gain, undetect, nodata = variableTypes[qty]["params"]
                         blockLength = halfw(swp[swpptr:swpptr+2], False, False) & 32767 #Length of continuous data before a zero run
@@ -775,6 +779,22 @@ class IRIS(): #IRIS RAW
                         #endingElevation = binaryAngle(halfw(swp[swpptr+8:swpptr+10], False, False), 16)
                         nbins = halfw(swp[swpptr+10:swpptr+12], True, False)
                         swpptr+=14
+
+                        #CHECK AND SKIPPING OF EXTENDED HEADERS
+                        #TRV does not use extended header data at present. As such, we will be skipping over it for now
+
+                        if qty == "DB_XHDR":
+                            extHeaderType = self.ingest_header["task_configuration"]["task_dsp_info"]["extendedHeaderType"]
+                            if extHeaderType == 0:
+                                xhdr_size = 6
+                            elif exHeaderType == 1:
+                                xhdr_size = 52
+                            else:
+                                xhdr_size = 12 #??? Depends from customer according to IRIS manual...
+                            swpptr += xhdr_size
+                            #Skipping over DB_XHDR
+                            continue
+                        
                         blockLength -= 6 #subtracting first 6 data blocks as we now iterate for data bins
                         val=None
                         datarow=[]
@@ -785,7 +805,7 @@ class IRIS(): #IRIS RAW
                             zeroesCountMult = 1
                             
                         while val != 1 and blockLength != -6:
-                            datarow+=np.fromstring(swp[swpptr:swpptr+blockLength*2], dataType).tolist()
+                            datarow+=np.frombuffer(swp[swpptr:swpptr+blockLength*2], dataType).tolist()
                             swpptr+=2*blockLength
                             zeroesCount = halfw(swp[swpptr:swpptr+2], True, False)
                             if blockLength < nbins and zeroesCount > 1:
@@ -794,7 +814,11 @@ class IRIS(): #IRIS RAW
                             val=halfw(swp[swpptr:swpptr+2], True, False)
                             blockLength = val & 32767
                             swpptr+=2
+                            if blockLength == 0: # What? This sure hints we have gone off sync with the file.
+                                print("This does not look good! We may have lost sync with the file. Extended headers?? Terminating decoding process")
+                                raise Exception("Invalid data")
                         rowSize = len(datarow)
+                        
                         if rowSize > 0:
                             if rowSize > nbins:
                                 datarow=datarow[0:nbins] #Strip excess entries at the end
@@ -1087,7 +1111,7 @@ class DORADE(): #SUPPORT IS VERY PRELIMINARY WITH SHORTCUTS TAKEN - probably not
                     if nextItem == b"RDAT":
                         rdat={"nbytes": word(data[ptr+4:ptr+8], False, False),
                               "pdata_name": data[ptr+8:ptr+16].rstrip(b"\x00").rstrip()}
-                        datarow=np.fromstring(data[ptr+16:ptr+rdat["nbytes"]],params["binary_format"]).tolist()
+                        datarow=np.frombuffer(data[ptr+16:ptr+rdat["nbytes"]],params["binary_format"]).tolist()
                         if compression == 1: #If HRD compression is being used
                             datarownew=[]
                             datarowptr=0
@@ -1977,10 +2001,10 @@ IRISTypes={0: "DB_XHDR", 1: "TH", 2: "DBZH", 3: "VRADH", 4: "WRADH",
            46: "DB_RHOH", 47: "DB_RHOH2", 48: "DB_RHOV", 49: "DB_RHOV2",
            50: "DB_PHIH", 51: "DB_PHIH2", 52: "DB_PHIV", 53: "DB_PHIV2",
            54: "DB_USER2", 55: "HCLASS", 56: "HCLASS", 57: "ZDR",
-           58: "ZDR", 75: "DB_PMI8", 76: "DB_PMI16", 77: "DB_LOG8",
+           58: "ZDR", 65: "SNR", 66: "SNR", 755: "DB_PMI8", 76: "DB_PMI16", 77: "DB_LOG8",
            78: "DB_LOG16", 79: "DB_CSP8", 80: "DB_CSP16", 81: "CCORH",
            82: "CCORV", 83: "DB_AH8", 84: "DB_AH16", 85: "DB_AV8",
-           86: "DB_AV16", 87: "DB_AZDR8", 88: "DB_AZDR16"}
+           86: "DB_AV16", 87: "DB_AZDR8", 88: "DB_AZDR16", 89:"UNKNOWN",90:"UNKNOWN"}
 
 #Format [gain, offset]
 
@@ -2147,7 +2171,12 @@ def dealiasVelocities(dataObject,quantity,index, passesList=[1,2,3,2,1], dualPRF
     lowprf = dataObject.data[index][quantity]["lowprf"]
     gain = dataObject.data[index][quantity]["gain"]
     offset = dataObject.data[index][quantity]["offset"]
-    zeroValue = (dataObject.data[index][quantity]["offset"]/gain)*-1
+    if not gain and not offset:
+        zeroValue = 0
+        gain = 1
+        offset = 0
+    else:
+        zeroValue = (dataObject.data[index][quantity]["offset"]/gain)*-1
     nodata = dataObject.data[index][quantity]["nodata"]
     undetect = dataObject.data[index][quantity]["undetect"]
     
@@ -2269,209 +2298,6 @@ def dealiasVelocities(dataObject,quantity,index, passesList=[1,2,3,2,1], dualPRF
 
 
     return dataObject, newQuantity
-
-def dealiasVelocitiesOLD(dataObject,quantity,index, passesList=[1,2,3,2,1], dualPRF = True):
-    wavelength = dataObject.wavelength
-    highprf = dataObject.data[index][quantity]["highprf"]
-    lowprf = dataObject.data[index][quantity]["lowprf"]
-    gain = dataObject.data[index][quantity]["gain"]
-    zeroValue = (dataObject.data[index][quantity]["offset"]/gain)*-1
-    nodata = dataObject.data[index][quantity]["nodata"]
-    undetect = dataObject.data[index][quantity]["undetect"]
-    threshold = 0.5 if not dualPRF else 0.6
-    
-    rangefolding = None if not "rangefolding" in dataObject.data[index][quantity] else dataObject.data[index][quantity]["rangefolding"]
-    vMaxIntervalHigh = round(wavelength*highprf*0.5/gain) #Converting to data values steps
-    vMaxIntervalLow = round(wavelength*lowprf*0.5/gain)
-    if not isinstance(dataObject.data[index][quantity]["data"][0],list):
-        newData = [x.tolist() for x in dataObject.data[index][quantity]["data"]]
-    else:
-        newData = deepcopy(dataObject.data[index][quantity]["data"])
-    numberOfRays = len(dataObject.data[index][quantity]["data"])
-    numberOfBins = len(dataObject.data[index][quantity]["data"][0])
-    iRanges = [range(numberOfRays), range(numberOfBins), range(numberOfRays), range(numberOfBins)]
-    jRanges = [numberOfBins, numberOfRays, numberOfBins, numberOfRays]
-
-    if dualPRF:
-        if not isinstance(dataObject.data[index][quantity]["data"][0],list):
-            dataList = [x.tolist() for x in dataObject.data[index][quantity]["data"]]
-        else:
-            dataList = deepcopy(dataObject.data[index][quantity]["data"])
-        
-        rangefolding = None if not "rangefolding" in dataObject.data[index][quantity] else dataObject.data[index][quantity]["rangefolding"]
-        vMaxLowPRF = lowprf*wavelength/4
-        vMaxHighPRF = highprf*wavelength/4
-        vMaxLowPRFInt = vMaxLowPRF/gain*2
-        vMaxHighPRFInt = vMaxHighPRF/gain*2
-        halfLowPRFInt = vMaxLowPRF/gain
-        halfHighPRFInt = vMaxHighPRF/gain
-        windowWidthMultiplier=2
-        intervalCentresDistance = (vMaxHighPRFInt-vMaxLowPRFInt)/2
-        windowWidth = intervalCentresDistance*windowWidthMultiplier
-        highPRFWindowCentre = vMaxHighPRFInt+intervalCentresDistance*(windowWidthMultiplier-1)
-        lowPRFWindowCentre = vMaxLowPRFInt-intervalCentresDistance*(windowWidthMultiplier-1)
-        highPRFVelocityCriteria = highPRFWindowCentre-windowWidth
-        lowPRFVelocityCriteria = lowPRFWindowCentre-windowWidth
-        
-        
-        for passnr in range(25): #We'll run this 25 times to smooth things out
-            print("Dual-PRF dealiasing nr",passnr+1)
-            for i in range(len(dataList)): #For each ray
-                nextFromPrev = 0
-                prev = 0
-                jsuund = 1
-                j = 0
-                recentVals=[0]
-                nbins=len(dataList[i])
-                while j < nbins:
-                    value = dataList[i][j]
-                    if prev not in [nodata, undetect, rangefolding] and value not in [nodata, undetect, rangefolding]:
-                        diff = value - prev
-                        diffSign = diff/abs(diff) if diff != 0 else 1
-                        aliasAmount=0
-                        if diff > lowPRFVelocityCriteria*0.50:
-                            IntervalAmt = round(diff / vMaxLowPRFInt)
-                            IntervalExpected = vMaxLowPRFInt# * IntervalAmt
-                            if abs(diff-lowPRFWindowCentre) > windowWidth * IntervalAmt:
-                                IntervalAmt = round(diff / vMaxHighPRFInt)
-                                IntervalExpected = vMaxHighPRFInt# * IntervalAmt
-                            if abs(IntervalAmt) > 1: #This usually indicates also that the previous bin was wrong.
-                                value-=IntervalExpected*diffSign
-                                prev+=IntervalExpected*diffSign
-                                dataList[i][j] = value
-                                dataList[i][j-(1*jsuund)]=prev
-                            elif IntervalAmt == 1:
-                                if abs(value-nextFromPrev) < lowPRFVelocityCriteria: #Check 1
-                                    prev+=IntervalExpected*diffSign
-                                    dataList[i][j-(1*jsuund)]=prev
-                                else:
-                                    surroundings=[] #Gathering data about bins nearby.
-                                    surroundings.append(dataList[i-1][j])
-                                    surroundings.append(dataList[(i+1) % len(dataList)][j])
-                                    surroundings.append(dataList[(i-2) % len(dataList)][j])
-                                    surroundings.append(dataList[(i+2) % len(dataList)][j])
-                                    surroundings.append(dataList[i-1][j-(1*jsuund)])
-                                    surroundings.append(dataList[(i+1) % len(dataList)][j-(1*jsuund)])
-                                    surroundings.append(dataList[i][j-(2*jsuund)])
-                                    surroundings.append(dataList[(i+1) % len(dataList)][j-(2*jsuund)])
-                                    surroundings.append(dataList[i][j-(3*jsuund)])
-                                    surroundings.append(dataList[(i+1) % len(dataList)][j-(3*jsuund)])
-                                    if abs(np.median(surroundings)-value) < lowPRFVelocityCriteria: #This check not working well in TVS situation
-                                        prev+=IntervalExpected*diffSign
-                                        dataList[i][j-(1*jsuund)]=prev
-                                    elif abs(np.median(recentVals)-value) < lowPRFVelocityCriteria and passnr > 1:
-                                        prev+=IntervalExpected*diffSign
-                                        dataList[i][j-(1*jsuund)]=prev
-                                    else:
-                                        if (passnr-1) % 3 == 0:
-                                            value-=IntervalExpected*diffSign
-                                            dataList[i][j]=value
-                        recentVals=recentVals[-10:]+[value]
-                    nextFromPrev = prev
-                    prev = value
-                    j+=1
-            newData=np.array(dataList, dtype=np.float32)
-    else:
-        for passnr in passesList:
-            algusaeg=time.time()
-            iRange = iRanges[passnr]
-            jRange = jRanges[passnr]
-            maxGapSize = 0 if dualPRF else 5000 #Maximum gap at which to still trust the previous valid measurement
-            print("Dealiasing pass - type", passnr+1)
-            if passnr == 3: #If doing an along-an-azimuth dealias counter clockwise  - thus reverse the list
-                newData.reverse()
-            for i in iRange:
-                prev = None
-                gapSize = 0 #Size of gap between current and previous bin
-                j = 0
-                #If azimuthal check:
-                #First do a survey trying to find a region where the wind is perpendicular to the radar beam.
-                if passnr in [1, 3]:
-                    maxGapSize = 90
-                    for az1 in range(0, -numberOfRays, -1):
-                        if abs(newData[az1][i]-zeroValue) < 3/gain:
-                            j += az1
-                            jRange = jRanges[passnr] + az1
-                            break
-                if passnr == 2:
-                    newData[i].reverse() #Reverse values in bin
-                    newData[i-1].reverse()
-                while j < jRange:
-                    if passnr not in [1, 3]:
-                        current=newData[i][j]
-                    else:
-                        current=newData[j][i]
-                    if current != nodata and current != undetect and current != rangefolding:# and j > 5:
-                        if prev != None:
-                            diffFromPrev=current-prev
-                            if gapSize > maxGapSize:
-                                if passnr in [1, 3]: #Special case for azimuthal scan: Leave just first bin untouched, declare gap over and proceed to the next azimuth
-                                    gapSize = 0
-                                    prev = current
-                                    continue
-                                nearby = newData[i][(j+2) % numberOfBins] if passnr not in [1, 3] else newData[(j + 1) % numberOfRays][i-1]
-                                if nearby != nodata and nearby != undetect and nearby != rangefolding: 
-                                    diffFromNextTo=current-nearby
-                                    if abs(diffFromNextTo) < abs(diffFromPrev):
-                                        diffFromPrev=diffFromNextTo
-                            else:
-                                nearby = (newData[i-1][j-1]) if passnr not in [1, 3] else newData[j-1][i-1]
-                                if nearby != nodata and nearby != undetect and nearby != rangefolding: 
-                                    diffFromNextTo=current-nearby
-                                    if abs(diffFromNextTo) < abs(diffFromPrev):
-                                        diffFromPrev=diffFromNextTo
-                            if diffFromPrev > vMaxIntervalLow*threshold or diffFromPrev < -vMaxIntervalLow*threshold:
-                                ratio1=diffFromPrev/vMaxIntervalHigh
-                                ratioweight1 = abs(((ratio1*2) % 1) - 0.5)
-                                if dualPRF:
-                                    ratio2=diffFromPrev/vMaxIntervalLow
-                                    ratioweight2 = abs(((ratio2*2) % 1) - 0.5)
-                                else:
-                                    ratioweight2 = ratioweight1
-
-                                if ratioweight1 >= ratioweight2:
-                                    multiplier = round(ratio1)
-                                    if multiplier == 0: multiplier = copysign(2, ratio1)
-                                    current -= int(vMaxIntervalHigh * multiplier)
-                                else:
-                                    multiplier = round(ratio2)
-                                    if multiplier == 0: multiplier = copysign(2, ratio2)
-                                    current -= int(vMaxIntervalLow * multiplier)
-                                    
-                                if passnr not in [1, 3]:
-                                    newData[i][j]=current
-                                else:
-                                    newData[j][i]=current
-                        
-                        prev = current
-
-                        gapSize = 0
-                    else:
-                        gapSize += 1
-                    j += 1
-                if passnr == 2:
-                    newData[i].reverse() #Reverse back
-                    newData[i-1].reverse() #Reverse back
-            if passnr == 3: #Reverse back
-                newData.reverse()
-            print("Pass duration: %f seconds" %(time.time()-algusaeg))
-    firstTry = False
-    if quantity == "VRAD":  #Assuming horizontal polarisation by default
-        newQuantity = "VRADDH"
-        firstTry = True
-    elif not "VRADD" in quantity and quantity != "VRAD":
-        newQuantity = quantity.replace("VRAD","VRADD")
-        firstTry = True
-    else:
-        newQuantity = quantity
-    if firstTry:
-        if newQuantity not in dataObject.quantities[index]: dataObject.quantities[index].append(newQuantity)
-        dataObject.data[index][newQuantity] = deepcopy(dataObject.data[index][quantity])
-    dataObject.data[index][newQuantity]["data"] = newData
-
-
-    return dataObject, newQuantity
-
 
 def dumpVolume(dataObject=None,outputFile=None):
     '''Dumps NEXRAD of BUFR data object to disk in ODIM H5 format'''
@@ -2720,23 +2546,23 @@ def productname(quantity,fraasid):
 
 def rhiheadersdecoded(display,fraasid):
     if fraasid["LANG_ID"] != "AR":
-        msg=productname(display.quantity,fraasid).capitalize()+" | "+fraasid["azimuth"]+": "+str(display.rhiAzimuth)+u"° | "+str(display.productTime)+" UTC"
+        msg=productname(display.quantity,fraasid).capitalize()+" | "+fraasid["azimuth"]+": "+str(display.rhiAzimuth)+u"°\n"+str(display.productTime)+" UTC"
     else:
         if platform.system() != "Linux":
-            msg=fixArabic(productname(display.quantity,fraasid).capitalize())+u" | °"+str(display.rhiAzimuth)+u" :"+fixArabic(fraasid["azimuth"])+" | UTC "+str(display.productTime)
+            msg=fixArabic(productname(display.quantity,fraasid).capitalize())+u" | °"+str(display.rhiAzimuth)+u" :"+fixArabic(fraasid["azimuth"])+"\nUTC "+str(display.productTime)
         else:
-            msg=productname(display.quantity,fraasid).capitalize()+u" | °"+str(display.rhiAzimuth)+u" :"+fraasid["azimuth"]+" | UTC "+str(display.productTime)
+            msg=productname(display.quantity,fraasid).capitalize()+u" | °"+str(display.rhiAzimuth)+u" :"+fraasid["azimuth"]+"\nUTC "+str(display.productTime)
     return msg
 def headersdecoded(display,fraasid):
     if fraasid["LANG_ID"] != "AR":
-        msg=str(round(float(display.elevation),3))+u"° "+productname(display.quantity,fraasid)+" | "+str(display.productTime)+" UTC"
+        msg=str(round(float(display.elevation),3))+u"° "+productname(display.quantity,fraasid)+"\n"+str(display.productTime)+" UTC"
     else:
         if platform.system() != "Linux":
-            msg=fixArabic(productname(display.quantity,fraasid))+" "+u"°"+str(round(float(display.elevation),3))+" |  UTC "+str(display.productTime)
+            msg=fixArabic(productname(display.quantity,fraasid))+" "+u"°"+str(round(float(display.elevation),3))+"\nUTC "+str(display.productTime)
         else:
-            msg=productname(display.quantity,fraasid)+" "+u"°"+str(round(float(display.elevation),3))+" |  UTC "+str(display.productTime)
+            msg=productname(display.quantity,fraasid)+" "+u"°"+str(round(float(display.elevation),3))+"\nUTC "+str(display.productTime)
     if display.scanTime: #Kui on has scan time
-        msg+=" ("+str(display.scanTime)+")"
+        msg+=" ("+str(display.scanTime)+" UTC)"
     return msg
 
 
@@ -2761,10 +2587,8 @@ def leiasuund(rad,rad2,y,currentDisplay,zoom=1,centre=[1000,1000],samm=1):
 
 def scaleValue(value,gain,offset,nodata,undetect,rangefolding):
     if value != nodata and value != undetect and value != rangefolding:
-        if gain and offset:
+        if gain is not None and offset is not None:
             return round(value*gain+offset,6)
-        else: #In case we have already floats (like in CfRadial)
-            return value
     else:
         if value == rangefolding:
             return "RF"
