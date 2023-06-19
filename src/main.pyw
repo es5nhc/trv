@@ -1074,7 +1074,6 @@ def exportimg(path=None,GUI=True):
                 outimage.save(path)
                 if GUI: tkMessageBox.showinfo(fraasid["name"],fraasid["export_success"])
             except:
-                raise Exception("Nani?")
                 tkMessageBox.showerror(fraasid["name"],fraasid["export_format_fail"])
         return 0
     else:
@@ -1901,7 +1900,7 @@ def load(path=None,defaultElevation=0):
             productChoice.config(state=Tkinter.NORMAL)
             elevationChoice.config(state=Tkinter.NORMAL)
             currentlyOpenData=JMA(path)
-        elif path[-3:]== ".h5":
+        elif path[-3:]== ".h5" or b"H5rad" in stream:
             productChoice.config(state=Tkinter.NORMAL)
             elevationChoice.config(state=Tkinter.NORMAL)
             hcanames=fraasid["iris_hca"]
@@ -2716,7 +2715,7 @@ def loadDWDFile(site, elevationNumber, quantity="DBZH", timestamp="latest", down
         scan="ras07-vol5minng01_sweeph5onem"
         scan2 = "sweep_vol"
     quantityMarker="z" if quantity == "DBZH" else "v"
-    downloadurl=getLatestDWDFile("http://opendata.dwd.de/weather/radar/sites/"+scan2+"_"+quantityMarker+"/"+site+"/hdf5/filter_polarimetric/", elevationNumber)
+    downloadurl=getLatestDWDFile("http://opendata.dwd.de/weather/radar/sites/"+scan2+"_"+quantityMarker+"/"+site+"/hdf5/filter_polarimetric", elevationNumber)
     if not downloadOnly: currenturl=downloadurl
     try:
         cachefilename="../cache/dwdcache/"+site+scan+quantityMarker+str(elevationNumber)+timestamp
@@ -2730,6 +2729,7 @@ def loadDWDFile(site, elevationNumber, quantity="DBZH", timestamp="latest", down
             downloadAgain=True
             
         if downloadAgain:
+            print(downloadurl)
             download_file(downloadurl,cachefilename)
             if gui:
                 if fraasid["LANG_ID"] != "AR":
