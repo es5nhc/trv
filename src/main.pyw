@@ -1937,7 +1937,7 @@ def load(path=None,defaultElevation=0):
         loadData(defaultProduct,defaultElevation)
         ## Clear product and elevation menus
         ## Configuring product selectors according to the default scan shown on file open
-        if not currenturl or (currenturl.find("ftp://tgftp.nws.noaa.gov/SL.us008001/DF.of/DC.radar/") == -1 and currenturl.find("http://opendata.dwd.de/weather/radar/") == -1): #Do not clear elevation and product choices when viewing current NOAA Level 3 data
+        if not currenturl or (currenturl.find("ftp://tgftp.nws.noaa.gov/SL.us008001/DF.of/DC.radar/") == -1 and currenturl.find("https://opendata.dwd.de/weather/radar/") == -1): #Do not clear elevation and product choices when viewing current NOAA Level 3 data
             listProducts(defaultElevation)
             ## Elevation menu
             elevationChoice['menu'].delete(0, 'end')
@@ -2612,7 +2612,7 @@ def loadDWDVolume(site="fld",volumeTime=datetime.datetime(2018,2,15,11,30,0),out
     dataObject = None
     incomplete = False
     for quantity in ["z","v"]:
-        fileListingURL="http://opendata.dwd.de/weather/radar/sites/sweep_vol_"+quantity+"/"+site+"/hdf5/filter_polarimetric/"
+        fileListingURL="https://opendata.dwd.de/weather/radar/sites/sweep_vol_"+quantity+"/"+site+"/hdf5/filter_polarimetric/"
         download_file(fileListingURL,"../cache/dwdcache/dir_list_"+quantity)
         listRaw=file_read("../cache/dwdcache/dir_list_"+quantity)
         listContent=listRaw.split(b"<a href=\"")[1:]
@@ -2715,7 +2715,7 @@ def loadDWDFile(site, elevationNumber, quantity="DBZH", timestamp="latest", down
         scan="ras07-vol5minng01_sweeph5onem"
         scan2 = "sweep_vol"
     quantityMarker="z" if quantity == "DBZH" else "v"
-    downloadurl=getLatestDWDFile("http://opendata.dwd.de/weather/radar/sites/"+scan2+"_"+quantityMarker+"/"+site+"/hdf5/filter_polarimetric", elevationNumber)
+    downloadurl=getLatestDWDFile("https://opendata.dwd.de/weather/radar/sites/"+scan2+"_"+quantityMarker+"/"+site+"/hdf5/filter_polarimetric", elevationNumber)
     if not downloadOnly: currenturl=downloadurl
     try:
         cachefilename="../cache/dwdcache/"+site+scan+quantityMarker+str(elevationNumber)+timestamp
@@ -2729,7 +2729,7 @@ def loadDWDFile(site, elevationNumber, quantity="DBZH", timestamp="latest", down
             downloadAgain=True
             
         if downloadAgain:
-            print(downloadurl)
+            #print(downloadurl)
             download_file(downloadurl,cachefilename)
             if gui:
                 if fraasid["LANG_ID"] != "AR":
