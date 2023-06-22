@@ -37,7 +37,7 @@ from __future__ import division
 import bz2
 import translations
 from translations import fixArabic
-from math import gcd, floor, log10, sqrt, radians as d2r, degrees as r2d, cos, copysign, pi
+from math import floor, log10, sqrt, radians as d2r, degrees as r2d, cos, copysign, pi
 from colorconversion import *
 from coordinates import *
 import sys
@@ -49,12 +49,14 @@ if sys.version_info[0] > 2:
     from tkinter import messagebox as tkMessageBox
     from tkinter import font as tkFont
     import urllib.request as urllibRequest
+    from math import gcd
 else:
     import Tkinter
     import tkFileDialog
     import tkMessageBox
     import tkFont
     import urllib2 as urllibRequest
+    from fractions import gcd
 import json
 import os
 import threading
@@ -2300,7 +2302,7 @@ def on_window_reconf(event):
         cdim=[dim[0],dim[1]-56] #New dimensions for canvas
         delta=[(cdim[0]-cenne[0])/2,(cdim[1]-cenne[1])/2]
         w.config(width=cdim[0],height=cdim[1])
-        w.coords(legend,(cdim[0]-18,cdim[1]/2))
+        w.coords(legend,(cdim[0]-23,cdim[1]/2))
         w.coords(radardetails,(cdim[0]/2,cdim[1]-30))
         currentDisplay.imageCentre=[currentDisplay.imageCentre[0]+delta[0],currentDisplay.imageCentre[1]+delta[1]]
         canvasctr=[cdim[0]/2,cdim[1]/2]
@@ -2613,15 +2615,13 @@ def loadDWDVolume(site="fld",volumeTime=datetime.datetime(2018,2,15,11,30,0),out
     incomplete = False
     for quantity in ["z","v"]:
         fileListingURL="https://opendata.dwd.de/weather/radar/sites/sweep_vol_"+quantity+"/"+site+"/hdf5/filter_polarimetric/"
-        download_file(fileListingURL,"../cache/dwdcache/dir_list_"+quantity)
-        listRaw=file_read("../cache/dwdcache/dir_list_"+quantity)
-        listContent=listRaw.split(b"<a href=\"")[1:]
+        listContent=getDWDFileURLs(fileListingURL)
         sweepTimes={}
         for i in listContent: #Let's get available files
-            fileName=i[0:i.find(b"\">")]
-            if b"-hd5" in fileName:
-                fileInfo=fileName.split(b"_")
-                elevNumber,timeStamp,stationID,fileWMO=fileInfo[3].split(b"-")[0:4]
+            fileName=i.split("/")[-1]
+            if "-hd5" in fileName:
+                fileInfo=fileName.split("_")
+                elevNumber,timeStamp,stationID,fileWMO=fileInfo[3].split("-")[0:4]
                 year=int(timeStamp[0:4])
                 month=int(timeStamp[4:6])
                 day=int(timeStamp[6:8])
@@ -2633,8 +2633,8 @@ def loadDWDVolume(site="fld",volumeTime=datetime.datetime(2018,2,15,11,30,0),out
                 secondsFromVolumeStart=timeFromVolumeStart.seconds
                 daysFromVolumeStart=timeFromVolumeStart.days
                 if secondsFromVolumeStart < 300 and daysFromVolumeStart == 0:
-                    sweepTimes[int(elevNumber)]=timeStamp.decode("utf-8")
-        print(sweepTimes)
+                    sweepTimes[int(elevNumber)]=timeStamp
+                    
         if len(sweepTimes) < 10 and len(sweepTimes) > 0:
             if not incomplete:
                 if gui:
@@ -2652,7 +2652,7 @@ def loadDWDVolume(site="fld",volumeTime=datetime.datetime(2018,2,15,11,30,0),out
         for j in range(len(DWDElevs)): #Single elevations
             quantityCode = "DBZH" if quantity == "z" else "VRADH"
             if DWDElevs.index(j) in sweepTimes:
-                cachefile = loadDWDFile(site,j,quantityCode,sweepTimes[DWDElevs.index(j)],downloadOnly,False,gui)
+                cachefile = loadDWDFile(site,j,quantityCode,sweepTimes[DWDElevs.index(j)],downloadOnly,False,gui,listContent)
                 loadedData = HDF5(cachefile)
                 if dataObject == None:
                     dataObject = loadedData
@@ -2676,19 +2676,31 @@ def loadDWDVolume(site="fld",volumeTime=datetime.datetime(2018,2,15,11,30,0),out
     dumpVolume(dataObject, output)
     return True
 
-def getLatestDWDFile(fileListingURL, elevationNumber):
+def getDWDFileURLs(fileListingURL): #Get a list of full URLS contained in the DWD's directory listing
     download_file(fileListingURL,"../cache/dwdcache/dir_list-dwd")
     listRaw=file_read("../cache/dwdcache/dir_list-dwd").decode("utf-8")
     listContent=listRaw.split("<a href=\"")[1:]
-    if elevationNumber != -1:
+    listContent=[fileListingURL+"/"+x[0:x.index("\">")] for x in listContent if x[0:3] != "../"]
+    return listContent
+    
+def getDWDFile(fileListing, elevationNumber, timestamp):
+    if isinstance(fileListing, str): #We are given an URL to the files listing, go download yourself!
+        listContent = getDWDFileURLs(fileListing)
+    else: #We can also pass an earlier downloaded files listing to the function 
+        listContent = fileListing 
+    if elevationNumber != -1: #filter by elevation unless we're dealing with a single elevation mode(signaled with -1 here)
         listContent=[x for x in listContent if "_"+str(elevationNumber).zfill(2)+"-" in x]
-    return fileListingURL+"/"+listContent[-1][0:listContent[-1].index("\">")]
-def loadDWDFile(site, elevationNumber, quantity="DBZH", timestamp="latest", downloadOnly=False, realTime=True, gui=False):
+    if timestamp == "latest":
+        return listContent[-1]
+    else:
+        return [x for x in listContent if timestamp in x][0]
+
+def loadDWDFile(site, elevationNumber, quantity="DBZH", timestamp="latest", downloadOnly=False, realTime=True, gui=False, filesListing = None):
     global currenturl
     global currentDisplay
     elevationNumbers=[5, 4, 3, 2, 1, 0, 6, 7, 8, 9]
     if elevationNumber != -1:
-        elevationNumber=elevationNumbers[elevationNumber] #Convert over to DWD's numbering from relative numbering used in software for display purposes
+        elevationNumber=elevationNumbers[elevationNumber] #Convert over to DWD's numbering from relative numbering used in software for display purpose
     wmoCodes={"asb":10103,
            "boo":10132,
            "drs":10488,
@@ -2715,8 +2727,14 @@ def loadDWDFile(site, elevationNumber, quantity="DBZH", timestamp="latest", down
         scan="ras07-vol5minng01_sweeph5onem"
         scan2 = "sweep_vol"
     quantityMarker="z" if quantity == "DBZH" else "v"
-    downloadurl=getLatestDWDFile("https://opendata.dwd.de/weather/radar/sites/"+scan2+"_"+quantityMarker+"/"+site+"/hdf5/filter_polarimetric", elevationNumber)
+
+    if isinstance(filesListing, list):
+        downloadurl=getDWDFile(filesListing, elevationNumber, timestamp)
+    else:
+        downloadurl=getDWDFile("https://opendata.dwd.de/weather/radar/sites/"+scan2+"_"+quantityMarker+"/"+site+"/hdf5/filter_polarimetric", elevationNumber, timestamp)
+
     if not downloadOnly: currenturl=downloadurl
+    
     try:
         cachefilename="../cache/dwdcache/"+site+scan+quantityMarker+str(elevationNumber)+timestamp
         if os.path.isfile(cachefilename):
@@ -2729,13 +2747,12 @@ def loadDWDFile(site, elevationNumber, quantity="DBZH", timestamp="latest", down
             downloadAgain=True
             
         if downloadAgain:
-            #print(downloadurl)
             download_file(downloadurl,cachefilename)
             if gui:
                 if fraasid["LANG_ID"] != "AR":
-                    msgtostatus(fraasid["downloading_file"]+" "+currentDWDFileName)
+                    msgtostatus(fraasid["downloading_file"]+" "+downloadurl.split("/")[-1])
                 else:
-                    msgtostatus(currentDWDFileName+u" "+fraasid["downloading_file"])
+                    msgtostatus(downloadurl.split("/")[-1]+u" "+fraasid["downloading_file"])
                 w.update()
         else:
             if gui:

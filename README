@@ -6,14 +6,14 @@
 
 --------------------------------------------------
 
-Versioon 2023.5.27
+Versioon 2023.6.22
 
 Tarmo Tanilsoo, 2023
 
 -----
-Põhirõhk on Python3 all arendamisel. Esialgu on siiski pakett ka Python 2 all jooksutatav, kuid asjad võivad minna katki ja jääda kahe silma vahele.
+Programm töötab ainult Python 3'ga.
 
-Kuna toimunud on muudatusi ka "kapoti" all, võivad olla võimalikud regressioonid. Probleemide esinemisel palun saata ka fail, millega probleem esineb, et mul oleks võimalik probleemi diagnoosida.
+Probleemidest teatamisel palun saata ka fail, millega probleem esineb, et mul oleks võimalik probleemi diagnoosida.
 
 -----
 ** KASUTAMINE
@@ -72,7 +72,7 @@ Windowsi kasutajatel peaks olema ilmselt kõige lihtsam paigaldada käsurealt Py
 * ODIM HDF5 - Alates H5rad 1.2. PVOL objekt. Produktid DBZ(ka DBZH, DBZV), VRAD, VRADD KDP, PHIDP, RHOHV, WRAD, ZDR, TH, TV, HCLASS, SQI.
 * DWD BUFR (nii nagu see väljastatakse nende avaandmetena)
 * KNMI HDF5 - samad produktid mis ODIM H5 variandi puhul, suunatud KNMI avaandmete väljundile.
-* IRIS RAW - samad produktid, mis ODIM H5 puhul. (fail peab lõppema .raw laiendiga!)
+* IRIS RAW - samad produktid, mis ODIM H5 puhul.
 * DORADE - väga toores tugi.
 * JMA GRIB - polaarkoordinaadistikus andmed. Faili nimi peab järgima JMA struktuuri, kuna seda kasutatakse produkti tüübi tuvastamiseks.
 * CfRadial - veel toores, sihitud PyART'i poolt genereeritud failidele

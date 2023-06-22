@@ -145,7 +145,7 @@ import sys
 phrases={"estonian":
          {
              "LANG_ID":"EE",
-             "name":"TRV 2023.5.27",
+             "name":"TRV 2023.6.22",
              "loading_states":"Laen andmeid... osariigid",
              "coastlines":"Rannajooned",
              "countries":"Maismaapiirid",
@@ -327,7 +327,7 @@ phrases={"estonian":
          "english":
          {
              "LANG_ID":"EN",
-             "name":"TRV 2023.5.27",
+             "name":"TRV 2023.6.22",
              "loading_states":"Loading data... states",
              "coastlines":"Coastlines",
              "countries":"Countries",
@@ -438,8 +438,8 @@ phrases={"estonian":
              "current_language":"Language",
              "language_estonian":"Eesti keel",
              "language_english":"English",
-             "language_arabic":"عربي" if currentOS != "Linux" else fixArabic(u"عربي"),
-             "language_japanese":"日本語",
+             "language_arabic":u"عربي" if currentOS != "Linux" else fixArabic(u"عربي"),
+             "language_japanese":u"日本語",
              "conf_restart_required":"Change will take effect upon next startup.",
              "dyn_labels":"Dynamic data points",
              "color_table":"Color table override",
@@ -509,7 +509,7 @@ phrases={"estonian":
          "arabic":  #NOTE: I am not a native speaker. Corrections are more than welcome as pull requests, especially from radar meteorologists(even from PME!)
          {
              "LANG_ID":"AR",
-             "name":u"TRV 2023.5.27",
+             "name":u"TRV 2023.6.22",
              "loading_states":u"فتح البيانات غيوغرافي... ولايات",
              "coastlines":u"خطوط الساحل",
              "countries":u"دول",
@@ -670,7 +670,7 @@ phrases={"estonian":
              "time":u"وقت",
              "dealiassequence1": u"تعاقب: 1، 2، 3، 2، 1" if currentOS != "Linux" else u"تعاقب: ،1 ،2 ،3 ،2 1",
              "dealiassequence2": u"تعاقب: 2، 1، 4، 3، 1" if currentOS != "Linux" else u"تعاقب: ،2 ،1 ،4 ،3 1",
-             "dealiasdualPrf": "خوارزم لبيانات PRF Dual" if currentOS == "Linux" else u"خوارزم لبيانات Dual PRF",
+             "dealiasdualPrf": u"خوارزم لبيانات PRF Dual" if currentOS == "Linux" else u"خوارزم لبيانات Dual PRF",
              "dealias1":u" - 1 على طول شعاع - بعيدا عن الرادار" if currentOS == "Linux" else u"على طول شعاع - بعيدا عن الرادار - 1",
              "dealias2":u" - 2 متعامد للشعاع - عقارب الساعة" if currentOS == "Linux" else u"متعامد للشعاع - عقارب الساعة - 2",
              "dealias3":u" - 3 على طول شعاع - نحو الرادار" if currentOS == "Linux" else u"على طول شعاع - نحو الرادار - 3",
@@ -679,20 +679,20 @@ phrases={"estonian":
              "dealias6":u"طرح فتر نيكويست",
              "nodependencies":u"كل وحدات مطلوب غير مثبت. الخروج بعد 5 ثانيات",
              #2021 additions
-             "knmi_set_key":"تدخل مفتاح API",
-             "apikey": "مفتاح API",
+             "knmi_set_key": u"تدخل مفتاح API",
+             "apikey": u"مفتاح API",
              #2023 additions
-             "hist_menuitem": "هيستوجرام دوبلر",
-             "hist_intervals": "عدد فترات:",
-             "hist_create": "إنشاء الهيستوجرام",
-             "hist_comparechg": "مقارنة اختلافات",
-             "hist_insufficient": "لا يوجد كافيا من بيانات. (عدم معلومات عن PRF؟) ",
-             "dbz_mask": "DBZ قناع"
+             "hist_menuitem": u"هيستوجرام دوبلر",
+             "hist_intervals": u"عدد فترات:",
+             "hist_create": u"إنشاء الهيستوجرام",
+             "hist_comparechg": u"مقارنة اختلافات",
+             "hist_insufficient": u"لا يوجد كافيا من بيانات. (عدم معلومات عن PRF؟) ",
+             "dbz_mask": u"DBZ قناع"
              },
          "japanese":
          {
              "LANG_ID":"JP",
-             "name":"TRV 2023.5.27",
+             "name":"TRV 2023.6.22",
              "loading_states":u"データをロード中... 州",
              "coastlines":u"海岸線",
              "countries":u"郡の境界",
@@ -731,10 +731,10 @@ phrases={"estonian":
              "iris_hca":["",
                          u"天気は原因がない",
                          u"雨",
-                         "湿雪",
-                         "雪",
-                         "あられ",
-                         "雹"],
+                         u"湿雪",
+                         u"雪",
+                         u"あられ",
+                         u"雹"],
              "level3_slice":u"第/NR/　スライス",
              "export_success":"エクスポートは完了",
              "export_format_fail":"失敗がありました。このフォーマットにが保存することができませんあるいはこの目的点に保存する許可がありません。",
@@ -880,7 +880,7 @@ if currentOS == "Linux": #Fixes for Arabic rendering in Linux:
                  "product_radialvelocity","vradh","vradv","vraddh","vraddv","product_zdr","product_rhohv",
                  "product_kdp","product_hclass","product_sw","wradh","wradv","product_phi",
                  "dorade_sh","dorade_sv","dorade_ah","dorade_ad","dorade_dm","dorade_ncp","dorade_dcz",
-                 "azimuth","range","value","beam_height","g2g_shear"] #And don't fix stuff that goes on Pillow images either!
+                 "azimuth","range","value","beam_height","g2g_shear",u"language_japanese"] #And don't fix stuff that goes on Pillow images either!
     for i in strings:
         if i not in doNotFix:
             if type(phrases["arabic"][i]) is list:
