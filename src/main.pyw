@@ -238,7 +238,7 @@ class DopplerHistogram(Tkinter.Toplevel):
         self.histogramImage = uuspilt("RGB", (400, 300), "white")
         joonis = Draw(self.histogramImage)
         maxValue = max(self.histogramData)
-        longestYLabelSize = joonis.textsize(str(maxValue), font=pildifont)
+        longestYLabelSize = textsize(joonis,str(maxValue), font=pildifont)
         plotWidth = (370-longestYLabelSize[0])
         membersN = int(self.N.get())
 
@@ -256,7 +256,7 @@ class DopplerHistogram(Tkinter.Toplevel):
 
         
         joonis.text((10,10), str(maxValue), fill="black", font=pildifont)
-        joonis.text((startX-10-joonis.textsize("0", font=pildifont)[0], 245), "0", fill="black", font=pildifont)
+        joonis.text((startX-10-textsize(joonis,"0", font=pildifont)[0], 245), "0", fill="black", font=pildifont)
         
         joonis.rectangle((startX,15,390,250),outline="black")
         joonis.line((startX-5,15,startX,15), fill="black")
@@ -772,6 +772,13 @@ class URLAken(Tkinter.Toplevel): ##Dialog to open a web URL
         global urlwindowopen
         urlwindowopen=0
         self.destroy()
+def textsize(obj, text, font):
+    '''textsize(ImageDraw Object, Text to draw, ImageFont)
+       Replacement for removed ImageDraw.textsize'''
+    bbox = obj.textbbox((0,0),text, font=font)
+    width = bbox[2]-bbox[0]
+    height = bbox[3]-bbox[1]
+    return width, height
 
 sizeb4=[] #Latest window dimensions for on_window_reconf
 currentDisplay=Display()
@@ -1144,6 +1151,9 @@ def getbin(azr):
     if type(val) is float: val = round(val, 8)
     return val, delta, h
 def msgtostatus(msg):
+    windowWidth = output.winfo_width()
+    statusWidth = status.winfo_width()
+    
     status.config(text=msg)
     return 0
 def about_program():
@@ -1188,11 +1198,11 @@ def drawMapScale():
     mapscaledraw = Draw(mapscale2)
     mapscaledraw.rectangle((0,0,scaleWidth+20,35), fill=(0,0,100,175))
     mapscaledraw.line((10,5,10,10,10+scaleWidth,10,10+scaleWidth,5), fill="white")
-    scaleTextSize = mapscaledraw.textsize(scaleText, font=pildifont2)[0]
+    scaleTextSize = textsize(mapscaledraw,scaleText, font=pildifont2)[0]
     mapscaledraw.text(((scaleWidth+20)/2-scaleTextSize/2,15),text=scaleText, fill="white", outline="black", font=pildifont2)
     mapscale = PhotoImage(image=mapscale2)
     w.itemconfig(scalegraphic,image=mapscale)
-    
+
 def drawInfobox(x,y):
     global clickbox
     global clickbox2
@@ -1283,7 +1293,7 @@ def drawInfobox(x,y):
         kastdraw.line((5,165,215,165), fill="#000000")
         kastdraw.line((110,155,110,165), fill="#000000")
         
-        unitlabelsize=kastdraw.textsize("m/s", font=pildifont3)[0]
+        unitlabelsize=textsize(kastdraw,"m/s", font=pildifont3)[0]
         kastdraw.text((110-unitlabelsize/2,120), text="m/s", fill="#000000", font=pildifont3)
 
         NI1=highPRF*0.5*currentlyOpenData.wavelength #Getting the length of whole interval, so vMax*2
@@ -1309,7 +1319,7 @@ def drawInfobox(x,y):
             v1x=110+xgain*v1
             if v1x >= 5 and v1x <= 215:
                 kastdraw.line((v1x,135,v1x,165 if highPRF != lowPRF else 195), fill="#000000")
-                textwidth=kastdraw.textsize(str(round(v1,1)), font=pildifont3)[0]
+                textwidth=textsize(kastdraw,str(round(v1,1)), font=pildifont3)[0]
                 if interval == -dopplerRange:
                     kastdraw.text((v1x if fraasid["LANG_ID"] != "AR" else v1x-textwidth, 120), text = str(round(v1,1)), fill="#000000", font=pildifont3)
                 elif interval == dopplerRange-1:
@@ -1322,7 +1332,7 @@ def drawInfobox(x,y):
                 v2x=110+xgain*v2
                 if v2x >= 5 and v2x <= 215:
                     kastdraw.line((v2x,165,v2x,195), fill="#000000")
-                    textwidth=kastdraw.textsize(str(round(v2,1)), font=pildifont3)[0]
+                    textwidth=textsize(kastdraw,str(round(v2,1)), font=pildifont3)[0]
                     if interval2 == -NI2IntervalRange:
                         kastdraw.text((v2x if fraasid["LANG_ID"] != "AR" else v2x-textwidth, 195), text = str(round(v2,1)), fill="#000000", font=pildifont3)
                     elif interval2 == NI2IntervalRange-1:
@@ -1367,13 +1377,13 @@ def drawInfobox(x,y):
             kastdraw.text((5,73),text=row4, fill="#000000", font=pildifont)
             if row5 != None: kastdraw.text((5,90),text=row5, fill="#000000", font=pildifont)
     else:
-        kastdraw.text((160-kastdraw.textsize(row0,pildifont)[0],1),text=row0, font=pildifont2)
-        kastdraw.text((163-kastdraw.textsize(row1,pildifont)[0],22),text=row1, fill="#000000", font=pildifont)
-        kastdraw.text((165-kastdraw.textsize(row2,pildifont)[0],39),text=row2, fill="#000000", font=pildifont)
+        kastdraw.text((210-textsize(kastdraw,row0,pildifont)[0],1),text=row0, font=pildifont2)
+        kastdraw.text((213-textsize(kastdraw,row1,pildifont)[0],22),text=row1, fill="#000000", font=pildifont)
+        kastdraw.text((215-textsize(kastdraw,row2,pildifont)[0],39),text=row2, fill="#000000", font=pildifont)
         if not currentDisplay.isRHI:
-            kastdraw.text((165-kastdraw.textsize(row3,pildifont)[0],56),text=row3, fill="#000000", font=pildifont)
-            kastdraw.text((165-kastdraw.textsize(row4,pildifont)[0],73),text=row4, fill="#000000", font=pildifont)
-            if row5 != None: kastdraw.text((165-kastdraw.textsize(row5,pildifont)[0],90),text=row5, fill="#000000", font=pildifont)
+            kastdraw.text((215-textsize(kastdraw,row3,pildifont)[0],56),text=row3, fill="#000000", font=pildifont)
+            kastdraw.text((215-textsize(kastdraw,row4,pildifont)[0],73),text=row4, fill="#000000", font=pildifont)
+            if row5 != None: kastdraw.text((215-textsize(kastdraw,row5,pildifont)[0],90),text=row5, fill="#000000", font=pildifont)
     clickbox2=kast
     clickbox=PhotoImage(image=kast)
     clickboxloc=[x,y]
@@ -1395,7 +1405,7 @@ def drawInfo():
     yoffset = -4 if fraasid["LANG_ID"] == "JP" else 0
     textY = 3
     for tekst in toortekst.split("\n"):
-        tekstisuurus = textdraw.textsize(tekst, font=pildifont)
+        tekstisuurus = textsize(textdraw,tekst, font=pildifont)
         if fraasid["LANG_ID"] != "AR":
             textdraw.text((5,textY+yoffset),text=tekst, font=pildifont)
         else:
@@ -1738,7 +1748,7 @@ def renderRadarData():
                         if coords[0] < 3000 and coords[0] > 0 and coords[1] < 3000 and coords[1] > 0: #Filter out points outside of plot
                             x,y=map(int,coords)
                             fontsize=int(koht["size"])
-                            txtx,txty=map(lambda x:x/2,joonis.textsize(koht["txt"],font=ImageFont.truetype(fontPath,fontsize))) #Determine size of the plot
+                            txtx,txty=map(lambda x:x/2,textsize(joonis,koht["txt"],font=ImageFont.truetype(fontPath,fontsize))) #Determine size of the plot
                             joonis.text((x-txtx+1,y-txty+1),text=koht["txt"],fill="black",font=ImageFont.truetype(fontPath,fontsize))
                             joonis.text((x-txtx,y-txty),text=koht["txt"],fill=koht["color"],font=ImageFont.truetype(fontPath,fontsize))
             save_config_file() #Update config file with updated data.
@@ -2294,6 +2304,7 @@ def on_window_reconf(event):
     global canvasdimensions
     global currentDisplay
     global rhiagain
+    global status
     dim=[output.winfo_width(),output.winfo_height()]
     if sizeb4 == []: sizeb4=dim #If sizeb4 is empty, assume previous size was current one.
     if dim != sizeb4: #If there has been change in size...
@@ -2370,12 +2381,18 @@ def onmousemove(event):
             lonl="E" if lon >= 0 else "W"
             val=info[2][0]
             if fraasid["LANG_ID"] == "AR":
-                if arabicOnLinux:
-                    infostring=u"%.3f°%s %.3f°%s ؛°%.2f :%s ؛km %.3f :%s ؛%s :%s" % (abs(lon),lonl,abs(lat),latl,floor(info[1][0]*100)/100.0,fixArabic(fraasid["azimuth"]),floor(info[1][1]*1000)/1000.0,fixArabic(fraasid["range"]),val,fixArabic(fraasid["value"]))
+                if val != fraasid["no_data"]:
+                    if arabicOnLinux:
+                        infostring=u"%.3f°%s %.3f°%s ؛°%.2f :%s ؛km %.3f :%s ؛%s :%s" % (abs(lon),lonl,abs(lat),latl,floor(info[1][0]*100)/100.0,fixArabic(fraasid["azimuth"]),floor(info[1][1]*1000)/1000.0,fixArabic(fraasid["range"]),val,fixArabic(fraasid["value"]))
+                    else:
+                        infostring=u"%.3f°%s %.3f°%s %s: °%.2f؛ %s: %.3f ؛%s: %s؛ " % (abs(lon),lonl,abs(lat),latl,fraasid["azimuth"],floor(info[1][0]*100)/100.0,fraasid["range"],floor(info[1][1]*1000)/1000.0,fraasid["value"],moveMinus(val))
                 else:
-                    infostring=u"%.3f°%s %.3f°%s %s: °%.2f؛ %s: %.3f ؛%s: %s؛ " % (abs(lon),lonl,abs(lat),latl,fraasid["azimuth"],floor(info[1][0]*100)/100.0,fraasid["range"],floor(info[1][1]*1000)/1000.0,fraasid["value"],moveMinus(val))
+                    infostring=u"%.3f°%s %.3f°%s ؛°%.2f :%s ؛km %.3f :%s ؛%s" % (abs(lon),lonl,abs(lat),latl,floor(info[1][0]*100)/100.0,fixArabic(fraasid["azimuth"]),floor(info[1][1]*1000)/1000.0,fixArabic(fraasid["range"]),val)
             else:
-                infostring=u"%.3f°%s %.3f°%s; %s: %.2f°; %s: %.3f km; %s: %s" % (abs(lat),latl,abs(lon),lonl,fraasid["azimuth"],floor(info[1][0]*100)/100.0,fraasid["range"],floor(info[1][1]*1000)/1000.0,fraasid["value"],val)
+                if val != fraasid["no_data"]:
+                    infostring=u"%.3f°%s %.3f°%s; %s: %.2f°; %s: %.3f km; %s: %s" % (abs(lat),latl,abs(lon),lonl,fraasid["azimuth"],floor(info[1][0]*100)/100.0,fraasid["range"],floor(info[1][1]*1000)/1000.0,fraasid["value"],val)
+                else:
+                    infostring=u"%.3f°%s %.3f°%s; %s: %.2f°; %s: %.3f km; %s" % (abs(lat),latl,abs(lon),lonl,fraasid["azimuth"],floor(info[1][0]*100)/100.0,fraasid["range"],floor(info[1][1]*1000)/1000.0, val)
             msgtostatus(infostring)
         else:
             gr,h,val=info
@@ -2962,8 +2979,10 @@ if platform.system() == "Linux":
 output.title(fraasid["name"])
 if os.name in ["posix", "nt"]:
     output.geometry("600x656")
+    output.minsize(600,656)
 else:
     output.geometry("600x660")
+    output.minsize(600,656)
 output.bind("<Configure>",on_window_reconf)
 ##Drawing the menu
 menyy = Tkinter.Menu(output)

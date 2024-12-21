@@ -145,7 +145,7 @@ import sys
 phrases={"estonian":
          {
              "LANG_ID":"EE",
-             "name":"TRV 2023.6.22",
+             "name":"TRV 2024.12.21",
              "loading_states":"Laen andmeid... osariigid",
              "coastlines":"Rannajooned",
              "countries":"Maismaapiirid",
@@ -327,7 +327,7 @@ phrases={"estonian":
          "english":
          {
              "LANG_ID":"EN",
-             "name":"TRV 2023.6.22",
+             "name":"TRV 2024.12.21",
              "loading_states":"Loading data... states",
              "coastlines":"Coastlines",
              "countries":"Countries",
@@ -509,7 +509,7 @@ phrases={"estonian":
          "arabic":  #NOTE: I am not a native speaker. Corrections are more than welcome as pull requests, especially from radar meteorologists(even from PME!)
          {
              "LANG_ID":"AR",
-             "name":u"TRV 2023.6.22",
+             "name":u"TRV 2024.12.21",
              "loading_states":u"فتح البيانات غيوغرافي... ولايات",
              "coastlines":u"خطوط الساحل",
              "countries":u"دول",
@@ -692,7 +692,7 @@ phrases={"estonian":
          "japanese":
          {
              "LANG_ID":"JP",
-             "name":"TRV 2023.6.22",
+             "name":"TRV 2024.12.21",
              "loading_states":u"データをロード中... 州",
              "coastlines":u"海岸線",
              "countries":u"郡の境界",
